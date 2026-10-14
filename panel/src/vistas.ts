@@ -7,6 +7,7 @@ import { ACCIONES, type Evento } from './auditoria.ts';
 import { BASE } from './config.ts';
 import { variante } from './imagenes.ts';
 import { PLANTILLAS, type Novedad, type Plantilla } from './novedades.ts';
+import type { Conexion } from './oauth.ts';
 import { ESTADOS, miniatura, type Categoria, type EstadoStock, type Producto } from './productos.ts';
 import { ROLES, puede, type Rol } from './seguridad.ts';
 import type { UsuarioPublico } from './usuarios.ts';
@@ -149,7 +150,7 @@ export function vistaCambioObligatorio(c: Contexto, error: string | null) {
   ${formClave(c, r('/perfil/clave'))}`);
 }
 
-export function vistaPerfil(c: Contexto, error: string | null) {
+export function vistaPerfil(c: Contexto, error: string | null, conexiones: Conexion[] = [], urlConector = '/panel/mcp') {
   const u = c.usuario!;
   return layout(c, 'Mi perfil', html`
 <div class="grid-2">
@@ -160,7 +161,44 @@ export function vistaPerfil(c: Contexto, error: string | null) {
     ${error ? html`<div class="alert alert--error" role="alert">${icono('info')}<p>${error}</p></div>` : ''}
     ${formClave(c, r('/perfil/clave'))}
   </section>
-</div>`);
+</div>
+<section class="card form" aria-labelledby="claude-titulo">
+  <h2 class="card__titulo" id="claude-titulo">Conexión con Claude</h2>
+  <p class="muted">Desde la app de Claude podés consultar el stock y cambiarlo (si tu rol lo permite). Para conectarla, en Claude: Configuración → Conectores → Agregar conector personalizado, con esta dirección:</p>
+  <p><code class="url-conector">${urlConector}</code></p>
+  ${conexiones.length ? html`<ul class="conexiones">${conexiones.map((x) => html`<li class="conexion">
+      <span><strong>${x.nombre ?? 'Claude'}</strong><small class="muted">Conectado desde ${fecha(x.desde)} · último uso ${fecha(x.ultimo_uso)}</small></span>
+      <form method="post" action="${r(`/perfil/claude/${encodeURIComponent(x.cliente_id)}/desconectar`)}" data-confirmar="¿Desconectar a Claude? Dejará de poder consultar y cambiar el stock.">${csrfCampo(c)}<button class="btn btn--outline btn--sm" type="submit">Desconectar</button></form>
+    </li>`)}</ul>` : html`<p class="muted">No hay ninguna conexión activa.</p>`}
+</section>`);
+}
+
+/** Pantalla de permiso para el conector de Claude (OAuth). */
+export function vistaAutorizarClaude(c: Contexto, d: { id: string; cliente: string; destino: string; puedeCambiar: boolean }) {
+  const u = c.usuario!;
+  return layout(c, 'Conectar Claude', html`
+<section class="card form autorizar">
+  <h2 class="card__titulo">${d.cliente} quiere usar tu panel de stock</h2>
+  <p>Vas a conectar la app de Claude con tu usuario <strong>${u.usuario}</strong> (${ROLES[u.rol].nombre}). Después volvés a <strong>${d.destino}</strong>.</p>
+  <div class="grid-2">
+    <div><h3 class="label">Podrá</h3><ul class="lista-permisos lista-permisos--si">
+      <li>Buscar productos y ver su stock y cantidad</li>
+      <li>Ver las categorías y los últimos cambios</li>
+      ${d.puedeCambiar ? html`<li><strong>Cambiar el stock y la cantidad</strong> de uno o varios productos (queda en el Registro)</li>` : ''}
+    </ul></div>
+    <div><h3 class="label">No podrá</h3><ul class="lista-permisos lista-permisos--no">
+      ${d.puedeCambiar ? '' : html`<li>Cambiar el stock (tu rol solo permite consultar)</li>`}
+      <li>Cambiar nombres, descripciones, imágenes o precios</li>
+      <li>Ver ni cambiar usuarios o contraseñas</li>
+      <li>Tocar novedades, el sitio o su código</li>
+    </ul></div>
+  </div>
+  <p class="muted">Podés desconectarlo cuando quieras desde Mi perfil. Claude nunca ve tu contraseña.</p>
+  <div class="acciones-form">
+    <form method="post" action="${r(`/oauth/autorizar/${d.id}`)}">${csrfCampo(c)}<input type="hidden" name="accion" value="cancelar"><button class="btn btn--ghost" type="submit">Cancelar</button></form>
+    <form method="post" action="${r(`/oauth/autorizar/${d.id}`)}">${csrfCampo(c)}<input type="hidden" name="accion" value="permitir"><button class="btn" type="submit">${icono('check', 16)}Permitir</button></form>
+  </div>
+</section>`);
 }
 
 // ── Inventario ──

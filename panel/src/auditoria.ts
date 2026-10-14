@@ -56,4 +56,6 @@ export const ACCIONES: Record<string, string> = {
   'sistema.siembra': 'Importó el catálogo inicial',
   'sistema.restauracion': 'Restauró un respaldo',
   'asistente.consulta': 'Consultó al asistente',
+  'claude.conexion': 'Conectó Claude al panel',
+  'claude.desconexion': 'Desconectó Claude del panel',
 };

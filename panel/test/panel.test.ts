@@ -1,5 +1,6 @@
 // Pruebas de seguridad y funcionamiento del panel: `npm run panel:test` (node:test).
 import assert from 'node:assert/strict';
+import crypto from 'node:crypto';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
@@ -530,5 +531,135 @@ describe('asistente', () => {
     } finally {
       app = conToken;
     }
+  });
+});
+
+describe('conector para Claude (OAuth 2.1 + MCP)', () => {
+  const REDIRECT = 'https://claude.ai/api/mcp/auth_callback';
+  const RECURSO = `${BASE}/panel/mcp`;
+  const pkce = () => {
+    const verificador = crypto.randomBytes(32).toString('base64url');
+    return { verificador, desafio: crypto.createHash('sha256').update(verificador).digest('base64url') };
+  };
+  const postJson = (ruta: string, cuerpo: unknown, headers: Record<string, string> = {}) =>
+    app.request(BASE + ruta, { method: 'POST', body: JSON.stringify(cuerpo), headers: { 'content-type': 'application/json', ...headers } });
+  const postForm = (ruta: string, datos: Record<string, string>) =>
+    app.request(BASE + ruta, { method: 'POST', body: new URLSearchParams(datos), headers: { 'content-type': 'application/x-www-form-urlencoded' } });
+  const registrar = async () => (await (await postJson('/panel/oauth/registro', { client_name: 'Claude', redirect_uris: [REDIRECT], token_endpoint_auth_method: 'none' })).json()).client_id as string;
+  const urlAutorizar = (clientId: string, desafio: string, extra: Record<string, string> = {}) =>
+    `/panel/oauth/autorizar?${new URLSearchParams({ response_type: 'code', client_id: clientId, redirect_uri: REDIRECT, code_challenge: desafio, code_challenge_method: 'S256', state: 'estado-123', scope: 'stock', resource: RECURSO, ...extra })}`;
+  /** Ingresa al panel, autoriza y devuelve el código (o la redirección final). */
+  const autorizar = async (usuario: string, clave: string, clientId: string, desafio: string, accion: 'permitir' | 'cancelar' = 'permitir') => {
+    const n = new Navegador();
+    await n.ingresar(usuario, clave);
+    const r1 = await n.pedir(urlAutorizar(clientId, desafio));
+    assert.equal(r1.status, 302);
+    const consentimiento = r1.headers.get('location')!;
+    assert.match(consentimiento, /^\/panel\/oauth\/autorizar\/[A-Za-z0-9_-]+$/);
+    const pagina = await n.pedir(consentimiento);
+    assert.equal(pagina.status, 200);
+    const final = await n.post(consentimiento, { accion });
+    assert.equal(final.status, 302);
+    return { n, destino: new URL(final.headers.get('location')!) };
+  };
+  const conectarComo = async (usuario: string, clave = CLAVE) => {
+    const clientId = await registrar();
+    const { verificador, desafio } = pkce();
+    const { n, destino } = await autorizar(usuario, clave, clientId, desafio);
+    const tokens = await (await postForm('/panel/oauth/token', { grant_type: 'authorization_code', code: destino.searchParams.get('code')!, redirect_uri: REDIRECT, client_id: clientId, code_verifier: verificador, resource: RECURSO })).json();
+    assert.ok(tokens.access_token && tokens.refresh_token, JSON.stringify(tokens));
+    return { n, clientId, tokens };
+  };
+  const mcp = (token: string, metodo: string, params: Record<string, unknown> = {}, headers: Record<string, string> = {}) =>
+    postJson('/panel/mcp', { jsonrpc: '2.0', id: 1, method: metodo, params }, { authorization: `Bearer ${token}`, ...headers });
+  const llamar = async (token: string, nombre: string, args: Record<string, unknown>) => (await (await mcp(token, 'tools/call', { name: nombre, arguments: args })).json()).result;
+  const estado = (id: string) => fila<{ stock_estado: string; stock_cantidad: number | null }>('SELECT stock_estado, stock_cantidad FROM productos WHERE id = ?', [id]);
+
+  it('publica los metadatos y pide token con WWW-Authenticate', async () => {
+    const r = await postJson('/panel/mcp', { jsonrpc: '2.0', id: 1, method: 'initialize' });
+    assert.equal(r.status, 401);
+    assert.match(r.headers.get('www-authenticate')!, /resource_metadata="http:\/\/localhost:4321\/\.well-known\/oauth-protected-resource\/panel\/mcp"/);
+    assert.equal((await app.request(BASE + '/panel/mcp')).status, 405);
+    assert.equal((await mcp('token-falso-0123456789abcdef', 'initialize')).status, 401);
+  });
+  it('solo registra clientes con regreso a Claude o localhost', async () => {
+    assert.equal((await postJson('/panel/oauth/registro', { redirect_uris: ['https://atacante.example/cb'] })).status, 400);
+    assert.equal((await postJson('/panel/oauth/registro', { redirect_uris: ['https://claude.ai.atacante.example/cb'] })).status, 400);
+    assert.equal((await postJson('/panel/oauth/registro', { redirect_uris: [REDIRECT], token_endpoint_auth_method: 'client_secret_basic' })).status, 400);
+    assert.equal((await postJson('/panel/oauth/registro', { redirect_uris: [REDIRECT] })).status, 201);
+  });
+  it('no redirige a direcciones no registradas y exige PKCE S256', async () => {
+    const clientId = await registrar();
+    const n = new Navegador();
+    await n.ingresar('principal');
+    const otra = await n.pedir(urlAutorizar(clientId, pkce().desafio, { redirect_uri: 'https://claude.ai/otra' }));
+    assert.equal(otra.status, 400);
+    const sinPkce = await n.pedir(urlAutorizar(clientId, 'corto', {}));
+    assert.match(sinPkce.headers.get('location')!, /^https:\/\/claude\.ai\/api\/mcp\/auth_callback\?error=invalid_request/);
+  });
+  it('flujo completo: el administrador conecta Claude y cambia el stock de varios productos', async () => {
+    const { tokens } = await conectarComo('principal');
+    const ini = await (await mcp(tokens.access_token, 'initialize', { protocolVersion: '2025-06-18', capabilities: {}, clientInfo: { name: 'prueba', version: '1' } })).json();
+    assert.equal(ini.result.protocolVersion, '2025-06-18');
+    assert.equal((await mcp(tokens.access_token, 'notifications/initialized')).status, 200); // tiene id en este helper
+    const lista = await (await mcp(tokens.access_token, 'tools/list')).json();
+    assert.deepEqual(lista.result.tools.map((t: { name: string }) => t.name).sort(), ['buscar_productos', 'cambiar_stock', 'listar_categorias', 'ultimos_cambios', 'ver_producto']);
+    const busqueda = await llamar(tokens.access_token, 'buscar_productos', { texto: 'estufa' });
+    assert.match(busqueda.content[0].text, /100002/);
+    const r = await llamar(tokens.access_token, 'cambiar_stock', { cambios: [{ codigo: '100001', cantidad: 4 }, { codigo: '100002', estado: 'sin-stock' }, { codigo: '999999', estado: 'con-stock' }] });
+    assert.match(r.content[0].text, /2 de 3 cambios guardados/);
+    assert.deepEqual(await estado('parlante-1'), { stock_estado: 'con-stock', stock_cantidad: 4 });
+    assert.equal((await estado('estufa-2'))!.stock_estado, 'sin-stock');
+    const ev = await fila<{ accion: string; usuario: string; detalle: string }>("SELECT accion, usuario, detalle FROM auditoria WHERE entidad_id = 'parlante-1' ORDER BY id DESC LIMIT 1");
+    assert.equal(ev!.accion, 'stock.cambio');
+    assert.equal(ev!.usuario, 'principal');
+    assert.match(ev!.detalle, /"via":"claude"/);
+    const sinCantidad = await llamar(tokens.access_token, 'cambiar_stock', { cambios: [{ codigo: '100001' }] });
+    assert.equal(sinCantidad.isError, true);
+  });
+  it('el código es de un solo uso y el PKCE tiene que coincidir', async () => {
+    const clientId = await registrar();
+    const { verificador, desafio } = pkce();
+    const { destino } = await autorizar('principal', CLAVE, clientId, desafio);
+    const code = destino.searchParams.get('code')!;
+    assert.equal(destino.searchParams.get('state'), 'estado-123');
+    const malo = await (await postForm('/panel/oauth/token', { grant_type: 'authorization_code', code, redirect_uri: REDIRECT, client_id: clientId, code_verifier: pkce().verificador })).json();
+    assert.equal(malo.error, 'invalid_grant');
+    // El intento fallido consumió el código: ni con el verificador correcto se puede reutilizar.
+    const otraVez = await (await postForm('/panel/oauth/token', { grant_type: 'authorization_code', code, redirect_uri: REDIRECT, client_id: clientId, code_verifier: verificador })).json();
+    assert.equal(otraVez.error, 'invalid_grant');
+  });
+  it('cancelar devuelve access_denied a Claude', async () => {
+    const { destino } = await autorizar('principal', CLAVE, await registrar(), pkce().desafio, 'cancelar');
+    assert.equal(destino.searchParams.get('error'), 'access_denied');
+    assert.equal(destino.searchParams.get('code'), null);
+  });
+  it('con un usuario visualizador solo consulta', async () => {
+    const antes = await estado('estufa-2');
+    const { tokens } = await conectarComo('lector', 'Propia-Clave-2026!');
+    const r = await llamar(tokens.access_token, 'cambiar_stock', { cambios: [{ codigo: '100002', estado: 'con-stock' }] });
+    assert.equal(r.isError, true);
+    assert.match(r.content[0].text, /solo puede consultar/);
+    assert.deepEqual(await estado('estufa-2'), antes);
+    assert.match((await llamar(tokens.access_token, 'ver_producto', { codigo: '100002' })).content[0].text, /100002/);
+  });
+  it('la renovación rota el token y desconectar desde el perfil corta el acceso', async () => {
+    const { n, clientId, tokens } = await conectarComo('principal');
+    const nuevos = await (await postForm('/panel/oauth/token', { grant_type: 'refresh_token', refresh_token: tokens.refresh_token, client_id: clientId })).json();
+    assert.ok(nuevos.access_token && nuevos.refresh_token !== tokens.refresh_token);
+    const repetido = await (await postForm('/panel/oauth/token', { grant_type: 'refresh_token', refresh_token: tokens.refresh_token, client_id: clientId })).json();
+    assert.equal(repetido.error, 'invalid_grant');
+    assert.equal((await mcp(nuevos.access_token, 'ping')).status, 200);
+    const perfil = await (await n.pedir('/panel/perfil')).text();
+    assert.match(perfil, /Conexión con Claude/);
+    assert.match(perfil, /http:\/\/localhost:4321\/panel\/mcp/);
+    assert.equal((await n.post(`/panel/perfil/claude/${clientId}/desconectar`, {})).status, 302);
+    assert.equal((await mcp(nuevos.access_token, 'ping')).status, 401);
+    const tokensEnBase = await db.execute({ sql: 'SELECT token_hash FROM oauth_tokens', args: [] });
+    assert.ok(tokensEnBase.rows.every((f) => /^[0-9a-f]{64}$/.test(String(f.token_hash))), 'los tokens se guardan solo como hash');
+  });
+  it('rechaza orígenes de navegador ajenos', async () => {
+    const { tokens } = await conectarComo('principal');
+    assert.equal((await mcp(tokens.access_token, 'ping', {}, { origin: 'https://atacante.example' })).status, 403);
   });
 });

@@ -46,6 +46,25 @@ Panel (/panel)  ──escribe──►  Base de datos (Turso / libSQL)  ◄─�
 - Usa el lector nativo del navegador cuando existe (Chrome en Android) y, si no, la biblioteca ZXing incluida en el sitio (iPhone, computadoras).
 - Si no hay cámara, no se concede el permiso o la conexión no es segura (HTTPS), avisa y el campo sigue disponible para escribir el código a mano.
 
+## Conector para Claude (usa la suscripción de Claude, sin costo en Vercel)
+
+El panel funciona como **conector personalizado (MCP)** de la app de Claude: se conversa en Claude (web, escritorio o celular) y Claude consulta o cambia el stock a través del panel. Requiere un plan de Claude que permita conectores personalizados (Pro, Max, Team o Enterprise). Código: `panel/src/mcp.ts` (herramientas) y `panel/src/oauth.ts` (autorización).
+
+**Cómo conectarlo (una vez):**
+1. En Claude: Configuración → Conectores → **Agregar conector personalizado**.
+2. Nombre: "Stock COPOL". URL: `https://<dominio>/panel/mcp` (hoy `https://copol-ruddy.vercel.app/panel/mcp`; también figura en *Mi perfil*).
+3. Tocar **Conectar**: se abre el panel; ingresar con el usuario del panel y tocar **Permitir**. Claude no ve la contraseña.
+4. En un chat, activar el conector y pedir, por ejemplo: "poné sin stock el 436249 y 5 unidades al 460460".
+
+**Qué puede hacer Claude:** `buscar_productos`, `ver_producto`, `listar_categorias`, `ultimos_cambios` (consulta) y `cambiar_stock` (estado y cantidad de hasta 50 productos por vez). Nada más: no hay herramientas para precios, nombres, descripciones, imágenes, novedades, usuarios ni código. Claude pide confirmación antes de usar una herramienta que modifica, según la configuración del conector en Claude.
+
+**Seguridad:**
+- OAuth 2.1 con PKCE S256 obligatorio; registro dinámico de clientes solo con regreso a `claude.ai` / `claude.com` (o `localhost` para pruebas). Código de un solo uso (5 min), token de acceso de 1 h y de renovación de 30 días con rotación. Todo se guarda solo como hash SHA-256.
+- Cada pedido usa el **rol actual** del usuario que autorizó (un visualizador solo consulta) y exige que la cuenta siga activa.
+- Cada cambio queda en el **Registro** como "Cambió el stock" con `"via": "claude"`; la conexión y la desconexión también.
+- **Desconectar:** *Mi perfil* → Conexión con Claude → Desconectar (corta el acceso al instante). Cambiar la contraseña no corta la conexión: para eso, desconectar.
+- Límites: 240 pedidos por minuto por usuario, 60 canjes de token cada 15 min y 20 registros por hora por conexión.
+
 ## Roles
 
 | Permiso | Administrador | Editor de stock | Visualizador de stock |

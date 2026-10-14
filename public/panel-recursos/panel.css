@@ -286,4 +286,19 @@ select.input { padding-right: 28px; }
 .propuesta--reemplazada .propuesta__acciones, .propuesta--reemplazada .propuesta__nota { display: none; }
 @media (max-width: 479px) { .asistente__modelo { margin-right: 0; width: 100%; } .asistente__acciones .btn[type="submit"] { flex: 1; } }
 
+/* Conexión con Claude (perfil y pantalla de permiso) */
+.url-conector { display: inline-block; padding: 6px 10px; border-radius: var(--radius-sm); background: var(--muted); font-size: .875rem; overflow-wrap: anywhere; user-select: all; }
+.conexiones { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.conexion { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--radius); }
+.conexion span { display: grid; gap: 2px; }
+.conexion form { margin: 0; }
+.autorizar { max-width: 760px; }
+.lista-permisos { margin: 6px 0 0; padding-left: 0; list-style: none; display: grid; gap: 6px; }
+.lista-permisos li { position: relative; padding-left: 22px; }
+.lista-permisos li::before { position: absolute; left: 0; top: 0; font-weight: 800; }
+.lista-permisos--si li::before { content: '✓'; color: var(--ok); }
+.lista-permisos--no li::before { content: '✕'; color: var(--destructive); }
+.acciones-form { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap; }
+.acciones-form form { margin: 0; }
+
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; } }

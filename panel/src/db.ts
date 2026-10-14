@@ -88,6 +88,24 @@ const MIGRACIONES: string[] = [
   );
   CREATE INDEX propuestas_usuario ON propuestas(usuario_id, estado)
   `,
+  /* 4 · conector para Claude (OAuth 2.1 con PKCE): clientes, pedidos de autorización, códigos y tokens.
+     Los códigos y tokens se guardan solo como hash SHA-256. */ `
+  CREATE TABLE oauth_clientes (id TEXT PRIMARY KEY, nombre TEXT, redirect_uris TEXT NOT NULL, creado_en TEXT NOT NULL);
+  CREATE TABLE oauth_pedidos (
+    id TEXT PRIMARY KEY, cliente_id TEXT NOT NULL, redirect_uri TEXT NOT NULL, estado_cliente TEXT, desafio TEXT NOT NULL,
+    alcance TEXT, recurso TEXT, expira_en TEXT NOT NULL
+  );
+  CREATE TABLE oauth_codigos (
+    codigo_hash TEXT PRIMARY KEY, cliente_id TEXT NOT NULL, usuario_id INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+    redirect_uri TEXT NOT NULL, desafio TEXT NOT NULL, alcance TEXT, recurso TEXT, expira_en TEXT NOT NULL
+  );
+  CREATE TABLE oauth_tokens (
+    token_hash TEXT PRIMARY KEY, tipo TEXT NOT NULL CHECK (tipo IN ('acceso', 'renovacion')), cliente_id TEXT NOT NULL,
+    usuario_id INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE, alcance TEXT, recurso TEXT,
+    creado_en TEXT NOT NULL, expira_en TEXT NOT NULL, ultimo_uso TEXT
+  );
+  CREATE INDEX oauth_tokens_usuario ON oauth_tokens(usuario_id, cliente_id)
+  `,
 ];
 
 /** Versión del esquema en una tabla propia (PRAGMA user_version no se conserva igual en todos los destinos). */

@@ -6,6 +6,8 @@ import { Hono, type Context, type MiddlewareHandler } from 'hono';
 import { bodyLimit } from 'hono/body-limit';
 import { deleteCookie, getCookie, setCookie } from 'hono/cookie';
 import * as A from './asistente.ts';
+import { atenderMcp } from './mcp.ts';
+import * as O from './oauth.ts';
 import { listarEventos, registrar, type Actor } from './auditoria.ts';
 import { BASE, type Config } from './config.ts';
 import { ahora, ejecutar, una, type Db } from './db.ts';
@@ -39,6 +41,7 @@ const AVISOS: Record<string, V.Contexto['aviso']> = {
   conflicto: { tipo: 'error', texto: 'Otra persona modificó este producto mientras lo editabas. Revisá los datos actuales y volvé a intentar.' },
   'no-persistido': { tipo: 'error', texto: 'No se pudo confirmar el guardado en la base de datos. El cambio no se aplicó: intentá de nuevo.' },
   'sesion-vencida': { tipo: 'error', texto: 'Tu sesión venció. Ingresá de nuevo.' },
+  'claude-desconectado': { tipo: 'ok', texto: 'Claude quedó desconectado: ya no puede consultar ni cambiar el stock.' },
 };
 
 export interface OpcionesApp {
@@ -56,6 +59,7 @@ export function crearApp({ db: fuenteDb, config, almacen, asistente }: OpcionesA
   const obtenerDb = typeof fuenteDb === 'function' ? fuenteDb : async () => fuenteDb;
   const guardarEn = almacen ?? almacenConfigurado(config.dirImagenes, r('/media'));
   const limiteIp = new Limitador(20, 15 * 60_000);
+  const esApiClaude = (c: C) => [r('/mcp'), r('/oauth/token'), r('/oauth/registro')].includes(c.req.path.replace(/\/$/, ''));
   const segura = (c: C) => new URL(c.req.url).protocol === 'https:';
   const nombreCookie = (c: C, base: string) => (segura(c) ? `__Host-${base}` : base);
   const opcionesCookie = (c: C) => ({ httpOnly: true, secure: segura(c), sameSite: 'Strict' as const, path: '/' });
@@ -74,7 +78,9 @@ export function crearApp({ db: fuenteDb, config, almacen, asistente }: OpcionesA
     c.header('Permissions-Policy', 'camera=(self), microphone=(), geolocation=(), payment=()');
     c.header('X-Robots-Tag', 'noindex, nofollow');
     if (!c.req.path.startsWith(r('/media/'))) {
-      c.header('Content-Security-Policy', "default-src 'self'; img-src 'self' data: blob: https://*.public.blob.vercel-storage.com; media-src 'self' blob:; script-src 'self'; style-src 'self'; font-src 'self'; connect-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'; object-src 'none'");
+      // La pantalla de permiso para Claude redirige, al enviarse, a claude.ai / claude.com (o localhost en pruebas).
+      const formAction = c.req.path.startsWith(r('/oauth/autorizar/')) ? "'self' https://claude.ai https://claude.com http://localhost:* http://127.0.0.1:*" : "'self'";
+      c.header('Content-Security-Policy', `default-src 'self'; img-src 'self' data: blob: https://*.public.blob.vercel-storage.com; media-src 'self' blob:; script-src 'self'; style-src 'self'; font-src 'self'; connect-src 'self'; form-action ${formAction}; frame-ancestors 'none'; base-uri 'none'; object-src 'none'`);
       c.header('Cache-Control', 'no-store');
     }
     if (segura(c)) c.header('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
@@ -114,6 +120,7 @@ export function crearApp({ db: fuenteDb, config, almacen, asistente }: OpcionesA
   // ── Sesión ──
   app.use('*', async (c, next) => {
     c.set('usuario', null);
+    if (esApiClaude(c)) return next();
     c.set('sesion', null);
     const token = getCookie(c, nombreCookie(c, 'copol_panel'));
     if (token) {
@@ -141,7 +148,7 @@ export function crearApp({ db: fuenteDb, config, almacen, asistente }: OpcionesA
   // ── CSRF: todo POST debe venir del mismo origen y traer el token de la sesión ──
   app.use('*', bodyLimit({ maxSize: (config.maxImagenMB + 1) * 1024 * 1024, onError: (c) => c.html(V.vistaError(ctx(c as C), 413, 'Archivo demasiado grande', `El máximo es ${config.maxImagenMB} MB por imagen.`), 413) }));
   app.use('*', async (c, next) => {
-    if (c.req.method !== 'POST') return next();
+    if (c.req.method !== 'POST' || esApiClaude(c)) return next();
     const propio = new URL(c.req.url).origin;
     const origen = c.req.header('origin');
     const referer = c.req.header('referer');
@@ -210,7 +217,7 @@ export function crearApp({ db: fuenteDb, config, almacen, asistente }: OpcionesA
   });
 
   // ── Perfil: cada usuario cambia su propia contraseña ──
-  app.get('/perfil', requiere('ver'), (c) => c.html(V.vistaPerfil(ctx(c), null)));
+  app.get('/perfil', requiere('ver'), async (c) => c.html(V.vistaPerfil(ctx(c), null, await O.conexionesDe(c.get('db'), c.get('usuario')!.id), `${new URL(c.req.url).origin}/panel/mcp`)));
   app.get('/perfil/clave', requiere('ver'), (c) => (c.get('usuario')!.debe_cambiar_clave ? c.html(V.vistaCambioObligatorio(ctx(c), null)) : c.redirect(r('/perfil'))));
   app.post('/perfil/clave', requiere('ver'), async (c) => {
     const db = c.get('db');
@@ -225,7 +232,7 @@ export function crearApp({ db: fuenteDb, config, almacen, asistente }: OpcionesA
       : nueva !== repetir ? 'Las contraseñas nuevas no coinciden.'
       : nueva === actual ? 'La contraseña nueva tiene que ser distinta de la actual.'
       : problemaClave(nueva, u.usuario);
-    if (error) return c.html(u.debe_cambiar_clave ? V.vistaCambioObligatorio(ctx(c), error) : V.vistaPerfil(ctx(c), error), 400);
+    if (error) return c.html(u.debe_cambiar_clave ? V.vistaCambioObligatorio(ctx(c), error) : V.vistaPerfil(ctx(c), error, await O.conexionesDe(db, u.id), `${new URL(c.req.url).origin}/panel/mcp`), 400);
     await U.cambiarClave(db, u.id, nueva, false);
     await U.cerrarSesionesDe(db, u.id, c.get('sesion')!.id_hash);
     await registrar(db, actor(c), 'clave.cambio', 'usuario', String(u.id));
@@ -550,6 +557,126 @@ export function crearApp({ db: fuenteDb, config, almacen, asistente }: OpcionesA
       ...mal.map((x) => `- No se aplicó ${x.nombre} (${x.codigo ?? 'sin código'}): ${x.error}`),
     ].join('\n');
     return responder(200, true, mensaje, { resultados: r.resultados });
+  });
+
+  // ── Conector para Claude (MCP + OAuth 2.1). Ver panel/src/oauth.ts y panel/src/mcp.ts ──
+  const origenDe = (c: C) => new URL(c.req.url).origin;
+  const recursoMcp = (c: C) => `${origenDe(c)}/panel/mcp`;
+  const limiteRegistro = new Limitador(20, 60 * 60_000);
+  const limiteToken = new Limitador(60, 15 * 60_000);
+  const limiteMcp = new Limitador(240, 60_000);
+  const jsonOauth = (c: C, cuerpo: unknown, estado: 200 | 201 | 400 | 401 | 429 = 200) => {
+    c.header('Cache-Control', 'no-store');
+    c.header('Pragma', 'no-cache');
+    return c.json(cuerpo, estado);
+  };
+  const leerFormulario = async (c: C): Promise<Record<string, unknown>> => {
+    const tipo = c.req.header('content-type') ?? '';
+    if (tipo.includes('application/json')) return (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
+    return Object.fromEntries(new URLSearchParams(await c.req.text()));
+  };
+
+  app.post('/oauth/registro', async (c) => {
+    const ip = c.get('ip') ?? 'desconocida';
+    if (limiteRegistro.excedido(ip)) return jsonOauth(c, { error: 'slow_down', error_description: 'Demasiados registros desde esta conexión.' }, 429);
+    limiteRegistro.registrar(ip);
+    const r = await O.registrarCliente(c.get('db'), await c.req.json().catch(() => null));
+    return r.ok ? jsonOauth(c, r.cliente, 201) : jsonOauth(c, { error: r.error, error_description: r.descripcion }, 400);
+  });
+
+  // 1) Claude abre esta dirección: se valida el pedido y se guarda (10 min) para pedir el ingreso y el permiso.
+  app.get('/oauth/autorizar', async (c) => {
+    const q = c.req.query();
+    const cliente = q.client_id ? await O.obtenerCliente(c.get('db'), q.client_id) : undefined;
+    // Sin cliente o redirect_uri válidos no se redirige a ningún lado (evita redirecciones abiertas).
+    if (!cliente || !q.redirect_uri || !O.urisDe(cliente).includes(q.redirect_uri)) {
+      return c.html(V.vistaError(ctx(c), 400, 'Pedido de conexión inválido', 'La aplicación que intenta conectarse no está registrada o su dirección de regreso no coincide. Volvé a intentar la conexión desde Claude.'), 400);
+    }
+    const fallar = (error: string, descripcion: string) => c.redirect(O.volverA(q.redirect_uri!, { error, error_description: descripcion, state: q.state, iss: origenDe(c) }));
+    if (q.response_type !== 'code') return fallar('unsupported_response_type', 'Solo response_type=code.');
+    if (q.code_challenge_method !== 'S256' || !O.desafioValido(q.code_challenge)) return fallar('invalid_request', 'PKCE S256 obligatorio.');
+    if (q.resource && q.resource !== recursoMcp(c)) return fallar('invalid_target', 'Recurso desconocido.');
+    if (q.scope && !q.scope.split(' ').every((s) => s === O.ALCANCE)) return fallar('invalid_scope', `El único alcance es "${O.ALCANCE}".`);
+    const id = await O.crearPedido(c.get('db'), {
+      cliente_id: cliente.id, redirect_uri: q.redirect_uri, estado_cliente: q.state?.slice(0, 500) ?? null, desafio: q.code_challenge!,
+      alcance: O.ALCANCE, recurso: q.resource || recursoMcp(c),
+    });
+    return c.redirect(r(`/oauth/autorizar/${id}`));
+  });
+
+  // 2) Pantalla de permiso: requiere haber ingresado al panel (si no, pasa por el ingreso y vuelve).
+  const pedidoDe = async (c: C) => {
+    const id = c.req.param('id') ?? '';
+    return /^[A-Za-z0-9_-]{20,40}$/.test(id) ? O.leerPedido(c.get('db'), id) : null;
+  };
+  app.get('/oauth/autorizar/:id', requiere('ver'), async (c) => {
+    const pedido = await pedidoDe(c);
+    if (!pedido) return c.html(V.vistaError(ctx(c), 404, 'Pedido vencido', 'El pedido de conexión venció o ya se usó. Volvé a conectar desde Claude.'), 404);
+    const cliente = await O.obtenerCliente(c.get('db'), pedido.cliente_id);
+    return c.html(V.vistaAutorizarClaude(ctx(c), { id: pedido.id, cliente: cliente?.nombre ?? 'Claude', destino: new URL(pedido.redirect_uri).host, puedeCambiar: puede(c.get('usuario')!.rol, 'stock') }));
+  });
+  app.post('/oauth/autorizar/:id', requiere('ver'), async (c) => {
+    const db = c.get('db');
+    const pedido = await pedidoDe(c);
+    if (!pedido) return c.html(V.vistaError(ctx(c), 404, 'Pedido vencido', 'El pedido de conexión venció o ya se usó. Volvé a conectar desde Claude.'), 404);
+    const b = await cuerpo(c);
+    if (b.accion !== 'permitir') {
+      await O.borrarPedido(db, pedido.id);
+      return c.redirect(O.volverA(pedido.redirect_uri, { error: 'access_denied', error_description: 'La persona no autorizó la conexión.', state: pedido.estado_cliente, iss: origenDe(c) }));
+    }
+    const codigo = await O.emitirCodigo(db, pedido, c.get('usuario')!.id);
+    const cliente = await O.obtenerCliente(db, pedido.cliente_id);
+    await registrar(db, actor(c), 'claude.conexion', 'usuario', String(c.get('usuario')!.id), { cliente: cliente?.nombre ?? pedido.cliente_id, destino: new URL(pedido.redirect_uri).host });
+    return c.redirect(O.volverA(pedido.redirect_uri, { code: codigo, state: pedido.estado_cliente, iss: origenDe(c) }));
+  });
+
+  // 3) Claude canjea el código (o renueva) por tokens.
+  app.post('/oauth/token', async (c) => {
+    const ip = c.get('ip') ?? 'desconocida';
+    if (limiteToken.excedido(ip)) return jsonOauth(c, { error: 'slow_down', error_description: 'Demasiados pedidos desde esta conexión.' }, 429);
+    limiteToken.registrar(ip);
+    const p = await leerFormulario(c);
+    const r = p.grant_type === 'authorization_code' ? await O.canjearCodigo(c.get('db'), p)
+      : p.grant_type === 'refresh_token' ? await O.renovarToken(c.get('db'), p)
+      : { error: 'unsupported_grant_type' as const, error_description: 'Solo authorization_code y refresh_token.' };
+    return 'error' in r ? jsonOauth(c, r, 400) : jsonOauth(c, r);
+  });
+
+  // 4) Endpoint MCP (Streamable HTTP, respuestas JSON). Sin token válido: 401 con la dirección de los metadatos.
+  const ORIGENES_MCP = /^(https:\/\/(claude\.ai|claude\.com)|http:\/\/(localhost|127\.0\.0\.1)(:\d+)?)$/;
+  app.post('/mcp', async (c) => {
+    const origen = c.req.header('origin');
+    if (origen && !ORIGENES_MCP.test(origen)) return c.json({ error: 'Origen no permitido' }, 403);
+    const sinPermiso = () => {
+      c.header('WWW-Authenticate', `Bearer resource_metadata="${origenDe(c)}/.well-known/oauth-protected-resource/panel/mcp", scope="${O.ALCANCE}"`);
+      return c.json({ error: 'invalid_token', error_description: 'Falta un token de acceso válido.' }, 401);
+    };
+    const token = c.req.header('authorization')?.match(/^Bearer\s+(.+)$/i)?.[1]?.trim();
+    if (!token) return sinPermiso();
+    const db = c.get('db');
+    const acceso = await O.validarAcceso(db, token, recursoMcp(c));
+    const usuario = acceso ? await U.buscarPorId(db, acceso.usuarioId) : undefined;
+    // El usuario tiene que seguir activo; el rol se lee en cada pedido (un cambio de rol aplica al instante).
+    if (!acceso || !usuario || !usuario.activo) return sinPermiso();
+    if (limiteMcp.excedido(`u${usuario.id}`)) return c.json({ jsonrpc: '2.0', id: null, error: { code: -32000, message: 'Demasiados pedidos: esperá un minuto.' } }, 429);
+    limiteMcp.registrar(`u${usuario.id}`);
+    const cuerpoMcp = await c.req.json().catch(() => undefined);
+    if (cuerpoMcp === undefined) return c.json({ jsonrpc: '2.0', id: null, error: { code: -32700, message: 'JSON inválido.' } }, 400);
+    const respuesta = await atenderMcp(cuerpoMcp, { db, usuario, actor: { id: usuario.id, usuario: usuario.usuario, ip: c.get('ip') } });
+    return respuesta === null ? c.body(null, 202) : c.json(respuesta);
+  });
+  app.on(['GET', 'DELETE'], '/mcp', (c) => {
+    c.header('Allow', 'POST');
+    return c.body(null, 405);
+  });
+
+  // Desconectar a Claude desde "Mi perfil": borra sus tokens (deja de poder usar el panel al instante).
+  app.post('/perfil/claude/:cliente/desconectar', requiere('ver'), async (c) => {
+    const u = c.get('usuario')!;
+    const cliente = c.req.param('cliente');
+    await O.desconectar(c.get('db'), u.id, cliente);
+    await registrar(c.get('db'), actor(c), 'claude.desconexion', 'usuario', String(u.id), { cliente });
+    return c.redirect(`${r('/perfil')}?aviso=claude-desconectado`);
   });
 
   // ── Registro de cambios ──
