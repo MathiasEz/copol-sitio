@@ -5,9 +5,10 @@ import path from 'node:path';
 import { Hono, type Context, type MiddlewareHandler } from 'hono';
 import { bodyLimit } from 'hono/body-limit';
 import { deleteCookie, getCookie, setCookie } from 'hono/cookie';
+import * as A from './asistente.ts';
 import { listarEventos, registrar, type Actor } from './auditoria.ts';
 import { BASE, type Config } from './config.ts';
-import { ahora, ejecutar, type Db } from './db.ts';
+import { ahora, ejecutar, una, type Db } from './db.ts';
 import { almacenConfigurado, ErrorImagen, procesarImagen, variante, type Almacen } from './imagenes.ts';
 import * as N from './novedades.ts';
 import * as P from './productos.ts';
@@ -45,9 +46,11 @@ export interface OpcionesApp {
   config: Config;
   /** Almacenamiento de imágenes; por defecto Vercel Blob si está configurado, si no, carpeta local. */
   almacen?: Almacen;
+  /** Solo para pruebas: `fetch` y token del asistente en lugar de Vercel AI Gateway. */
+  asistente?: { fetch?: typeof fetch; token?: string | null };
 }
 
-export function crearApp({ db: fuenteDb, config, almacen }: OpcionesApp) {
+export function crearApp({ db: fuenteDb, config, almacen, asistente }: OpcionesApp) {
   const app = new Hono<Env>({ strict: false }).basePath(BASE);
   const obtenerDb = typeof fuenteDb === 'function' ? fuenteDb : async () => fuenteDb;
   const guardarEn = almacen ?? almacenConfigurado(config.dirImagenes, r('/media'));
@@ -466,6 +469,51 @@ export function crearApp({ db: fuenteDb, config, almacen }: OpcionesApp) {
     await ejecutar(db, 'DELETE FROM usuarios WHERE id = ?', [o.u.id]);
     await registrar(db, actor(c), 'usuario.baja', 'usuario', String(o.u.id), { usuario: o.u.usuario, rol: o.u.rol });
     return c.redirect(`${r('/usuarios')}?aviso=usuario-eliminado`);
+  });
+
+  // ── Asistente (solo administradores; solo lectura) ──
+  const tokenIA = (c: C) => (asistente && 'token' in asistente ? asistente.token ?? null : A.tokenGateway(c.req.header('x-vercel-oidc-token')));
+  const consultasHoy = async (c: C) => {
+    // Uruguay: UTC−3 todo el año.
+    const inicio = new Date(`${new Date().toLocaleDateString('en-CA', { timeZone: 'America/Montevideo' })}T00:00:00-03:00`).toISOString();
+    const f = await una<{ n: number }>(c.get('db'), "SELECT COUNT(*) n FROM auditoria WHERE usuario_id = ? AND accion = 'asistente.consulta' AND fecha >= ?", [c.get('usuario')!.id, inicio]);
+    return Number(f?.n ?? 0);
+  };
+  const datosAsistente = async (c: C, extra: Partial<V.DatosAsistente> = {}): Promise<V.DatosAsistente> => ({
+    disponible: Boolean(tokenIA(c)),
+    restantes: Math.max(0, config.asistenteLimiteDia - (await consultasHoy(c))),
+    modelos: (Object.keys(A.MODELOS) as A.Modelo[]).map((m) => ({ valor: m, nombre: A.MODELOS[m].nombre })),
+    modelo: 'rapido',
+    conversacion: [],
+    ...extra,
+  });
+  app.get('/asistente', requiere('asistente'), async (c) => c.html(V.vistaAsistente(ctx(c), await datosAsistente(c))));
+  app.post('/asistente', requiere('asistente'), async (c) => {
+    const b = await cuerpo(c);
+    const quiereJson = c.req.header('accept')?.includes('application/json');
+    const modelo: A.Modelo = A.esModelo(b.modelo) ? b.modelo : 'rapido';
+    let previo: unknown = [];
+    try { previo = typeof b.historial === 'string' ? JSON.parse(b.historial.slice(0, 60_000)) : []; } catch { /* historial inválido: se ignora */ }
+    const pregunta = texto(b.pregunta, 1000);
+    const historial = pregunta ? A.limpiarHistorial([...(Array.isArray(previo) ? previo : []), { rol: 'usuario', texto: pregunta }]) : [];
+    const fallar = async (estado: 400 | 429 | 502 | 503, error: string) =>
+      quiereJson ? c.json({ ok: false, error }, estado) : c.html(V.vistaAsistente(ctx(c), await datosAsistente(c, { modelo, error, conversacion: historial.slice(0, -1) })), estado);
+    if (!historial.length) return fallar(400, 'Escribí una pregunta.');
+    const token = tokenIA(c);
+    if (!token) return fallar(503, 'El asistente no está configurado en este entorno: funciona en la web publicada en Vercel.');
+    if ((await consultasHoy(c)) >= config.asistenteLimiteDia) return fallar(429, `Llegaste al límite de ${config.asistenteLimiteDia} consultas por día. Mañana podés seguir.`);
+    let res: A.Resultado;
+    try {
+      res = await A.consultar({ historial, modelo, db: c.get('db'), origen: new URL(c.req.url).origin, token, fetch: asistente?.fetch });
+    } catch (e) {
+      if (e instanceof A.ErrorAsistente) return fallar(502, e.message);
+      if ((e as Error).name === 'TimeoutError') return fallar(502, 'Claude tardó demasiado en responder. Probá con una pregunta más concreta.');
+      throw e;
+    }
+    await registrar(c.get('db'), actor(c), 'asistente.consulta', 'asistente', null, { modelo: A.MODELOS[modelo].id, pregunta: historial.at(-1)!.texto.slice(0, 300), herramientas: res.herramientas, tokens: res.tokens });
+    const restantes = Math.max(0, config.asistenteLimiteDia - (await consultasHoy(c)));
+    if (quiereJson) return c.json({ ok: true, respuesta: res.texto, restantes });
+    return c.html(V.vistaAsistente(ctx(c), await datosAsistente(c, { modelo, conversacion: [...historial, { rol: 'asistente', texto: res.texto }] })));
   });
 
   // ── Registro de cambios ──

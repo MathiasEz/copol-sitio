@@ -42,13 +42,13 @@ export function problemaClave(clave: string, usuario: string): string | null {
 
 // ── Roles y permisos (autorización del lado del servidor) ──
 export type Rol = 'administrador' | 'editor' | 'visualizador';
-export type Permiso = 'ver' | 'stock' | 'productos' | 'novedades' | 'usuarios' | 'auditoria';
+export type Permiso = 'ver' | 'stock' | 'productos' | 'novedades' | 'usuarios' | 'auditoria' | 'asistente';
 
 export const ROLES: Record<Rol, { nombre: string; descripcion: string; permisos: Permiso[] }> = {
   administrador: {
     nombre: 'Administrador',
-    descripcion: 'Acceso total: stock, productos, novedades, usuarios y registro de cambios.',
-    permisos: ['ver', 'stock', 'productos', 'novedades', 'usuarios', 'auditoria'],
+    descripcion: 'Acceso total: stock, productos, novedades, usuarios, registro de cambios y asistente.',
+    permisos: ['ver', 'stock', 'productos', 'novedades', 'usuarios', 'auditoria', 'asistente'],
   },
   editor: {
     nombre: 'Editor de stock',

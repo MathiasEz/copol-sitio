@@ -6,6 +6,7 @@ import path from 'node:path';
 import { after, before, describe, it } from 'node:test';
 import sharp from 'sharp';
 import { crearApp } from '../src/app.ts';
+import { limpiarHistorial, textoDePagina } from '../src/asistente.ts';
 import { cargarConfig } from '../src/config.ts';
 import { ahora, conectar, una, type Db } from '../src/db.ts';
 import { almacenConfigurado } from '../src/imagenes.ts';
@@ -323,5 +324,119 @@ describe('interfaz y cabeceras', () => {
     assert.equal(r.headers.get('x-frame-options'), 'DENY');
     assert.equal(r.headers.get('cache-control'), 'no-store');
     assert.match(r.headers.get('permissions-policy')!, /camera=\(self\)/);
+  });
+});
+
+describe('asistente', () => {
+  // Claude simulado: pide una herramienta por vuelta según la pregunta y después responde con lo que recibió.
+  const pedidos: { url: string; cuerpo: Record<string, unknown> | null }[] = [];
+  const respuesta = (cuerpo: unknown, estado = 200) => new Response(JSON.stringify(cuerpo), { status: estado, headers: { 'content-type': 'application/json' } });
+  const falsoFetch: typeof fetch = async (entrada, init) => {
+    const url = String(entrada);
+    const cuerpo = init?.body ? JSON.parse(String(init.body)) : null;
+    pedidos.push({ url, cuerpo });
+    if (url.endsWith('/sitemap-0.xml')) return new Response('', { status: 404 });
+    if (url === `${BASE}/contacto/`) return new Response('<html><head><title>Contacto</title><script>alert(1)</script></head><body><header>menú</header><main><h1>Contacto</h1><p>Llamanos al 0800 1804</p><img src="x.webp" alt="Fachada de la Casa Central"></main></body></html>', { headers: { 'content-type': 'text/html' } });
+    if (!url.startsWith('https://ai-gateway.vercel.sh/')) return new Response('no', { status: 404 });
+    const mensajes = cuerpo.messages as { role: string; content: unknown }[];
+    const ultimo = mensajes.at(-1)!;
+    if (typeof ultimo.content !== 'string') {
+      return respuesta({ content: [{ type: 'text', text: `Resultado: ${JSON.stringify(ultimo.content)}` }], stop_reason: 'end_turn', usage: { input_tokens: 50, output_tokens: 20 } });
+    }
+    const q = ultimo.content;
+    const herramienta = /stock/.test(q) ? { name: 'buscar_productos', input: { texto: 'parlante' } }
+      : /panel/.test(q) ? { name: 'leer_pagina', input: { ruta: '/panel/usuarios' } }
+      : /contacto/.test(q) ? { name: 'leer_pagina', input: { ruta: '/contacto/' } }
+      : null;
+    if (!herramienta) return respuesta({ content: [{ type: 'text', text: 'Hola, ¿en qué te ayudo?' }], stop_reason: 'end_turn' });
+    return respuesta({ content: [{ type: 'tool_use', id: 't1', ...herramienta }], stop_reason: 'tool_use', usage: { input_tokens: 100, output_tokens: 10 } });
+  };
+  let original: typeof app;
+  const preguntar = (n: Navegador, pregunta: string, extra: Record<string, string> = {}) => n.post('/panel/asistente', { pregunta, modelo: 'rapido', historial: '[]', ...extra }, json);
+  before(() => {
+    original = app;
+    app = crearApp({ db, config: { ...config, asistenteLimiteDia: 5 }, almacen: almacenConfigurado(config.dirImagenes, '/panel/media'), asistente: { fetch: falsoFetch, token: 'token-de-prueba' } });
+  });
+  after(() => { app = original; });
+
+  it('solo lo ven los administradores', async () => {
+    // "lector" cambió su contraseña en una prueba anterior.
+    for (const [usuario, clave] of [['editor', CLAVE], ['lector', 'Propia-Clave-2026!']]) {
+      const n = new Navegador();
+      assert.equal((await n.ingresar(usuario, clave)).status, 302);
+      const html = await (await n.pedir('/panel/productos')).text();
+      assert.doesNotMatch(html, /href="\/panel\/asistente"/);
+      assert.equal((await n.pedir('/panel/asistente')).status, 403);
+      assert.equal((await preguntar(n, 'hola')).status, 403);
+    }
+    const n = new Navegador();
+    await n.ingresar('principal');
+    const html = await (await n.pedir('/panel/asistente')).text();
+    assert.match(html, /name="pregunta"/);
+    assert.match(html, /Solo consulto: no cambio nada/);
+  });
+  it('consulta el inventario con herramientas de solo lectura y deja registro', async () => {
+    const n = new Navegador();
+    await n.ingresar('principal');
+    await n.pedir('/panel/asistente');
+    const r = await preguntar(n, '¿Qué stock hay de parlantes?');
+    assert.equal(r.status, 200);
+    const datos = await r.json();
+    assert.equal(datos.ok, true);
+    assert.match(datos.respuesta, /PARLANTE PRUEBA/);
+    const actual = await fila<{ stock_estado: string }>("SELECT stock_estado FROM productos WHERE id = 'parlante-1'");
+    assert.ok(datos.respuesta.includes(actual!.stock_estado === 'con-stock' ? 'Con stock' : actual!.stock_estado === 'sin-stock' ? 'Sin stock' : 'Sin dato'));
+    const gateway = pedidos.filter((p) => p.url.startsWith('https://ai-gateway.vercel.sh/'));
+    assert.equal(gateway.at(-1)!.cuerpo!.model, 'anthropic/claude-haiku-5.5');
+    const herramientas = (gateway.at(-1)!.cuerpo!.tools as { name: string }[]).map((t) => t.name);
+    assert.deepEqual(herramientas.sort(), ['buscar_productos', 'leer_pagina', 'listar_novedades', 'resumen_stock', 'ultimos_cambios']);
+    const ev = await fila<{ detalle: string; usuario: string }>("SELECT detalle, usuario FROM auditoria WHERE accion = 'asistente.consulta' ORDER BY id DESC LIMIT 1");
+    assert.equal(ev?.usuario, 'principal');
+    assert.match(ev!.detalle, /buscar_productos/);
+    assert.doesNotMatch(ev!.detalle, /token-de-prueba/);
+  });
+  it('lee páginas públicas pero nunca el panel', async () => {
+    const n = new Navegador();
+    await n.ingresar('principal');
+    await n.pedir('/panel/asistente');
+    const pagina = await (await preguntar(n, 'datos de contacto')).json();
+    assert.match(pagina.respuesta, /0800 1804/);
+    assert.match(pagina.respuesta, /Fachada de la Casa Central/);
+    assert.doesNotMatch(pagina.respuesta, /alert\(1\)|menú/);
+    const panel = await (await preguntar(n, 'mostrame el panel de usuarios')).json();
+    assert.match(panel.respuesta, /Ruta inválida/);
+    assert.ok(!pedidos.some((p) => p.url.includes('/panel/usuarios')));
+  });
+  it('rechaza pedidos sin CSRF, sin pregunta o por encima del límite diario', async () => {
+    const n = new Navegador();
+    await n.ingresar('admin2');
+    await n.pedir('/panel/asistente');
+    assert.equal((await n.post('/panel/asistente', { pregunta: 'hola', _csrf: 'falso' }, json)).status, 403);
+    assert.equal((await preguntar(n, '   ')).status, 400);
+    for (let i = 0; i < 5; i++) assert.equal((await preguntar(n, 'hola')).status, 200);
+    const r = await preguntar(n, 'hola');
+    assert.equal(r.status, 429);
+    assert.match((await r.json()).error, /límite/);
+  });
+  it('limpia el historial y el HTML de las páginas', () => {
+    assert.deepEqual(limpiarHistorial([{ rol: 'asistente', texto: 'x' }, { rol: 'sistema', texto: 'y' }, { rol: 'usuario', texto: ' hola ' }]), [{ rol: 'usuario', texto: 'hola' }]);
+    assert.deepEqual(limpiarHistorial('nada'), []);
+    assert.deepEqual(limpiarHistorial([{ rol: 'usuario', texto: 'a' }, { rol: 'asistente', texto: 'b' }]), []);
+    const t = textoDePagina('<title>T &amp; C</title><main><p>Uno</p><style>.x{}</style><a href="/locales/">Locales</a></main>');
+    assert.match(t, /Título: T & C/);
+    assert.match(t, /Locales \(\/locales\/\)/);
+    assert.doesNotMatch(t, /\.x\{\}/);
+  });
+  it('sin token de AI Gateway avisa que no está configurado', async () => {
+    const conToken = app;
+    app = crearApp({ db, config, almacen: almacenConfigurado(config.dirImagenes, '/panel/media'), asistente: { fetch: falsoFetch, token: null } });
+    try {
+      const n = new Navegador();
+      await n.ingresar('principal');
+      assert.match(await (await n.pedir('/panel/asistente')).text(), /no está configurado/);
+      assert.equal((await preguntar(n, 'hola')).status, 503);
+    } finally {
+      app = conToken;
+    }
   });
 });

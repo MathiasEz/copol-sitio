@@ -29,6 +29,15 @@ Panel (/panel)  ──escribe──►  Base de datos (Turso / libSQL)  ◄─�
 | **Usuarios** | Alta con usuario o correo, rol y contraseña temporal; cambio de rol, desactivación, restablecimiento de contraseña y baja. |
 | **Mi perfil** | Cada persona cambia su propia contraseña. |
 | **Registro** | Ingresos, cambios de stock (antes → después), productos, imágenes, novedades y usuarios, con fecha, usuario e IP. |
+| **Asistente** | Chat con Claude para preguntas sobre la web pública, el inventario y el uso del panel. Solo administradores y **solo lectura**. |
+
+### Asistente
+
+- **Modelo:** Claude Haiku por defecto ("Rápido") o Claude Sonnet ("Detallado"), a través de **Vercel AI Gateway** (`panel/src/asistente.ts`). En Vercel se autentica con el token OIDC del propio despliegue: no hay claves en el código ni en el repositorio.
+- **Qué puede consultar:** el texto visible de las páginas públicas (nunca `/panel`), el inventario (búsqueda y resumen por categoría), los últimos cambios del registro (sin IP) y las novedades. No tiene ninguna herramienta que modifique datos.
+- **Límites:** 80 consultas por administrador y por día (`PANEL_ASISTENTE_LIMITE_DIA`), historial de hasta 12 mensajes y respuestas de hasta ~1500 tokens. Cada consulta queda en el Registro (modelo, pregunta recortada, herramientas usadas y tokens).
+- **Costo:** con Haiku, una consulta cuesta alrededor de US$ 0,001–0,003; Vercel AI Gateway incluye un crédito gratuito mensual. **Requisito:** AI Gateway se habilita registrando una tarjeta en la cuenta de Vercel (Vercel → AI Gateway); hasta entonces el asistente muestra ese aviso.
+- La conversación se guarda solo en la pestaña del navegador (sessionStorage) y se borra con "Nueva conversación".
 
 ### Escaneo del código interno
 
@@ -45,6 +54,7 @@ Panel (/panel)  ──escribe──►  Base de datos (Turso / libSQL)  ◄─�
 | Agregar y editar productos e imágenes | ✓ | ✓ | — |
 | Novedades | ✓ | — | — |
 | Usuarios y registro de cambios | ✓ | — | — |
+| Asistente (Claude) | ✓ | — | — |
 
 El **administrador principal** (creado con `npm run panel:admin`) es una cuenta protegida: nadie más puede cambiarla ni eliminarla, y siempre queda al menos un administrador activo. Los permisos se definen en `panel/src/seguridad.ts`.
 

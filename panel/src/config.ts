@@ -15,6 +15,8 @@ export interface Config {
   sesionInactividadMin: number;
   sesionMaxHoras: number;
   maxImagenMB: number;
+  /** Consultas al asistente por usuario y por día (hora de Uruguay). */
+  asistenteLimiteDia: number;
 }
 
 export function cargarConfig(env: NodeJS.ProcessEnv = process.env): Config {
@@ -26,6 +28,7 @@ export function cargarConfig(env: NodeJS.ProcessEnv = process.env): Config {
     sesionInactividadMin: Number(env.PANEL_SESION_INACTIVIDAD_MIN ?? 30),
     sesionMaxHoras: Number(env.PANEL_SESION_MAX_HORAS ?? 8),
     maxImagenMB: Number(env.PANEL_MAX_IMAGEN_MB ?? 5),
+    asistenteLimiteDia: Number(env.PANEL_ASISTENTE_LIMITE_DIA ?? 80),
   };
 }
 

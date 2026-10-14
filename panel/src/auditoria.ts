@@ -55,4 +55,5 @@ export const ACCIONES: Record<string, string> = {
   'usuario.baja': 'Eliminó un usuario',
   'sistema.siembra': 'Importó el catálogo inicial',
   'sistema.restauracion': 'Restauró un respaldo',
+  'asistente.consulta': 'Consultó al asistente',
 };

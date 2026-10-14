@@ -44,6 +44,8 @@ const ICONOS: Record<string, string> = {
   basura: '<path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/>',
   menu: '<path d="M4 7h16M4 12h16M4 17h16"/>',
   llave: '<circle cx="7.5" cy="15.5" r="5.5"/><path d="m21 2-9.6 9.6M15.5 7.5l3 3L22 7l-3-3"/>',
+  chispa: '<path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9Z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8Z"/>',
+  enviar: '<path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/>',
 };
 export const icono = (n: string, t = 18) => raw(`<svg class="i" width="${t}" height="${t}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONOS[n] ?? ''}</svg>`);
 
@@ -85,6 +87,7 @@ export function layout(c: Contexto, titulo: string, cuerpo: H, acciones: H | '' 
       ${puede(u.rol, 'novedades') ? item('/novedades', 'Novedades', 'noticia') : ''}
       ${puede(u.rol, 'usuarios') ? item('/usuarios', 'Usuarios', 'usuarios') : ''}
       ${puede(u.rol, 'auditoria') ? item('/registro', 'Registro', 'registro') : ''}
+      ${puede(u.rol, 'asistente') ? item('/asistente', 'Asistente', 'chispa') : ''}
     </nav>
     <div class="sidebar__pie">
       <a href="${r('/perfil')}" class="perfil" ${si(c.ruta.startsWith(r('/perfil')), 'aria-current="page"')}>
@@ -419,6 +422,51 @@ export function vistaRegistro(c: Contexto, eventos: Evento[], pagina: number, ha
 <tbody>${eventos.map((e) => html`<tr><td class="nowrap">${fecha(e.fecha)}</td><td>${e.usuario ?? 'sistema'}</td><td>${ACCIONES[e.accion] ?? e.accion}</td><td class="detalle ocultar-movil">${e.detalle ?? ''}</td></tr>`)}</tbody>
 </table></div>
 <nav class="paginacion" aria-label="Páginas">${pagina > 1 ? html`<a class="btn btn--outline btn--sm" href="${r(`/registro?pagina=${pagina - 1}`)}">Más recientes</a>` : ''}<span>Página ${pagina}</span>${hayMas ? html`<a class="btn btn--outline btn--sm" href="${r(`/registro?pagina=${pagina + 1}`)}">Anteriores</a>` : ''}</nav>`);
+}
+
+// ── Asistente (Claude vía Vercel AI Gateway; solo lectura) ──
+export interface DatosAsistente {
+  disponible: boolean;
+  restantes: number;
+  modelos: { valor: string; nombre: string }[];
+  modelo: string;
+  /** Conversación ya respondida (solo sin JavaScript: el formulario se envía de forma normal). */
+  conversacion: { rol: 'usuario' | 'asistente'; texto: string }[];
+  error?: string | null;
+}
+const SUGERENCIAS = [
+  '¿Cuántos productos sin stock hay en Celulares?',
+  '¿Qué horarios y teléfono tiene la Casa Central?',
+  '¿Qué cambios de stock se hicieron hoy?',
+  '¿Qué dice la página de Historia sobre 1957?',
+];
+export function vistaAsistente(c: Contexto, d: DatosAsistente) {
+  return layout(c, 'Asistente', html`
+<section class="card asistente" data-asistente>
+  ${d.disponible ? '' : html`<div class="alert alert--error" role="alert">${icono('info')}<p>El asistente funciona en la web publicada en Vercel (usa Vercel AI Gateway). En este equipo no está configurado.</p></div>`}
+  <div class="asistente__registro" data-registro role="log" aria-live="polite" aria-label="Conversación con el asistente">
+    ${d.conversacion.length ? d.conversacion.map((m) => html`<div class="msj msj--${m.rol}"><span class="msj__autor">${m.rol === 'usuario' ? 'Vos' : 'Asistente'}</span><div class="msj__texto">${m.texto}</div></div>`) : html`
+    <div class="asistente__vacio" data-vacio>
+      <p>Preguntame sobre la web pública, el stock del Bazar o cómo usar el panel. <strong>Solo consulto: no cambio nada.</strong></p>
+      <ul class="asistente__sugerencias">${SUGERENCIAS.map((s) => html`<li><button class="btn btn--outline btn--sm" type="button" data-sugerencia>${s}</button></li>`)}</ul>
+    </div>`}
+  </div>
+  ${d.error ? html`<div class="alert alert--error" role="alert">${icono('info')}<p>${d.error}</p></div>` : ''}
+  <p class="asistente__error alert alert--error" role="alert" data-error hidden></p>
+  <form class="asistente__form" method="post" action="${r('/asistente')}" data-asistente-form>
+    ${csrfCampo(c)}
+    <input type="hidden" name="historial" value="${JSON.stringify(d.conversacion)}" data-historial>
+    <label class="sr" for="pregunta">Tu pregunta</label>
+    <textarea class="input" id="pregunta" name="pregunta" rows="2" maxlength="1000" required placeholder="Escribí tu pregunta…" ${si(!d.disponible || d.restantes <= 0, 'disabled')}></textarea>
+    <div class="asistente__acciones">
+      <label class="asistente__modelo"><span class="sr">Modelo</span><select class="input" name="modelo" data-modelo>${d.modelos.map((m) => html`<option value="${m.valor}" ${si(m.valor === d.modelo, 'selected')}>${m.nombre}</option>`)}</select></label>
+      <button class="btn btn--ghost btn--sm" type="button" data-nueva hidden>Nueva conversación</button>
+      <button class="btn" type="submit" ${si(!d.disponible || d.restantes <= 0, 'disabled')}>${icono('enviar', 16)}Enviar</button>
+    </div>
+    <p class="asistente__nota muted"><span data-restantes>${d.restantes <= 0 ? 'Llegaste al límite de consultas de hoy.' : `Te quedan ${d.restantes} consultas hoy.`}</span> Usa Claude (Anthropic) a través de Vercel AI Gateway. Las respuestas pueden tener errores: confirmá los datos importantes.</p>
+  </form>
+</section>
+<script src="/panel-recursos/asistente.js" defer></script>`);
 }
 
 export function vistaError(c: Contexto, estado: number, titulo: string, texto: string) {
