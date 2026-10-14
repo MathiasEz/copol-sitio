@@ -1,12 +1,13 @@
 ---
-// Carrusel de Inicio, sin botones visibles de avanzar/pausar/volver.
-// - Navegación: deslizar (táctil o arrastrando con el mouse), flechas ←/→ con el carrusel enfocado,
-//   e indicadores discretos (barras de progreso) que también son botones accesibles.
+// Carrusel de Inicio.
+// - Navegación: flechas discretas a los lados de los indicadores, deslizar (táctil o arrastrando con
+//   el mouse), flechas ←/→ del teclado con el carrusel enfocado e indicadores (barras de progreso)
+//   que también son botones accesibles.
 // - Movimiento: el texto sube desde una máscara y las imágenes forman un mazo en abanico que rota
 //   (idea tomada de prompt-motion.com). Sin fundidos genéricos ni desenfoques.
-// - Avance automático: se detiene al primer gesto del usuario, se pausa con el puntero o el foco
-//   encima y se detiene solo después de una vuelta completa. Con prefers-reduced-motion no avanza
-//   ni anima.
+// - Avance automático cada 2,5 s, en bucle. Un gesto del usuario (flecha, indicador, deslizar)
+//   reinicia la cuenta; se pausa con el puntero o el foco encima y con la pestaña oculta. Con
+//   prefers-reduced-motion no avanza ni anima.
 // - Sin JS: las diapositivas se muestran apiladas y todo el contenido queda disponible.
 import { Image } from 'astro:assets';
 import { foto } from '../lib/imagenes';
@@ -101,7 +102,9 @@ const total = diapositivas.length;
         </div>
       ))}
 
-      <div class="hero__indicadores" role="group" aria-label="Elegir novedad" data-indicadores hidden>
+      <div class="hero__controles" data-controles hidden>
+      <button type="button" class="hero__flecha" data-anterior aria-label="Novedad anterior"><Icono nombre="chevron-izq" tamano={18} /></button>
+      <div class="hero__indicadores" role="group" aria-label="Elegir novedad">
         {diapositivas.map((d, i) => (
           <button
             type="button"
@@ -111,6 +114,8 @@ const total = diapositivas.length;
             aria-current={i === 0 ? 'true' : undefined}
           ><span class="hero__progreso"></span></button>
         ))}
+      </div>
+      <button type="button" class="hero__flecha" data-siguiente aria-label="Novedad siguiente"><Icono nombre="chevron-der" tamano={18} /></button>
       </div>
     </div>
 
@@ -135,7 +140,6 @@ const total = diapositivas.length;
 </section>
 
 <script>
-  const DURACION = 7000;
   document.querySelectorAll<HTMLElement>('[data-carrusel]').forEach((carrusel) => {
     const paneles = [...carrusel.querySelectorAll<HTMLElement>('[data-panel]')];
     const cartas = [...carrusel.querySelectorAll<HTMLElement>('[data-carta]')];
@@ -147,14 +151,12 @@ const total = diapositivas.length;
 
     carrusel.classList.add('hero--js');
     carrusel.tabIndex = 0;
-    carrusel.querySelector<HTMLElement>('[data-indicadores]')!.hidden = false;
+    carrusel.querySelector<HTMLElement>('[data-controles]')!.hidden = false;
 
     let actual = 0;
-    let automatico = !reducido;
-    let vistas = 1;
+    const automatico = !reducido;
 
     const mostrar = (i: number, porUsuario = false) => {
-      if (porUsuario) detenerAuto();
       actual = (i + n) % n;
       paneles.forEach((p, k) => {
         const activa = k === actual;
@@ -180,23 +182,18 @@ const total = diapositivas.length;
       contenedorTextos.setAttribute('aria-live', porUsuario ? 'polite' : 'off');
     };
 
-    const detenerAuto = () => {
-      automatico = false;
-      carrusel.classList.remove('hero--auto');
-    };
-
-    // El progreso del indicador activo es una animación CSS: al terminar, avanza.
+    // El progreso del indicador activo es una animación CSS de 2,5 s: al terminar, avanza (en bucle).
+    // Cada cambio reinicia la animación, así que un gesto del usuario también reinicia la cuenta.
     indicadores.forEach((b) => {
       b.firstElementChild!.addEventListener('animationend', () => {
-        if (!automatico) return;
-        vistas++;
-        mostrar(actual + 1);
-        if (vistas > n) detenerAuto(); // una vuelta completa: queda en la primera
+        if (automatico) mostrar(actual + 1);
       });
     });
     if (automatico) carrusel.classList.add('hero--auto');
 
     indicadores.forEach((b, k) => b.addEventListener('click', () => mostrar(k, true)));
+    carrusel.querySelector('[data-anterior]')!.addEventListener('click', () => mostrar(actual - 1, true));
+    carrusel.querySelector('[data-siguiente]')!.addEventListener('click', () => mostrar(actual + 1, true));
 
     carrusel.addEventListener('keydown', (e) => {
       if ((e.target as HTMLElement).closest('a, input')) return;
@@ -263,7 +260,7 @@ const total = diapositivas.length;
 
   .hero--js .hero__textos > .hero__panel { grid-area: 1 / 1; padding-top: 0; border: 0; }
   .hero--js .hero__panel:not(.activa) { visibility: hidden; }
-  .hero--js .hero__indicadores { grid-area: 2 / 1; }
+  .hero--js .hero__controles { grid-area: 2 / 1; }
   @media (prefers-reduced-motion: no-preference) {
     .hero--js .hero__panel { transition: visibility 0s linear 450ms; }
     .hero--js .hero__panel.activa { transition-delay: 0s; }
@@ -282,7 +279,21 @@ const total = diapositivas.length;
   }
 
   /* ── Indicadores discretos (barras de progreso) ── */
-  .hero__indicadores { display: flex; gap: 4px; align-items: center; margin-left: -8px; }
+  .hero__controles { display: flex; align-items: center; gap: 2px; margin-left: -8px; }
+  .hero__indicadores { display: flex; gap: 4px; align-items: center; }
+  /* Flechas discretas: ícono chico en un círculo tenue; área táctil de 44 px. */
+  .hero__flecha {
+    display: inline-grid; place-items: center; width: 44px; height: 44px; padding: 0; border: 0; background: none;
+    color: var(--verde-oscuro); cursor: pointer; border-radius: var(--radio-pill); position: relative;
+  }
+  .hero__flecha::before {
+    content: ''; position: absolute; inset: 7px; border-radius: inherit;
+    box-shadow: inset 0 0 0 1px rgb(0 102 51 / 0.25); transition: background var(--transicion), box-shadow var(--transicion);
+  }
+  .hero__flecha :global(svg) { position: relative; opacity: 0.75; transition: opacity var(--transicion); }
+  .hero__flecha:hover::before { background: var(--muted); box-shadow: inset 0 0 0 1px rgb(0 102 51 / 0.45); }
+  .hero__flecha:hover :global(svg) { opacity: 1; }
+  .hero__flecha:focus-visible { outline: 3px solid var(--ring); outline-offset: -3px; }
   .hero__indicador {
     display: inline-flex; align-items: center; justify-content: center;
     width: 44px; height: 44px; padding: 0; border: 0; background: none; cursor: pointer; border-radius: 8px;
@@ -299,7 +310,7 @@ const total = diapositivas.length;
   .hero__indicador:hover .hero__progreso { background: rgb(0 102 51 / 0.35); }
   .hero__indicador[aria-current='true'] .hero__progreso { width: 44px; }
   .hero__indicador[aria-current='true'] .hero__progreso::after { transform: scaleX(1); }
-  .hero--auto .hero__indicador[aria-current='true'] .hero__progreso::after { animation: progreso 7s linear forwards; }
+  .hero--auto .hero__indicador[aria-current='true'] .hero__progreso::after { animation: progreso 2.5s linear forwards; }
   .hero--auto.hero--pausado .hero__progreso::after { animation-play-state: paused; }
   @keyframes progreso { from { transform: scaleX(0); } to { transform: scaleX(1); } }
 

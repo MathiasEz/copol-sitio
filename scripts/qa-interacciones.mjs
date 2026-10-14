@@ -188,7 +188,9 @@ for (const [nombre, vp] of Object.entries(VIEWPORTS)) {
   const botonesControl = await page.$$eval('[data-carrusel] button', (bs) =>
     bs.filter((b) => !b.hasAttribute('data-indicador')).map((b) => b.getAttribute('aria-label') || b.textContent.trim()),
   );
-  verificar(botonesControl.length === 0, `Carrusel (${nombre}) · sin botones de avanzar/pausar/volver (${botonesControl.join(', ') || 'ninguno'})`);
+  verificar(botonesControl.length === 2 && botonesControl.join() === 'Novedad anterior,Novedad siguiente', `Carrusel (${nombre}) · solo dos flechas discretas, sin botón de pausa (${botonesControl.join(', ') || 'ninguna'})`);
+  const flechas = await page.$$eval('[data-anterior], [data-siguiente]', (bs) => bs.map((b) => { const r = b.getBoundingClientRect(); const v = b.querySelector('svg').getBoundingClientRect(); return { area: Math.min(r.width, r.height), icono: Math.max(v.width, v.height) }; }));
+  verificar(flechas.every((f) => f.area >= 44 && f.icono <= 20), `Carrusel (${nombre}) · flechas con ícono chico (≤ 20 px) y área táctil de 44 px`);
   const indicadores = await page.$$eval('[data-indicador]', (bs) => bs.map((b) => b.getBoundingClientRect().height));
   verificar(indicadores.length === 4 && indicadores.every((h) => h >= 24), `Carrusel (${nombre}) · 4 indicadores accesibles (≥ 24 px de área)`);
 
@@ -210,6 +212,21 @@ for (const [nombre, vp] of Object.entries(VIEWPORTS)) {
   verificar((await activa()) === 1, `Carrusel (${nombre}) · deslizar hacia la izquierda avanza`);
   await page.click('[data-indicador="3"]');
   verificar((await activa()) === 3, `Carrusel (${nombre}) · indicador 4 lleva a la diapositiva 4`);
+  await page.click('[data-siguiente]');
+  verificar((await activa()) === 0, `Carrusel (${nombre}) · flecha "siguiente" avanza (de la 4 vuelve a la 1)`);
+  await page.click('[data-anterior]');
+  verificar((await activa()) === 3, `Carrusel (${nombre}) · flecha "anterior" retrocede`);
+  // Avance automático: con el puntero fuera del carrusel, cambia solo a los ~2,5 s y sigue en bucle.
+  await page.mouse.move(2, vp.height - 2);
+  await page.evaluate(() => document.activeElement?.blur());
+  const t0 = await activa();
+  await page.waitForTimeout(1800);
+  const t1 = await activa();
+  await page.waitForTimeout(1400);
+  const t2 = await activa();
+  verificar(t1 === t0 && t2 === (t0 + 1) % 4, `Carrusel (${nombre}) · avanza solo cada 2,5 s (${t0} → ${t1} → ${t2})`);
+  await page.waitForTimeout(2600);
+  verificar((await activa()) === (t0 + 2) % 4, `Carrusel (${nombre}) · el avance automático sigue tras usar las flechas`);
   await page.close();
 }
 {
