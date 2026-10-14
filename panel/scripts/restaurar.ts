@@ -23,8 +23,10 @@ if (!values.confirmar) {
   process.exit(0);
 }
 const db = await conectar();
+// Los respaldos anteriores al correo de verificación no lo traen: se conserva el que ya tiene cada usuario.
+const correos = (await db.execute('SELECT usuario, correo FROM usuarios WHERE correo IS NOT NULL')).rows.map((f) => [String(f.correo), String(f.usuario)]);
 // Sesiones, propuestas y conexiones de Claude no viajan en el respaldo: se cierran (hay que reconectar).
-const lote: { sql: string; args: (string | number | null)[] }[] = ['sesiones', 'propuestas', 'oauth_tokens', 'oauth_codigos', 'oauth_pedidos']
+const lote: { sql: string; args: (string | number | null)[] }[] = ['sesiones', 'pases', 'verificaciones', 'propuestas', 'oauth_tokens', 'oauth_codigos', 'oauth_pedidos']
   .map((t) => ({ sql: `DELETE FROM ${t}`, args: [] }));
 for (const t of [...ORDEN].reverse()) lote.push({ sql: `DELETE FROM ${t}`, args: [] });
 for (const t of ORDEN) {
@@ -33,6 +35,7 @@ for (const t of ORDEN) {
     lote.push({ sql: `INSERT INTO ${t} (${cols.join(', ')}) VALUES (${cols.map(() => '?').join(', ')})`, args: cols.map((c) => fila[c] as string | number | null) });
   }
 }
+for (const [correo, usuario] of correos) lote.push({ sql: 'UPDATE usuarios SET correo = ? WHERE usuario = ? AND correo IS NULL', args: [correo, usuario] });
 // Un solo lote: si algo falla, no se aplica nada.
 await db.batch(lote, 'write');
 await registrar(db, { id: null, usuario: 'sistema', ip: null }, 'sistema.restauracion', 'respaldo', respaldo.exportado);

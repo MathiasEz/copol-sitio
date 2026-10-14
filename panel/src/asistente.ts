@@ -5,6 +5,7 @@
 // despliegue: no hay claves en el código ni en el repositorio. Las reglas que sigue el modelo están en
 // instructivo-asistente.ts. Sus herramientas consultan; para modificar productos solo puede PROPONER
 // cambios (propuestas.ts), que se aplican únicamente cuando la persona los confirma.
+import { BASE } from './config.ts';
 import { ACCIONES, listarEventos } from './auditoria.ts';
 import { todas, type Db } from './db.ts';
 import { listarNovedades, PLANTILLAS } from './novedades.ts';
@@ -48,7 +49,8 @@ export function limpiarHistorial(entrada: unknown): Mensaje[] {
 }
 
 // ── Lectura de páginas del sitio público ──
-const RUTA_VALIDA = /^\/(?!panel(?:\/|$))[a-z0-9\-/]*$/;
+// Nunca lee el panel (ni su dirección actual ni la anterior /panel).
+const RUTA_VALIDA = { test: (p: string) => /^\/[a-z0-9\-/]*$/.test(p) && p !== BASE && !p.startsWith(`${BASE}/`) && !/^\/panel(\/|$)/.test(p) };
 const ENTIDADES: Record<string, string> = { amp: '&', lt: '<', gt: '>', quot: '"', '#39': "'", apos: "'", nbsp: ' ' };
 const decodificar = (s: string) => s.replace(/&(#\d+|#x[0-9a-f]+|[a-z]+);/gi, (m, e: string) => {
   if (e.startsWith('#x')) return String.fromCodePoint(parseInt(e.slice(2), 16));

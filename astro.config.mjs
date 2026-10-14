@@ -10,10 +10,10 @@ export default defineConfig({
   devToolbar: { enabled: false },
   // Puerto asignado por el entorno (PORT) cuando 4321 está ocupado; 4321 por defecto.
   server: { port: Number(process.env.PORT) || 4321 },
-  // Vercel: las páginas son estáticas salvo Bazar, el panel (/panel) y las "server islands" de Inicio,
+  // Vercel: las páginas son estáticas salvo Bazar, el panel (ver BASE en panel/src/config.ts) y las "server islands" de Inicio,
   // que se ejecutan como funciones para leer el stock y las novedades vigentes de la base de datos.
   adapter: vercel({ maxDuration: 60 }), // 60 s: el asistente puede esperar y reintentar si el plan gratuito de IA limita los pedidos por minuto
-  integrations: [sitemap({ filter: (pagina) => !pagina.includes('/panel') })],
+  integrations: [sitemap({ filter: (pagina) => !/\/(panel|gestion-)/.test(pagina) })],
   // Redirecciones desde las URLs del sitio anterior (Odoo). Con el adaptador de Vercel se publican
   // como redirecciones permanentes del servidor (308).
   redirects: {

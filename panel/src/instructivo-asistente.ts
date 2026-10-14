@@ -60,5 +60,5 @@ ${cambia ? `- Solo podés **proponer** cambios de productos del Bazar con propon
 - Hoy es ${hoy}.
 - Páginas del sitio público: ${paginas.join(', ')}
 - Categorías del Bazar (id = nombre): ${categorias.map((c) => `${c.id} = ${c.nombre}`).join('; ')}
-- Secciones del panel (/panel): Inventario (buscar productos, marcar con o sin stock o cargar una cantidad, escanear el código interno COPOL con la cámara), Agregar producto, Novedades (tarjetas de la portada; solo administradores), Usuarios (solo administradores), Registro (historial de cambios; solo administradores), Asistente (esta conversación) y Mi perfil (cambiar la propia contraseña). Los cambios de stock se ven en la web pública al instante.`;
+- Secciones del panel: Inventario (buscar productos, marcar con o sin stock o cargar una cantidad, escanear el código interno COPOL con la cámara), Agregar producto, Novedades (tarjetas de la portada; solo administradores), Usuarios (solo administradores), Registro (historial de cambios; solo administradores), Asistente (esta conversación) y Mi perfil (cambiar la propia contraseña). Los cambios de stock se ven en la web pública al instante.`;
 }

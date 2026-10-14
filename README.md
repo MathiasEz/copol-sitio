@@ -26,7 +26,7 @@ npm run panel:admin -- --usuario <usuario o correo>
 npm run dev
 ```
 
-Sitio en http://localhost:4321 · panel en http://localhost:4321/panel. Sin `.env` se usan una base local (`panel/datos/copol.db`) y una carpeta local para imágenes; ninguna se sube al repositorio.
+Sitio en http://localhost:4321 · panel en http://localhost:4321/<dirección del panel> (ver `BASE` en `panel/src/config.ts`). Sin `.env` se usan una base local (`panel/datos/copol.db`) y una carpeta local para imágenes; ninguna se sube al repositorio.
 
 ## Comandos
 
@@ -102,7 +102,7 @@ Al terminar, borrar las variables de Turso del `.env` local (o el archivo) para 
 ### 5. Desplegar y probar
 
 1. En Vercel → *Deployments* → *Redeploy* (o hacer un commit). Al terminar, abrir la URL `*.vercel.app`.
-2. Probar: `/hipermercado/bazar/`, `/panel` (ingresar, cambiar un stock, recargar el Bazar y ver el cambio), subir la imagen de una novedad y publicarla.
+2. Probar: `/hipermercado/bazar/`, el panel (ingresar, cambiar un stock, recargar el Bazar y ver el cambio), subir la imagen de una novedad y publicarla.
 3. El escaneo con cámara requiere HTTPS: funciona en la URL de Vercel y en el dominio final.
 
 ### 6. Vincular el dominio `cooperativapolicial.com.uy` (con aprobación)

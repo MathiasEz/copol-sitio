@@ -1,15 +1,16 @@
 // Verificaciones del sitio compilado para Vercel (.vercel/output/static). Ejecutar después de `npm run build`.
-// Las páginas que se generan en cada visita (Bazar y /panel) se prueban en ejecución con `npm run qa`.
+// Las páginas que se generan en cada visita (Bazar y el panel) se prueban en ejecución con `npm run qa`.
 //   node scripts/check-site.mjs            → comprobaciones internas
 //   node scripts/check-site.mjs --externos → además consulta (HEAD/GET) los enlaces externos únicos
 // Sale con código 1 si encuentra errores.
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { parseHTML } from 'linkedom';
+import { BASE } from '../panel/src/config.ts';
 
 const DIST = path.resolve('.vercel/output/static');
 // Rutas que no son archivos estáticos: se generan en el servidor en cada visita.
-const DINAMICAS = ['/hipermercado/bazar', '/panel'];
+const DINAMICAS = ['/hipermercado/bazar', BASE];
 const EXTERNOS = process.argv.includes('--externos');
 // Patrones con apariencia de precio (la cooperativa pidió no publicar precios del Hipermercado ni del Bazar).
 const PRECIO = /(\$|U\$S|USD|UYU)\s?\d[\d.,]*/;

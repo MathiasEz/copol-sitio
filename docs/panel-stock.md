@@ -7,7 +7,7 @@ Panel para que el personal autorizado consulte y actualice el inventario del Baz
 ## Cómo viaja el stock (y por qué ahora se ve al instante)
 
 ```
-Panel (/panel)  ──escribe──►  Base de datos (Turso / libSQL)  ◄──lee en cada visita──  Web pública
+Panel          ──escribe──►  Base de datos (Turso / libSQL)  ◄──lee en cada visita──  Web pública
    └─ confirma "Guardado" solo después de releer la fila y comprobar el valor
 ```
 
@@ -35,7 +35,7 @@ Panel (/panel)  ──escribe──►  Base de datos (Turso / libSQL)  ◄─�
 ### Asistente
 
 - **Modelo:** **Gemini 2.5 Flash** (Google), a través de **Vercel AI Gateway** (`panel/src/asistente.ts`), con el crédito gratuito mensual (los modelos de Claude no están incluidos en ese crédito). Reglas que sigue: [asistente-instructivo.md](asistente-instructivo.md) y `panel/src/instructivo-asistente.ts`. En Vercel se autentica con el token OIDC del propio despliegue: no hay claves en el código ni en el repositorio.
-- **Qué puede consultar:** el texto visible de las páginas públicas (nunca `/panel`), el inventario (búsqueda y resumen por categoría), los últimos cambios del registro (sin IP) y las novedades.
+- **Qué puede consultar:** el texto visible de las páginas públicas (nunca el panel), el inventario (búsqueda y resumen por categoría), los últimos cambios del registro (sin IP) y las novedades.
 - **Cambios de productos (con confirmación):** por ejemplo "poné sin stock el 436249 y 5 unidades al 460460". El asistente identifica cada producto por su código interno COPOL y arma una **propuesta** (`panel/src/propuestas.ts`): stock, cantidad, nombre, marca, descripción, categoría o código. La tarjeta muestra "antes → después" y lo que no se pudo incluir; **nada se guarda hasta tocar "Confirmar cambios"**. Se valida con las mismas reglas que el formulario (sin precios, categorías existentes, códigos únicos), se aplica con control de versión (si alguien cambió el producto mientras tanto, ese cambio no se aplica), cada propuesta sirve una sola vez, es solo del usuario que la pidió y vence a los 15 minutos. En el Registro, los cambios figuran como siempre, con `"via": "asistente"`. No puede tocar imágenes, novedades, usuarios ni textos de páginas.
 - **Roles (desde el 14/10/2026):** administradores y editores de stock pueden preparar y confirmar cambios; el visualizador solo consulta (no recibe la herramienta de cambios). Quien no es administrador ve en "últimos cambios" solo movimientos de stock y productos.
 - **Límites:** 80 consultas por usuario y por día (`PANEL_ASISTENTE_LIMITE_DIA`), historial de hasta 12 mensajes, hasta 50 productos por propuesta y respuestas de hasta ~4000 tokens. Cada consulta queda en el Registro (modelo, pregunta recortada, herramientas usadas y tokens).
@@ -48,13 +48,27 @@ Panel (/panel)  ──escribe──►  Base de datos (Turso / libSQL)  ◄─�
 - Usa el lector nativo del navegador cuando existe (Chrome en Android) y, si no, la biblioteca ZXing incluida en el sitio (iPhone, computadoras).
 - Si no hay cámara, no se concede el permiso o la conexión no es segura (HTTPS), avisa y el campo sigue disponible para escribir el código a mano.
 
+## Acceso al panel
+
+| Paso | Qué se pide | Detalle |
+|---|---|---|
+| Dirección | Una dirección no adivinable | Ya no es `/panel` (da 404). Está en `BASE` de `panel/src/config.ts` y en el nombre de la carpeta `src/pages/<dirección>/`; no se enlaza desde el sitio, no está en el mapa del sitio y pide no indexarse. Compartila solo con el equipo. |
+| 1. PIN | 6 números, uno para todo el panel | Se guarda solo su hash. Límite: 5 intentos por conexión cada 15 min y 30 en total por hora. Mientras no exista, el primer administrador que ingresa tiene que crearlo; después se cambia en **Mi perfil** (pide la contraseña). |
+| 2. Usuario y contraseña | Como antes | Bloqueo de la cuenta tras 5 fallos; límite por conexión guardado en la base (vale para todas las instancias de Vercel). |
+| 3. Correo y código | Escribir el correo de la cuenta y el código de 6 números que llega | Código válido 10 min, 5 intentos, hasta 3 envíos (uno por minuto). Se envía con **Resend** (`RESEND_API_KEY`). Sin esa clave el paso queda en pausa y el panel avisa a los administradores. |
+| Equipo recordado | Opción "Recordar este equipo por 30 días" | En ese equipo y para esa cuenta no se piden el PIN ni el código durante 30 días (cookie `HttpOnly`; la base guarda solo su hash). Un administrador puede olvidarlo desde **Accesos**. Cambiar el correo, restablecer la contraseña o desactivar la cuenta olvida sus equipos. |
+
+**Accesos** (solo administradores): sesiones abiertas (usuario, IP, lugar aproximado, equipo, inicio y última actividad, con botón para cerrarlas), equipos recordados (con botón para olvidarlos) e historial de accesos: ingresos, contraseñas o PIN incorrectos, códigos enviados o fallidos y bloqueos, filtrable por usuario. La ubicación sale de las cabeceras de Vercel (ciudad y país según la IP).
+
 ## Conector para Claude (usa la suscripción de Claude, sin costo en Vercel)
+
+> **Apagado desde el 14/10/2026.** Sus metadatos públicos (`/.well-known/…`) anunciaban la dirección del panel. Para volver a usarlo: variable `PANEL_CONECTOR_CLAUDE=1` en Vercel (la dirección del conector pasa a ser `https://<dominio>/<dirección del panel>/mcp`).
 
 El panel funciona como **conector personalizado (MCP)** de la app de Claude: se conversa en Claude (web, escritorio o celular) y Claude consulta o cambia el stock a través del panel. Requiere un plan de Claude que permita conectores personalizados (Pro, Max, Team o Enterprise). Código: `panel/src/mcp.ts` (herramientas) y `panel/src/oauth.ts` (autorización).
 
 **Cómo conectarlo (una vez):**
 1. En Claude: Configuración → Conectores → **Agregar conector personalizado**.
-2. Nombre: "Stock COPOL". URL: `https://<dominio>/panel/mcp` (hoy `https://copol-ruddy.vercel.app/panel/mcp`; también figura en *Mi perfil*).
+2. Nombre: "Stock COPOL". URL: `https://<dominio>/<dirección del panel>/mcp` ( también figura en *Mi perfil*).
 3. Tocar **Conectar**: se abre el panel; ingresar con el usuario del panel y tocar **Permitir**. Claude no ve la contraseña.
 4. En un chat, activar el conector y pedir, por ejemplo: "poné sin stock el 436249 y 5 unidades al 460460".
 
@@ -125,7 +139,7 @@ npm run panel:admin -- --usuario <usuario o correo>
 npm run dev
 ```
 
-Sitio en http://localhost:4321 y panel en http://localhost:4321/panel. Sin variables de entorno se usan la base y la carpeta de imágenes locales.
+Sitio en http://localhost:4321 y panel en http://localhost:4321/<dirección del panel> (ver `BASE` en `panel/src/config.ts`). Sin variables de entorno se usan la base y la carpeta de imágenes locales.
 
 ## Verificación
 

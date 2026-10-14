@@ -33,11 +33,33 @@ export function listarEventos(db: Db, { entidadId, limite = 100, desde = 0, sinS
   );
 }
 
+/** Historial de accesos: ingresos, intentos fallidos, PIN, códigos y equipos recordados. */
+export function listarAccesos(db: Db, { usuario, limite = 50, desde = 0 }: { usuario?: string; limite?: number; desde?: number } = {}) {
+  return todas<Evento>(
+    db,
+    `SELECT id, fecha, usuario, accion, entidad, entidad_id, detalle, ip FROM auditoria WHERE (accion LIKE 'sesion.%' OR accion LIKE 'acceso.%')${usuario ? ' AND usuario = ?' : ''} ORDER BY id DESC LIMIT ? OFFSET ?`,
+    [...(usuario ? [usuario] : []), limite, desde],
+  );
+}
+
 export const ACCIONES: Record<string, string> = {
   'sesion.ingreso': 'Ingresó al panel',
   'sesion.ingreso-fallido': 'Intento de ingreso fallido',
   'sesion.bloqueo': 'Cuenta bloqueada temporalmente',
   'sesion.salida': 'Cerró sesión',
+  'acceso.pin': 'Ingresó el PIN correcto',
+  'acceso.pin-fallido': 'PIN incorrecto',
+  'acceso.pin-bloqueo': 'PIN bloqueado por intentos',
+  'acceso.pin-creado': 'Creó el PIN de acceso',
+  'acceso.pin-cambio': 'Cambió el PIN de acceso',
+  'acceso.codigo-enviado': 'Se envió el código por correo',
+  'acceso.codigo-fallido': 'Código por correo incorrecto',
+  'acceso.correo-incorrecto': 'Escribió un correo que no es el de la cuenta',
+  'acceso.sin-correo': 'Intentó ingresar sin correo asignado',
+  'acceso.equipo-recordado': 'Recordó este equipo por 30 días',
+  'acceso.equipo-olvidado': 'Un administrador olvidó un equipo recordado',
+  'acceso.sesion-cerrada': 'Un administrador cerró una sesión',
+  'usuario.correo': 'Cambió su correo de verificación',
   'clave.cambio': 'Cambió su contraseña',
   'stock.cambio': 'Cambió el stock',
   'producto.alta': 'Agregó un producto',

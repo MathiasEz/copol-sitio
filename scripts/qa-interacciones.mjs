@@ -334,6 +334,8 @@ for (const [nombre, vp] of Object.entries(VIEWPORTS)) {
     for (const p of problemas) fallos.push(`Imagen (${nombre}) ${ruta} [${p.img}] ${p.deforma ? 'deformada' : `recorte ${p.corte}%`}`);
     if (axe) {
       await page.addScriptTag({ content: axe });
+      // El carrusel de Inicio cambia solo: se pausa (como con el puntero encima) para medir un estado estable.
+      await page.evaluate(() => document.querySelectorAll('[data-carrusel]').forEach((c) => c.dispatchEvent(new Event('mouseenter'))));
       await page.waitForTimeout(900); // estado final de las transiciones (contraste real)
       const violaciones = await page.evaluate(async () => {
         const r = await window.axe.run(document, { runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa', 'best-practice'] } });

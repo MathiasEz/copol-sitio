@@ -7,6 +7,7 @@
 // - Códigos y tokens se guardan solo como hash SHA-256; la persona entra con su usuario del panel
 //   (Claude nunca ve la contraseña) y puede desconectar a Claude desde "Mi perfil".
 import crypto from 'node:crypto';
+import { BASE } from './config.ts';
 import { ahora, ejecutar, todas, una, type Db } from './db.ts';
 import { sha256, tokenAleatorio } from './seguridad.ts';
 
@@ -31,19 +32,19 @@ export function redirectPermitido(uri: unknown): uri is string {
 /** Metadatos del servidor de autorización (RFC 8414). */
 export const metadatosServidor = (origen: string) => ({
   issuer: origen,
-  authorization_endpoint: `${origen}/panel/oauth/autorizar`,
-  token_endpoint: `${origen}/panel/oauth/token`,
-  registration_endpoint: `${origen}/panel/oauth/registro`,
+  authorization_endpoint: `${origen}${BASE}/oauth/autorizar`,
+  token_endpoint: `${origen}${BASE}/oauth/token`,
+  registration_endpoint: `${origen}${BASE}/oauth/registro`,
   response_types_supported: ['code'],
   grant_types_supported: ['authorization_code', 'refresh_token'],
   code_challenge_methods_supported: ['S256'],
   token_endpoint_auth_methods_supported: ['none'],
   scopes_supported: [ALCANCE],
-  service_documentation: `${origen}/panel`,
+  service_documentation: `${origen}${BASE}`,
 });
 /** Metadatos del recurso protegido (RFC 9728): el servidor MCP del panel. */
 export const metadatosRecurso = (origen: string) => ({
-  resource: `${origen}/panel/mcp`,
+  resource: `${origen}${BASE}/mcp`,
   authorization_servers: [origen],
   scopes_supported: [ALCANCE],
   bearer_methods_supported: ['header'],

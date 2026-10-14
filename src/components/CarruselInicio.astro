@@ -73,6 +73,8 @@ const diapositivas = [
 ] as const;
 const total = diapositivas.length;
 ---
+<!-- Título de la página siempre presente: el carrusel oculta las diapositivas que no están activas. -->
+<h1 class="visualmente-oculto">COPOL · Cooperativa Policial</h1>
 <section class="hero" aria-roledescription="carrusel" aria-label="Novedades destacadas" aria-describedby="hero-instrucciones" data-carrusel>
   <p id="hero-instrucciones" class="visualmente-oculto">Deslizá o usá las flechas izquierda y derecha del teclado para cambiar de novedad.</p>
   <div class="contenedor hero__marco">
@@ -86,11 +88,7 @@ const total = diapositivas.length;
           data-panel
         >
           <span class="hero__antetitulo">{d.antetitulo}</span>
-          {i === 0 ? (
-            <h1 class="hero__titulo"><span class="hero__linea">{d.titulo} {'resaltado' in d && <span class="hero__resaltado">{d.resaltado}</span>}</span></h1>
-          ) : (
-            <h2 class="hero__titulo"><span class="hero__linea">{d.titulo}</span></h2>
-          )}
+          <h2 class="hero__titulo"><span class="hero__linea">{d.titulo} {'resaltado' in d && <span class="hero__resaltado">{d.resaltado}</span>}</span></h2>
           <p class="lead">{d.texto}</p>
           <div class="hero__acciones">
             {d.acciones.map((a) => (

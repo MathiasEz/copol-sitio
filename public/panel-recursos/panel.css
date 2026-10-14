@@ -338,4 +338,14 @@ select.input { padding-right: 28px; }
 .acciones-form { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap; }
 .acciones-form form { margin: 0; }
 
+/* Acceso: PIN, código y sección Accesos */
+.input--pin { font-size: 1.25rem; letter-spacing: .35em; text-align: center; font-variant-numeric: tabular-nums; }
+.seccion { display: grid; gap: 10px; }
+.seccion__titulo { font-size: 1rem; font-weight: 700; }
+.seccion + .seccion { margin-top: 10px; }
+.ip { font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace; font-size: .8125rem; overflow-wrap: anywhere; }
+.evento { font-weight: 600; }
+.evento--malo { color: var(--destructive); }
+.simple__caja form + .btn--ghost, .simple__caja > .btn--ghost { justify-self: center; }
+
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; } }

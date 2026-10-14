@@ -3,7 +3,7 @@
 // - Toda imagen se vuelve a codificar como WebP: se descartan metadatos (EXIF/GPS) y cualquier contenido
 //   incrustado, y se generan dos tamaños para que la web descargue solo el necesario.
 // - Almacenamiento: Vercel Blob si está configurado (BLOB_READ_WRITE_TOKEN); si no, carpeta local
-//   panel/datos/imagenes/ servida por el panel en /panel/media/ (solo desarrollo).
+//   panel/datos/imagenes/ servida por el panel en <BASE>/media/ (solo desarrollo).
 import crypto from 'node:crypto';
 import fs from 'node:fs/promises';
 import path from 'node:path';

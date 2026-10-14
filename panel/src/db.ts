@@ -106,6 +106,24 @@ const MIGRACIONES: string[] = [
   );
   CREATE INDEX oauth_tokens_usuario ON oauth_tokens(usuario_id, cliente_id)
   `,
+  /* 5 · acceso: correo de verificación por usuario, PIN de entrada (hash), equipos recordados, verificaciones
+     pendientes (código por correo, solo hash) e intentos para los límites (compartidos entre instancias). */ `
+  ALTER TABLE usuarios ADD COLUMN correo TEXT;
+  UPDATE usuarios SET correo = lower(usuario) WHERE usuario LIKE '%_@_%._%';
+  ALTER TABLE sesiones ADD COLUMN lugar TEXT;
+  CREATE TABLE ajustes (clave TEXT PRIMARY KEY, valor TEXT NOT NULL, actualizado_en TEXT NOT NULL);
+  CREATE TABLE pases (
+    token_hash TEXT PRIMARY KEY, tipo TEXT NOT NULL CHECK (tipo IN ('pin', 'equipo')), usuario_id INTEGER REFERENCES usuarios(id) ON DELETE CASCADE,
+    creado_en TEXT NOT NULL, expira_en TEXT NOT NULL, ultimo_uso TEXT, ip TEXT, agente TEXT, lugar TEXT
+  );
+  CREATE INDEX pases_tipo ON pases(tipo, expira_en);
+  CREATE TABLE verificaciones (
+    id_hash TEXT PRIMARY KEY, usuario_id INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE, correo_ok INTEGER NOT NULL DEFAULT 0,
+    codigo_hash TEXT, intentos INTEGER NOT NULL DEFAULT 0, envios INTEGER NOT NULL DEFAULT 0, enviado_en TEXT, expira_en TEXT NOT NULL, volver TEXT
+  );
+  CREATE TABLE intentos (clave TEXT NOT NULL, fecha TEXT NOT NULL);
+  CREATE INDEX intentos_clave ON intentos(clave, fecha)
+  `,
 ];
 
 /** Versión del esquema en una tabla propia (PRAGMA user_version no se conserva igual en todos los destinos). */

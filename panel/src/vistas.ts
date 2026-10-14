@@ -7,6 +7,8 @@ import { ACCIONES, type Evento } from './auditoria.ts';
 import { BASE } from './config.ts';
 import { variante } from './imagenes.ts';
 import { PLANTILLAS, type Novedad, type Plantilla } from './novedades.ts';
+import type * as AC from './acceso.ts';
+import { describirEquipo } from './acceso.ts';
 import type { Conexion } from './oauth.ts';
 import { ESTADOS, miniatura, type Categoria, type EstadoStock, type Producto } from './productos.ts';
 import { ROLES, puede, type Rol } from './seguridad.ts';
@@ -18,6 +20,8 @@ export interface Contexto {
   csrf: string;
   ruta: string;
   aviso?: { tipo: 'ok' | 'error'; texto: string } | null;
+  /** Aviso fijo para administradores (configuración pendiente). */
+  sistema?: string | null;
 }
 export const r = (p = '') => `${BASE}${p}`;
 const si = (c: unknown, attr: string) => (c ? raw(attr) : '');
@@ -96,6 +100,7 @@ export function layout(c: Contexto, titulo: string, cuerpo: H, acciones: H | '' 
       ${puede(u.rol, 'novedades') ? item('/novedades', 'Novedades', 'noticia') : ''}
       ${puede(u.rol, 'usuarios') ? item('/usuarios', 'Usuarios', 'usuarios') : ''}
       ${puede(u.rol, 'auditoria') ? item('/registro', 'Registro', 'registro') : ''}
+      ${puede(u.rol, 'auditoria') ? item('/accesos', 'Accesos', 'escudo') : ''}
       ${puede(u.rol, 'asistente') ? item('/asistente', 'Asistente', 'chispa') : ''}
     </nav>
     <div class="sidebar__pie">
@@ -110,6 +115,7 @@ export function layout(c: Contexto, titulo: string, cuerpo: H, acciones: H | '' 
 </aside>
 <main id="contenido" class="main">
   <header class="main__cabecera"><h1>${titulo}</h1>${acciones ? html`<div class="main__acciones">${acciones}</div>` : ''}</header>
+  ${c.sistema ? html`<div class="alert alert--error" role="status">${icono('info')}<p>${c.sistema}</p></div>` : ''}
   ${alerta(c.aviso)}
   ${cuerpo}
 </main>
@@ -159,27 +165,105 @@ export function vistaCambioObligatorio(c: Contexto, error: string | null) {
   ${formClave(c, r('/perfil/clave'))}`);
 }
 
-export function vistaPerfil(c: Contexto, error: string | null, conexiones: Conexion[] = [], urlConector = '/panel/mcp') {
+export interface ErroresPerfil { clave?: string; correo?: string; pin?: string }
+export function vistaPerfil(c: Contexto, errores: ErroresPerfil, d: { conector: { url: string; conexiones: Conexion[] } | null; correoActivo: boolean }) {
   const u = c.usuario!;
+  const err = (k: keyof ErroresPerfil) => (errores[k] ? html`<div class="alert alert--error" role="alert">${icono('info')}<p>${errores[k]}</p></div>` : '');
+  const campoClave = html`<label class="campo"><span class="label">Tu contraseña actual</span><input class="input" type="password" name="clave" autocomplete="current-password" required maxlength="200"></label>`;
   return layout(c, 'Mi perfil', html`
 <div class="grid-2">
   <section class="card"><h2 class="card__titulo">Cuenta</h2>
-    <dl class="datos"><dt>Usuario</dt><dd>${u.usuario}</dd><dt>Rol</dt><dd>${ROLES[u.rol].nombre}</dd><dt>Último acceso</dt><dd>${fecha(u.ultimo_acceso)}</dd></dl>
+    <dl class="datos"><dt>Usuario</dt><dd>${u.usuario}</dd><dt>Rol</dt><dd>${ROLES[u.rol].nombre}</dd><dt>Correo</dt><dd>${u.correo ?? 'Sin correo'}</dd><dt>Último acceso</dt><dd>${fecha(u.ultimo_acceso)}</dd></dl>
   </section>
   <section class="card"><h2 class="card__titulo">Cambiar contraseña</h2>
-    ${error ? html`<div class="alert alert--error" role="alert">${icono('info')}<p>${error}</p></div>` : ''}
+    ${err('clave')}
     ${formClave(c, r('/perfil/clave'))}
   </section>
+  <section class="card form" aria-labelledby="correo-titulo"><h2 class="card__titulo" id="correo-titulo">Correo de verificación</h2>
+    <p class="muted">Al ingresar desde un equipo nuevo te pedimos este correo y te mandamos un código de 6 números.${d.correoActivo ? '' : ' (El envío de correos todavía no está configurado.)'}</p>
+    ${err('correo')}
+    <form method="post" action="${r('/perfil/correo')}" class="form">
+      ${csrfCampo(c)}
+      <label class="campo"><span class="label">Correo</span><input class="input" type="email" name="correo" autocomplete="email" required maxlength="160" value="${u.correo ?? ''}"></label>
+      ${campoClave}
+      <button class="btn btn--outline" type="submit">Guardar correo</button>
+    </form>
+  </section>
+  ${puede(u.rol, 'usuarios') ? html`<section class="card form" aria-labelledby="pin-titulo"><h2 class="card__titulo" id="pin-titulo">PIN de acceso al panel</h2>
+    <p class="muted">Se pide antes del usuario y la contraseña en los equipos que no están recordados. Es uno solo para todo el equipo: al cambiarlo, compartilo de nuevo con quienes usan el panel.</p>
+    ${err('pin')}
+    <form method="post" action="${r('/perfil/pin')}" class="form">
+      ${csrfCampo(c)}
+      <div class="fila">
+        <label class="campo"><span class="label">PIN nuevo</span><input class="input input--pin" type="password" name="pin" inputmode="numeric" pattern="\\d{6}" minlength="6" maxlength="6" autocomplete="off" required></label>
+        <label class="campo"><span class="label">Repetí el PIN</span><input class="input input--pin" type="password" name="repetir" inputmode="numeric" pattern="\\d{6}" minlength="6" maxlength="6" autocomplete="off" required></label>
+      </div>
+      ${campoClave}
+      <button class="btn btn--outline" type="submit">Cambiar PIN</button>
+    </form>
+  </section>` : ''}
 </div>
-<section class="card form" aria-labelledby="claude-titulo">
+${d.conector ? html`<section class="card form" aria-labelledby="claude-titulo">
   <h2 class="card__titulo" id="claude-titulo">Conexión con Claude</h2>
   <p class="muted">Desde la app de Claude podés consultar el stock y cambiarlo (si tu rol lo permite). Para conectarla, en Claude: Configuración → Conectores → Agregar conector personalizado, con esta dirección:</p>
-  <p><code class="url-conector">${urlConector}</code></p>
-  ${conexiones.length ? html`<ul class="conexiones">${conexiones.map((x) => html`<li class="conexion">
+  <p><code class="url-conector">${d.conector.url}</code></p>
+  ${d.conector.conexiones.length ? html`<ul class="conexiones">${d.conector.conexiones.map((x) => html`<li class="conexion">
       <span><strong>${x.nombre ?? 'Claude'}</strong><small class="muted">Conectado desde ${fecha(x.desde)} · último uso ${fecha(x.ultimo_uso)}</small></span>
       <form method="post" action="${r(`/perfil/claude/${encodeURIComponent(x.cliente_id)}/desconectar`)}" data-confirmar="¿Desconectar a Claude? Dejará de poder consultar y cambiar el stock.">${csrfCampo(c)}<button class="btn btn--outline btn--sm" type="submit">Desconectar</button></form>
     </li>`)}</ul>` : html`<p class="muted">No hay ninguna conexión activa.</p>`}
-</section>`);
+</section>` : ''}`);
+}
+
+// ── PIN de entrada y verificación por correo ──
+export function vistaPin(c: Contexto, error: string | null, volver: string) {
+  return pantallaSimple(c, 'Acceso restringido', html`
+  <div><h1 class="titulo">Acceso restringido</h1><p class="muted">Ingresá el PIN de 6 números del panel.</p></div>
+  ${error ? html`<div class="alert alert--error" role="alert">${icono('info')}<p>${error}</p></div>` : ''}
+  <form method="post" action="${r('/pin')}${volver ? `?volver=${encodeURIComponent(volver)}` : ''}" class="form">
+    ${csrfCampo(c)}
+    <label class="campo"><span class="label">PIN</span><input class="input input--pin" type="password" name="pin" inputmode="numeric" pattern="\\d{6}" minlength="6" maxlength="6" autocomplete="off" required autofocus></label>
+    <button class="btn btn--lg btn--bloque" type="submit">Continuar</button>
+  </form>`);
+}
+
+export function vistaCrearPin(c: Contexto, error: string | null) {
+  return pantallaSimple(c, 'Creá el PIN de acceso', html`
+  <div><h1 class="titulo">Creá el PIN de acceso</h1><p class="muted">Desde ahora, quien abra el panel en un equipo que no esté recordado tendrá que escribir este PIN antes del usuario y la contraseña. Es uno solo para todo el equipo de COPOL: compartilo solo con quienes usan el panel.</p></div>
+  ${error ? html`<div class="alert alert--error" role="alert">${icono('info')}<p>${error}</p></div>` : ''}
+  <form method="post" action="${r('/pin/crear')}" class="form">
+    ${csrfCampo(c)}
+    <label class="campo"><span class="label">PIN de 6 números</span><input class="input input--pin" type="password" name="pin" inputmode="numeric" pattern="\\d{6}" minlength="6" maxlength="6" autocomplete="off" required autofocus><span class="ayuda">Evitá números repetidos o seguidos (como 111111 o 123456).</span></label>
+    <label class="campo"><span class="label">Repetí el PIN</span><input class="input input--pin" type="password" name="repetir" inputmode="numeric" pattern="\\d{6}" minlength="6" maxlength="6" autocomplete="off" required></label>
+    <label class="campo"><span class="label">Tu contraseña actual</span><input class="input" type="password" name="clave" autocomplete="current-password" required maxlength="200"></label>
+    <button class="btn btn--lg btn--bloque" type="submit">Guardar PIN</button>
+  </form>
+  <form method="post" action="${r('/salir')}">${csrfCampo(c)}<button class="btn btn--ghost btn--sm btn--bloque" type="submit">Cerrar sesión</button></form>`);
+}
+
+export function vistaVerificar(c: Contexto, d: { paso: 'correo' | 'codigo'; correo: string | null; espera: number; puedeReenviar: boolean }, error: string | null) {
+  const alertaError = error ? html`<div class="alert alert--error" role="alert">${icono('info')}<p>${error}</p></div>` : '';
+  if (d.paso === 'correo') {
+    return pantallaSimple(c, 'Verificá tu identidad', html`
+  <div><h1 class="titulo">Verificá que sos vos</h1><p class="muted">Escribí el correo de tu cuenta y te mandamos un código de 6 números.</p></div>
+  ${alertaError}
+  <form method="post" action="${r('/verificar/correo')}" class="form">
+    ${csrfCampo(c)}
+    <label class="campo"><span class="label">Correo</span><input class="input" type="email" name="correo" autocomplete="email" required maxlength="160" autofocus></label>
+    <button class="btn btn--lg btn--bloque" type="submit">Enviar código</button>
+  </form>
+  <a class="btn btn--ghost btn--sm" href="${r('/ingresar')}">Volver al ingreso</a>`);
+  }
+  return pantallaSimple(c, 'Código de verificación', html`
+  <div><h1 class="titulo">Revisá tu correo</h1><p class="muted">Te mandamos un código de 6 números a <strong>${d.correo}</strong>. Vence en 10 minutos; si no lo ves, revisá la carpeta de spam.</p></div>
+  ${alertaError}
+  <form method="post" action="${r('/verificar/codigo')}" class="form">
+    ${csrfCampo(c)}
+    <label class="campo"><span class="label">Código</span><input class="input input--pin" name="codigo" inputmode="numeric" pattern="\\d{6}" minlength="6" maxlength="6" autocomplete="one-time-code" required autofocus></label>
+    <label class="check"><input type="checkbox" name="recordar" value="1" checked><span>Recordar este equipo por 30 días (no volver a pedir el PIN ni el código)</span></label>
+    <p class="ayuda">Desmarcalo si la computadora o el celular es compartido.</p>
+    <button class="btn btn--lg btn--bloque" type="submit">Ingresar</button>
+  </form>
+  ${d.puedeReenviar ? html`<form method="post" action="${r('/verificar/reenviar')}">${csrfCampo(c)}<button class="btn btn--ghost btn--sm btn--bloque" type="submit">${d.espera > 0 ? `Reenviar código (disponible en ${d.espera} s)` : 'Reenviar código'}</button></form>` : ''}`);
 }
 
 /** Pantalla de permiso para el conector de Claude (OAuth). */
@@ -417,10 +501,11 @@ export function vistaUsuarios(c: Contexto, usuarios: UsuarioPublico[], errores: 
   return layout(c, 'Usuarios', html`
 <div class="grid-usuarios">
 <div class="tabla-caja"><table class="tabla">
-<thead><tr><th scope="col">Usuario</th><th scope="col">Rol</th><th scope="col" class="ocultar-movil">Último acceso</th><th scope="col"><span class="sr">Acciones</span></th></tr></thead>
+<thead><tr><th scope="col">Usuario</th><th scope="col">Rol</th><th scope="col" class="ocultar-movil">Correo</th><th scope="col" class="ocultar-movil">Último acceso</th><th scope="col"><span class="sr">Acciones</span></th></tr></thead>
 <tbody>${usuarios.map((u) => html`<tr>
   <td><strong>${u.usuario}</strong>${!u.activo ? html` <span class="badge badge--sin-stock">Desactivado</span>` : ''}${u.debe_cambiar_clave ? html` <span class="badge badge--sin-dato">Clave temporal</span>` : ''}</td>
   <td>${ROLES[u.rol].nombre}${u.protegido ? html` <span class="muted" title="Administrador principal">${icono('escudo', 14)}</span>` : ''}</td>
+  <td class="ocultar-movil">${u.correo ?? html`<span class="badge badge--sin-dato">Sin correo</span>`}</td>
   <td class="ocultar-movil">${fecha(u.ultimo_acceso)}</td>
   <td class="derecha">${u.protegido || u.id === c.usuario?.id ? '' : html`<a class="btn btn--ghost btn--sm" href="${r(`/usuarios/${u.id}`)}">${icono('editar', 16)}Editar</a>`}</td>
 </tr>`)}</tbody></table></div>
@@ -429,6 +514,7 @@ export function vistaUsuarios(c: Contexto, usuarios: UsuarioPublico[], errores: 
   <form method="post" action="${r('/usuarios')}" class="form" novalidate>
     ${csrfCampo(c)}
     <label class="campo"><span class="label">Usuario o correo</span><input class="input" name="usuario" required maxlength="120" autocomplete="off" value="${previo.usuario ?? ''}">${err('usuario')}</label>
+    <label class="campo"><span class="label">Correo <span class="opcional">(para el código de ingreso)</span></span><input class="input" type="email" name="correo" maxlength="160" autocomplete="off" value="${previo.correo ?? ''}"><span class="ayuda">Si el usuario ya es un correo, se usa ese.</span>${err('correo')}</label>
     <label class="campo"><span class="label">Rol</span><select class="input" name="rol">${(Object.keys(ROLES) as Rol[]).map((rr) => html`<option value="${rr}" ${si(rr === (previo.rol ?? 'visualizador'), 'selected')}>${ROLES[rr].nombre}</option>`)}</select>${err('rol')}</label>
     <label class="campo"><span class="label">Contraseña temporal</span><input class="input" type="password" name="clave" required minlength="10" maxlength="200" autocomplete="new-password">${err('clave')}</label>
     <button class="btn" type="submit">${icono('mas')}Agregar usuario</button>
@@ -445,6 +531,7 @@ export function vistaEditarUsuario(c: Contexto, u: UsuarioPublico, errores: Reco
 <form method="post" action="${r(`/usuarios/${u.id}`)}" class="form">
   ${csrfCampo(c)}
   <label class="campo"><span class="label">Rol</span><select class="input" name="rol">${(Object.keys(ROLES) as Rol[]).map((rr) => html`<option value="${rr}" ${si(rr === u.rol, 'selected')}>${ROLES[rr].nombre}</option>`)}</select>${err('rol')}</label>
+  <label class="campo"><span class="label">Correo (para el código de ingreso)</span><input class="input" type="email" name="correo" maxlength="160" autocomplete="off" value="${u.correo ?? ''}">${err('correo')}</label>
   <label class="check"><input type="checkbox" name="activo" value="1" ${si(u.activo, 'checked')}><span>Cuenta activa</span></label>
   <button class="btn" type="submit">Guardar</button>
 </form></section>
@@ -469,6 +556,61 @@ export function vistaRegistro(c: Contexto, eventos: Evento[], pagina: number, ha
 <tbody>${eventos.map((e) => html`<tr><td class="nowrap">${fecha(e.fecha)}</td><td>${e.usuario ?? 'sistema'}</td><td>${ACCIONES[e.accion] ?? e.accion}</td><td class="detalle ocultar-movil">${e.detalle ?? ''}</td></tr>`)}</tbody>
 </table></div>
 <nav class="paginacion" aria-label="Páginas">${pagina > 1 ? html`<a class="btn btn--outline btn--sm" href="${r(`/registro?pagina=${pagina - 1}`)}">Más recientes</a>` : ''}<span>Página ${pagina}</span>${hayMas ? html`<a class="btn btn--outline btn--sm" href="${r(`/registro?pagina=${pagina + 1}`)}">Anteriores</a>` : ''}</nav>`);
+}
+
+// ── Accesos (solo administradores) ──
+const detalleDe = (e: Evento): Record<string, unknown> => { try { return e.detalle ? JSON.parse(e.detalle) : {}; } catch { return {}; } };
+const ipLugar = (ip: string | null, lugar: string | null) => html`<span class="ip">${ip ?? '—'}</span>${lugar ? html`<span class="tabla__sub">${lugar}</span>` : ''}`;
+const NEGATIVOS = new Set(['sesion.ingreso-fallido', 'sesion.bloqueo', 'acceso.pin-fallido', 'acceso.pin-bloqueo', 'acceso.codigo-fallido', 'acceso.correo-incorrecto', 'acceso.sin-correo']);
+export function vistaAccesos(c: Contexto, d: { sesiones: AC.SesionAbierta[]; equipos: AC.EquipoRecordado[]; eventos: Evento[]; hayMas: boolean; pagina: number; usuario: string; usuarios: string[]; sesionActual: string }) {
+  const filtro = (p: number) => r(`/accesos?${new URLSearchParams({ ...(d.usuario ? { usuario: d.usuario } : {}), pagina: String(p) })}`);
+  return layout(c, 'Accesos', html`
+<p class="muted subtitulo">Quién ingresa al panel, con qué usuario, desde qué IP y equipo. La ubicación es aproximada (según la IP).</p>
+<section class="seccion" aria-labelledby="s-sesiones"><h2 class="seccion__titulo" id="s-sesiones">Sesiones abiertas (${d.sesiones.length})</h2>
+<div class="tabla-caja"><table class="tabla">
+<thead><tr><th scope="col">Usuario</th><th scope="col">IP y lugar</th><th scope="col" class="ocultar-movil">Equipo</th><th scope="col" class="ocultar-movil">Ingresó</th><th scope="col">Última actividad</th><th scope="col"><span class="sr">Acciones</span></th></tr></thead>
+<tbody>${d.sesiones.length ? d.sesiones.map((s) => html`<tr>
+  <td><strong>${s.usuario}</strong><span class="tabla__sub">${ROLES[s.rol as Rol]?.nombre ?? s.rol}</span></td>
+  <td>${ipLugar(s.ip, s.lugar)}</td>
+  <td class="ocultar-movil">${describirEquipo(s.agente) ?? '—'}</td>
+  <td class="ocultar-movil nowrap">${fecha(s.creada_en)}</td>
+  <td class="nowrap">${fecha(s.ultima_actividad)}</td>
+  <td class="derecha">${s.id_hash === d.sesionActual ? html`<span class="badge badge--con-stock">Esta sesión</span>` : html`<form method="post" action="${r(`/accesos/sesiones/${s.id_hash}/cerrar`)}" data-confirmar="¿Cerrar la sesión de ${s.usuario}?">${csrfCampo(c)}<button class="btn btn--outline btn--sm" type="submit">Cerrar sesión</button></form>`}</td>
+</tr>`) : html`<tr><td colspan="6" class="muted">No hay sesiones abiertas.</td></tr>`}</tbody></table></div>
+</section>
+<section class="seccion" aria-labelledby="s-equipos"><h2 class="seccion__titulo" id="s-equipos">Equipos recordados (${d.equipos.length})</h2>
+<p class="muted ayuda">En estos equipos no se pide el PIN ni el código por correo durante 30 días. Si alguno no te suena, olvidalo.</p>
+<div class="tabla-caja"><table class="tabla">
+<thead><tr><th scope="col">Usuario</th><th scope="col">IP y lugar al recordarlo</th><th scope="col" class="ocultar-movil">Equipo</th><th scope="col" class="ocultar-movil">Último uso</th><th scope="col">Vence</th><th scope="col"><span class="sr">Acciones</span></th></tr></thead>
+<tbody>${d.equipos.length ? d.equipos.map((e) => html`<tr>
+  <td><strong>${e.usuario}</strong></td>
+  <td>${ipLugar(e.ip, e.lugar)}</td>
+  <td class="ocultar-movil">${describirEquipo(e.agente) ?? '—'}</td>
+  <td class="ocultar-movil nowrap">${fecha(e.ultimo_uso)}</td>
+  <td class="nowrap">${fecha(e.expira_en)}</td>
+  <td class="derecha"><form method="post" action="${r(`/accesos/equipos/${e.token_hash}/olvidar`)}" data-confirmar="¿Olvidar este equipo de ${e.usuario}? La próxima vez se le pedirán el PIN y el código.">${csrfCampo(c)}<button class="btn btn--outline btn--sm" type="submit">Olvidar</button></form></td>
+</tr>`) : html`<tr><td colspan="6" class="muted">No hay equipos recordados.</td></tr>`}</tbody></table></div>
+</section>
+<section class="seccion" aria-labelledby="s-historial"><h2 class="seccion__titulo" id="s-historial">Historial de accesos</h2>
+<form method="get" action="${r('/accesos')}" class="toolbar">
+  <label class="campo"><span class="sr">Usuario</span><select class="input" name="usuario"><option value="">Todos los usuarios</option>${d.usuarios.map((u) => html`<option value="${u}" ${si(u === d.usuario, 'selected')}>${u}</option>`)}</select></label>
+  <button class="btn btn--outline" type="submit">Filtrar</button>
+</form>
+<div class="tabla-caja"><table class="tabla">
+<thead><tr><th scope="col">Fecha</th><th scope="col">Usuario</th><th scope="col">Evento</th><th scope="col">IP y lugar</th><th scope="col" class="ocultar-movil">Equipo</th></tr></thead>
+<tbody>${d.eventos.length ? d.eventos.map((e) => {
+    const det = detalleDe(e);
+    const nota = [det.motivo, det.verificacion].filter((x) => typeof x === 'string').join(' · ');
+    return html`<tr>
+  <td class="nowrap">${fecha(e.fecha)}</td>
+  <td>${e.usuario ?? html`<span class="muted">—</span>`}</td>
+  <td><span class="${NEGATIVOS.has(e.accion) ? 'evento evento--malo' : 'evento'}">${ACCIONES[e.accion] ?? e.accion}</span>${nota ? html`<span class="tabla__sub">${nota}</span>` : ''}</td>
+  <td>${ipLugar(e.ip, typeof det.lugar === 'string' ? det.lugar : null)}</td>
+  <td class="ocultar-movil">${typeof det.equipo === 'string' ? det.equipo : '—'}</td>
+</tr>`;
+  }) : html`<tr><td colspan="5" class="muted">Sin registros.</td></tr>`}</tbody></table></div>
+<nav class="paginacion" aria-label="Páginas">${d.pagina > 1 ? html`<a class="btn btn--outline btn--sm" href="${filtro(d.pagina - 1)}">Más recientes</a>` : ''}<span>Página ${d.pagina}</span>${d.hayMas ? html`<a class="btn btn--outline btn--sm" href="${filtro(d.pagina + 1)}">Anteriores</a>` : ''}</nav>
+</section>`);
 }
 
 // ── Asistente (Claude vía Vercel AI Gateway; los cambios se aplican solo al confirmarlos) ──

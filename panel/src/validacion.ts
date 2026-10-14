@@ -3,6 +3,7 @@ import type { DatosProducto } from './productos.ts';
 import { esEstado } from './productos.ts';
 import { esPlantilla, PLANTILLAS, type DatosNovedad } from './novedades.ts';
 import { esRol, type Rol } from './seguridad.ts';
+import { BASE } from './config.ts';
 
 const PRECIO = /(\$|U\$S|USD|UYU)\s?\d|precio\s*[:$]|\d+[.,]\d{3}\s*(pesos|\$)/i;
 export type Campos = Record<string, string | File | (string | File)[]>;
@@ -52,13 +53,18 @@ export async function validarProducto(b: Campos, categoriaValida: (id: string) =
 const CORREO = /^[^\s@]{1,64}@[^\s@]{1,190}\.[a-z]{2,}$/i;
 const USUARIO = /^[a-z0-9._-]{3,40}$/;
 /** Usuario o correo electrónico (en minúsculas). */
-export function validarUsuarioNuevo(b: Campos) {
+export const correoValido = (correo: string) => CORREO.test(correo) && correo.length <= 160;
+
+/** `correoObligatorio`: con la verificación por correo activa, toda cuenta necesita un correo (si el usuario ya es un correo, se usa ese). */
+export function validarUsuarioNuevo(b: Campos, correoObligatorio = false) {
   const errores: Record<string, string> = {};
   const usuario = texto(b.usuario, 120).toLowerCase();
   const rol = texto(b.rol, 20);
+  const correo = texto(b.correo, 160).toLowerCase() || (CORREO.test(usuario) ? usuario : null);
   if (!USUARIO.test(usuario) && !CORREO.test(usuario)) errores.usuario = 'Usuario de 3 a 40 caracteres (letras, números, . _ -) o un correo válido.';
   if (!esRol(rol)) errores.rol = 'Elegí un rol.';
-  return { usuario, rol: rol as Rol, errores };
+  if (correo ? !correoValido(correo) : correoObligatorio) errores.correo = 'Escribí un correo válido: ahí le llega el código para ingresar.';
+  return { usuario, rol: rol as Rol, correo, errores };
 }
 
 /** Enlaces permitidos en novedades: rutas del sitio, https:// o WhatsApp. */
@@ -98,5 +104,5 @@ export function validarNovedad(b: Campos, tieneImagen: boolean) {
 /** Solo se aceptan redirecciones internas del panel (evita redirecciones abiertas). */
 export const rutaInterna = (v: unknown, defecto: string) => {
   const t = texto(v, 300);
-  return /^\/panel(\/[a-z0-9/_\-?=&%.]*)?$/i.test(t) ? t : defecto;
+  return t === BASE || (t.startsWith(`${BASE}/`) && /^\/[a-z0-9/_\-?=&%.]*$/i.test(t)) ? t : defecto;
 };

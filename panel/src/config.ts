@@ -3,7 +3,9 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-export const BASE = '/panel';
+/** Dirección del panel: no se enlaza desde el sitio y no es adivinable (antes era /panel).
+ *  Si se cambia, renombrar también la carpeta src/pages/<dirección>/. */
+export const BASE = '/gestion-27wn7gsmvn';
 const RAIZ_PANEL = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
 export interface Config {
@@ -17,6 +19,10 @@ export interface Config {
   maxImagenMB: number;
   /** Consultas al asistente por usuario y por día (hora de Uruguay). */
   asistenteLimiteDia: number;
+  /** Conector para Claude (MCP + OAuth). Apagado por defecto: sus metadatos públicos revelarían la dirección del panel. */
+  conectorClaude: boolean;
+  /** Envío del código de verificación por correo (Resend). Sin clave, la verificación por correo queda en pausa. */
+  correo: { clave: string | null; remitente: string };
 }
 
 export function cargarConfig(env: NodeJS.ProcessEnv = process.env): Config {
@@ -29,6 +35,8 @@ export function cargarConfig(env: NodeJS.ProcessEnv = process.env): Config {
     sesionMaxHoras: Number(env.PANEL_SESION_MAX_HORAS ?? 8),
     maxImagenMB: Number(env.PANEL_MAX_IMAGEN_MB ?? 5),
     asistenteLimiteDia: Number(env.PANEL_ASISTENTE_LIMITE_DIA ?? 80),
+    conectorClaude: env.PANEL_CONECTOR_CLAUDE === '1',
+    correo: { clave: env.RESEND_API_KEY || null, remitente: env.PANEL_CORREO_REMITENTE || 'Panel COPOL <onboarding@resend.dev>' },
   };
 }
 

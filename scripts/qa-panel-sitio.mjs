@@ -17,6 +17,8 @@ import sharp from 'sharp';
 import { chromium } from 'playwright-core';
 import { conectar, una, ejecutar } from '../panel/src/db.ts';
 import { crearUsuario } from '../panel/src/usuarios.ts';
+import { crearPase, guardarPin, pinConfigurado } from '../panel/src/acceso.ts';
+import { BASE as RUTA } from '../panel/src/config.ts';
 
 const BASE = process.argv[2]?.startsWith('http') ? process.argv[2] : 'http://localhost:4321';
 const EDGE = ['C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe', 'C:/Program Files/Microsoft/Edge/Application/msedge.exe'].find((p) => fs.existsSync(p));
@@ -61,16 +63,23 @@ const usuario = `qa-${crypto.randomBytes(3).toString('hex')}`;
 const clave = `Qa-${crypto.randomBytes(12).toString('base64url')}-9`;
 const idQa = await crearUsuario(db, { usuario, rol: 'administrador', clave, debeCambiar: false, creadoPor: 'qa' });
 const limpiar = { productoId: null, estadoOriginal: null, novedad: null, usuarioNuevo: null, codigoNuevo: null };
+// El administrador de prueba necesita un PIN creado: si la base local no tiene, se crea uno temporal y se borra al final.
+const pinTemporal = !(await pinConfigurado(db));
+if (pinTemporal) await guardarPin(db, String(crypto.randomInt(100000, 999999)).replace(/^(\d)\1{5}$/, '583920'));
+// Equipo recordado para el usuario de prueba: así el navegador no pasa por el PIN ni por el código por correo.
+const equipoQa = await crearPase(db, 'equipo', idQa, { ip: null, agente: 'qa', lugar: null });
+const recordarEquipo = (ctx) => ctx.addCookies([{ name: 'copol_equipo', value: equipoQa, url: BASE }]);
 
 const browser = await chromium.launch({ executablePath: EDGE, headless: true, args: ['--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream', `--use-file-for-fake-video-capture=${video}`] });
 const ingresar = async (page, u = usuario, c = clave) => {
-  await page.goto(`${BASE}/panel/ingresar`);
+  await page.goto(`${BASE}${RUTA}/ingresar`);
   await page.fill('input[name="usuario"]', u);
   await page.fill('input[name="clave"]', c);
   await Promise.all([page.waitForURL((url) => !url.pathname.endsWith('/ingresar')), page.click('button[type="submit"]')]);
 };
 try {
   const ctx = await browser.newContext({ viewport: { width: 1366, height: 900 }, permissions: ['camera'] });
+  await recordarEquipo(ctx);
   const panel = await ctx.newPage();
   const sitio = await ctx.newPage();
   await ingresar(panel);
@@ -92,7 +101,7 @@ try {
   });
   verificar((await tarjeta()).estado === 'con-stock', `Sitio · ${elegido.id} figura "Con stock" antes del cambio`);
 
-  await panel.goto(`${BASE}/panel/productos?q=${elegido.codigo}`);
+  await panel.goto(`${BASE}${RUTA}/productos?q=${elegido.codigo}`);
   const fila = panel.locator(`#p-${elegido.id}`);
   await fila.locator('.segmento__op--gris').click();
   await fila.locator('button[type="submit"]').click();
@@ -107,7 +116,7 @@ try {
   await sitio.goto(`${BASE}/hipermercado/bazar/?stock=sin-stock`);
   verificar(await sitio.$eval(`.producto[data-id="${elegido.id}"]`, (el) => !el.hidden && !el.closest('[hidden]')), 'Sitio · aparece en el filtro "Sin stock"');
 
-  await panel.goto(`${BASE}/panel/productos?q=${elegido.codigo}`);
+  await panel.goto(`${BASE}${RUTA}/productos?q=${elegido.codigo}`);
   await fila.locator('.segmento__op--ok').click();
   await fila.locator('button[type="submit"]').click();
   await fila.locator('.stock__nota--ok').waitFor({ timeout: 10_000 });
@@ -117,7 +126,7 @@ try {
   limpiar.productoId = null;
 
   // ── 2. Escaneo con cámara simulada ──
-  await panel.goto(`${BASE}/panel/nuevo`);
+  await panel.goto(`${BASE}${RUTA}/nuevo`);
   verificar((await panel.inputValue('[data-campo-codigo]')) === '', 'Escaneo · el campo empieza vacío y no se pidió la cámara al cargar');
   await panel.click('[data-escanear]');
   await panel.waitForFunction(() => document.querySelector('[data-campo-codigo]').value !== '', null, { timeout: 20_000 }).catch(() => {});
@@ -132,12 +141,13 @@ try {
   verificar(Boolean(await una(db, 'SELECT id FROM productos WHERE codigo = ?', [EAN])), 'Escaneo · el producto se guardó con el código escaneado');
 
   const ctxSin = await browser.newContext({ viewport: { width: 390, height: 844 }, permissions: [] });
+  await recordarEquipo(ctxSin);
   const sinCamara = await ctxSin.newPage();
   await ctxSin.addInitScript(() => {
     navigator.mediaDevices.getUserMedia = () => Promise.reject(new DOMException('Permiso denegado', 'NotAllowedError'));
   });
   await ingresar(sinCamara);
-  await sinCamara.goto(`${BASE}/panel/nuevo`);
+  await sinCamara.goto(`${BASE}${RUTA}/nuevo`);
   await sinCamara.click('[data-escanear]');
   await sinCamara.waitForSelector('[data-escaner-estado]:has-text("No se dio permiso")', { timeout: 5_000 }).catch(() => {});
   const aviso = await sinCamara.textContent('[data-escaner-estado]');
@@ -149,17 +159,18 @@ try {
   const correo = `qa.${crypto.randomBytes(2).toString('hex')}@ejemplo.uy`;
   const temporal = `Temp-${crypto.randomBytes(8).toString('base64url')}-1`;
   limpiar.usuarioNuevo = correo;
-  await panel.goto(`${BASE}/panel/usuarios`);
-  verificar((await panel.$$('form[action="/panel/usuarios"] input:not([type=hidden]), form[action="/panel/usuarios"] select')).length === 3, 'Usuarios · el alta tiene solo 3 campos (usuario o correo, rol, contraseña temporal)');
-  await panel.fill('form[action="/panel/usuarios"] input[name="usuario"]', correo);
-  await panel.selectOption('form[action="/panel/usuarios"] select[name="rol"]', 'editor');
-  await panel.fill('form[action="/panel/usuarios"] input[name="clave"]', temporal);
-  await Promise.all([panel.waitForURL(/aviso=usuario-creado/), panel.click('form[action="/panel/usuarios"] button[type="submit"]')]);
+  await panel.goto(`${BASE}${RUTA}/usuarios`);
+  verificar((await panel.$$(`form[action="${RUTA}/usuarios"] input:not([type=hidden]), form[action="${RUTA}/usuarios"] select`)).length === 4, 'Usuarios · el alta tiene 4 campos (usuario o correo, correo, rol, contraseña temporal)');
+  await panel.fill(`form[action="${RUTA}/usuarios"] input[name="usuario"]`, correo);
+  await panel.selectOption(`form[action="${RUTA}/usuarios"] select[name="rol"]`, 'editor');
+  await panel.fill(`form[action="${RUTA}/usuarios"] input[name="clave"]`, temporal);
+  await Promise.all([panel.waitForURL(/aviso=usuario-creado/), panel.click(`form[action="${RUTA}/usuarios"] button[type="submit"]`)]);
   verificar(await panel.isVisible(`td:has-text("${correo}")`), 'Usuarios · el nuevo usuario aparece en la lista');
   const ctxU = await browser.newContext();
+  await recordarEquipo(ctxU);
   const pu = await ctxU.newPage();
   await ingresar(pu, correo, temporal);
-  verificar(pu.url().endsWith('/panel/perfil/clave'), 'Usuarios · con contraseña temporal pide elegir una nueva');
+  verificar(pu.url().endsWith(`${RUTA}/perfil/clave`), 'Usuarios · con contraseña temporal pide elegir una nueva');
   const propia = `Propia-${crypto.randomBytes(8).toString('base64url')}-2`;
   await pu.fill('input[name="actual"]', temporal);
   await pu.fill('input[name="nueva"]', propia);
@@ -172,7 +183,7 @@ try {
 
   // ── 4. Novedades ──
   const titulo = `Novedad QA ${crypto.randomBytes(2).toString('hex')}`;
-  await panel.goto(`${BASE}/panel/novedades/nueva`);
+  await panel.goto(`${BASE}${RUTA}/novedades/nueva`);
   await panel.fill('input[name="titulo"]', titulo);
   await panel.fill('textarea[name="texto"]', 'Texto de prueba de la novedad.');
   await panel.check('input[name="plantilla"][value="imagen-izquierda"]', { force: true });
@@ -190,7 +201,7 @@ try {
     return sitio.$$eval('.nov h3', (hs) => hs.map((h) => h.textContent.trim()));
   };
   verificar(!(await enInicio()).includes(titulo), 'Novedades · el borrador no aparece en Inicio');
-  await panel.goto(`${BASE}/panel/novedades`);
+  await panel.goto(`${BASE}${RUTA}/novedades`);
   await panel.locator('li.novedad', { hasText: titulo }).locator('button:has-text("Publicar")').click();
   await panel.waitForURL(/aviso=novedad-publicada/);
   const titulos = await enInicio();
@@ -199,7 +210,7 @@ try {
   const resImg = src ? await sitio.request.get(new URL(src, BASE).href) : null;
   const imgOk = resImg?.ok() && resImg.headers()['content-type'] === 'image/webp';
   verificar(imgOk, 'Novedades · su imagen se sirve desde el almacenamiento configurado');
-  await panel.goto(`${BASE}/panel/novedades`);
+  await panel.goto(`${BASE}${RUTA}/novedades`);
   await panel.locator('li.novedad', { hasText: titulo }).locator('button:has-text("Despublicar")').click();
   await panel.waitForURL(/aviso=novedad-despublicada/);
   verificar(!(await enInicio()).includes(titulo), 'Novedades · despublicada, desaparece de Inicio');
@@ -211,6 +222,8 @@ try {
   if (limpiar.novedad) await ejecutar(db, 'DELETE FROM novedades WHERE id = ?', [limpiar.novedad]);
   if (limpiar.usuarioNuevo) await ejecutar(db, 'DELETE FROM usuarios WHERE usuario = ?', [limpiar.usuarioNuevo]);
   await ejecutar(db, 'DELETE FROM sesiones WHERE usuario_id = ?', [idQa]);
+  await ejecutar(db, 'DELETE FROM pases WHERE usuario_id = ?', [idQa]);
+  if (pinTemporal) await ejecutar(db, "DELETE FROM ajustes WHERE clave = 'pin_hash'");
   await ejecutar(db, 'DELETE FROM usuarios WHERE id = ?', [idQa]);
   db.close();
   fs.rmSync(tmp, { recursive: true, force: true });

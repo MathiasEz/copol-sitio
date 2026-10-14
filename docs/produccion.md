@@ -12,7 +12,7 @@ El sitio está listo para publicarse en **Vercel** (pasos en el [README](../READ
 | P4 | **Redirecciones 301** | Listas | — | Las de `astro.config.mjs` (`/locales`, `/bazar`, `/como-hacerte-socio`, etc.) se publican en Vercel como redirecciones permanentes del servidor. |
 | P5 | **Licencia web de Articulat CF** | Falta | Cooperativa | Sin ella se mantiene la fuente provisoria Figtree. |
 | P6 | **Política de privacidad** | Falta | Cooperativa (asesoría legal) | El formulario recoge datos personales (Ley 18.331 de Protección de Datos Personales). Se necesita el texto y una página para enlazarlo desde el formulario. |
-| P8 | **Panel de stock en producción** | Listo; se publica con el sitio en `/panel` | Cooperativa | Cargar los datos en Turso, crear el administrador principal y programar respaldos (`npm run panel:respaldo`) guardados fuera del equipo. Ver [panel-stock.md](panel-stock.md). |
+| P8 | **Panel de stock en producción** | Listo; se publica con el sitio en una dirección no adivinable (ver `BASE` en `panel/src/config.ts`) | Cooperativa | Cargar los datos en Turso, crear el administrador principal y programar respaldos (`npm run panel:respaldo`) guardados fuera del equipo. Ver [panel-stock.md](panel-stock.md). |
 | P7 | **Confirmar la app Android** | Pendiente | Cooperativa | Confirmar si el APK `copol.com.uy/CopolSocios/Copol.apk` (sin cambios desde 2021) es el vigente o si hay un enlace a Google Play. Se configura en `ACCESO.appAndroid` (`src/data/confirmado/sitio.ts`). |
 
 ## 2. Opciones para el formulario (P1)
@@ -47,5 +47,5 @@ Pasos: (1) elegir opción; (2) crear `.env` con `PUBLIC_FORM_ENDPOINT=…` o def
 - [ ] Odoo: decidir si se da de baja o queda como backend.
 - [ ] Variables `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN` y `BLOB_READ_WRITE_TOKEN` cargadas en Vercel (Production y Preview).
 - [ ] Datos cargados en Turso y administrador principal creado, con contraseña definitiva.
-- [ ] Prueba en la URL de Vercel: cambio de stock en `/panel` visible en el Bazar, escaneo con cámara y una novedad publicada.
+- [ ] Prueba en la URL de Vercel: cambio de stock en el panel visible en el Bazar, escaneo con cámara y una novedad publicada.
 - [ ] Respaldo programado y una restauración de prueba hecha.

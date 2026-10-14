@@ -17,7 +17,7 @@ El asistente del panel (sección **Asistente**) usa **Gemini 2.5 Flash** (Google
 
 ## Límites que pone el sistema (no dependen del modelo)
 
-- Herramientas: leer páginas públicas (nunca `/panel`), buscar productos, resumen de stock, últimos cambios (solo stock y productos para quien no es administrador), novedades y —solo con permiso de stock— **proponer** cambios. No existe ninguna herramienta para precios, imágenes, usuarios ni código.
+- Herramientas: leer páginas públicas (nunca el panel), buscar productos, resumen de stock, últimos cambios (solo stock y productos para quien no es administrador), novedades y —solo con permiso de stock— **proponer** cambios. No existe ninguna herramienta para precios, imágenes, usuarios ni código.
 - Las propuestas se validan con las mismas reglas que los formularios (sin precios, categorías existentes, códigos únicos), son de un solo uso, vencen a los 15 minutos y quedan en el Registro.
 - Temperatura baja (0,2): respuestas más previsibles y apegadas a los datos.
 - 80 consultas por usuario y por día; cada consulta queda en el Registro.

@@ -7,7 +7,7 @@
 //   npm run panel:respaldo
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { cargarConfig } from '../src/config.ts';
+import { BASE, cargarConfig } from '../src/config.ts';
 import { conectar, todas } from '../src/db.ts';
 
 const TABLAS = ['rubros', 'categorias', 'productos', 'novedades', 'usuarios', 'auditoria'] as const;
@@ -24,14 +24,14 @@ await fs.writeFile(path.join(destino, 'datos.json'), JSON.stringify({ exportado:
 // Imágenes subidas desde el panel (las importadas ya están en el repositorio del sitio).
 const urls = new Set<string>();
 for (const f of [...(datos.productos as { imagen: string | null }[]), ...(datos.novedades as { imagen: string | null }[])]) {
-  if (f.imagen && /^https?:\/\/|^\/panel\/media\//.test(f.imagen)) for (const a of [400, 800, 1600]) urls.add(f.imagen.replace(/-\d+\.webp$/, `-${a}.webp`));
+  if (f.imagen && (/^https?:\/\//.test(f.imagen) || f.imagen.startsWith(`${BASE}/media/`))) for (const a of [400, 800, 1600]) urls.add(f.imagen.replace(/-\d+\.webp$/, `-${a}.webp`));
 }
 let copiadas = 0;
 for (const url of urls) {
   const nombre = url.split('/').slice(-2).join('__');
   try {
-    if (url.startsWith('/panel/media/')) {
-      await fs.copyFile(path.join(config.dirImagenes, url.slice('/panel/media/'.length)), path.join(destino, 'imagenes', nombre));
+    if (url.startsWith(`${BASE}/media/`)) {
+      await fs.copyFile(path.join(config.dirImagenes, url.slice(`${BASE}/media/`.length)), path.join(destino, 'imagenes', nombre));
     } else {
       const r = await fetch(url);
       if (!r.ok) continue;

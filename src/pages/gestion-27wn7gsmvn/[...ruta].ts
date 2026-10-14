@@ -1,4 +1,5 @@
-// Monta el panel de stock (panel/src/app.ts) en /panel. Se ejecuta en el servidor en cada petición
+// Monta el panel de stock (panel/src/app.ts) en BASE (panel/src/config.ts): el nombre de esta carpeta
+// tiene que coincidir con BASE. Se ejecuta en el servidor en cada petición
 // (en Vercel, como función); nunca se genera como página estática ni se enlaza desde el sitio.
 import type { APIRoute } from 'astro';
 import { crearApp } from '../../../panel/src/app.ts';
