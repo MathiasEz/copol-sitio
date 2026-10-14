@@ -51,7 +51,7 @@ Piezas propias de ≈ 2000 × 521 px. Son los recursos principales de Inicio: no
 | Pinecoop | `src/assets/banners/pinecoop.webp` | `assets-source/banners/pinecoop.webp` (104 KB) | `/beneficios/servicios-sociales/pinecoop/` | Descripción, comodidades, Pinecoop Chuy (próximamente) |
 | Hacete socio | `src/assets/banners/hacete-socio.webp` | `assets-source/banners/hacete-socio.webp` (70 KB) | `/hacete-socio/` | Beneficios de ser socio y contacto |
 
-**Legibilidad en móvil:** en un teléfono de 375 px el banner mide 375 × 98 px (a todo el ancho). Los títulos grandes (PINECOOP, BAZAR, HACETE SOCIO, SERVICIOS SOCIALES) se leen; los textos chicos del banner de Bazar ("Todo para ti y tu hogar" y "Cuotas sin recargo") quedan de unos 7 px y **no se leen**. Se pidió a la cooperativa una versión para móvil (sugerido 1080 × 1080 o 1080 × 1350); el componente ya acepta `movil={…}` y la usa por debajo de 640 px. Mientras tanto el texto del banner está en su texto alternativo.
+**Versiones para celular (entregadas el 14/10/2026):** `bazar-movil`, `servicios-sociales-movil`, `pinecoop-movil` y `hacete-socio-movil` (originales PNG de 5625 × 4500, proporción 5:4). En el sitio: `src/assets/banners/<nombre>-movil.webp` de 1600 × 1280 (76–155 KB), del que Astro genera AVIF y WebP de 480, 768 y 1080 px; copia maestra de 2400 × 1920 en `assets-source/banners/`. `BannerSeccion` las usa por debajo de 640 px de ancho (en un teléfono de 390 px el banner mide 390 × 312, a todo el ancho) y la versión ancha (2000 × 521) por encima. Con esto los textos chicos ("Todo para ti y tu hogar", "Cuotas sin recargo") se leen en el teléfono.
 
 ## Fotos de ciudades para Locales (Imágenes Ciudades.zip, entregado el 14/10/2026)
 

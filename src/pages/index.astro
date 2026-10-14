@@ -22,6 +22,11 @@ import bannerBazar from '../assets/banners/bazar.webp';
 import bannerServicios from '../assets/banners/servicios-sociales.webp';
 import bannerPinecoop from '../assets/banners/pinecoop.webp';
 import bannerSocio from '../assets/banners/hacete-socio.webp';
+// Versiones para celular (5:4), entregadas por la cooperativa: se usan por debajo de 640 px.
+import bannerBazarMovil from '../assets/banners/bazar-movil.webp';
+import bannerServiciosMovil from '../assets/banners/servicios-sociales-movil.webp';
+import bannerPinecoopMovil from '../assets/banners/pinecoop-movil.webp';
+import bannerSocioMovil from '../assets/banners/hacete-socio-movil.webp';
 
 const pinecoop = SERVICIOS.find((s) => s.slug === 'pinecoop')!;
 const otrosServicios = SERVICIOS.filter((s) => s.slug !== 'pinecoop');
@@ -60,7 +65,7 @@ const accesos = [
 
   <!-- ── Bazar: banner + estante de productos ── -->
   <section class="contenedor bloque" aria-labelledby="bazar-titulo">
-    <BannerSeccion src={bannerBazar} href="/hipermercado/bazar/" alt="Bazar: todo para ti y tu hogar. Hasta 15 cuotas sin recargo. Ver el catálogo del Bazar." />
+    <BannerSeccion src={bannerBazar} movil={bannerBazarMovil} href="/hipermercado/bazar/" alt="Bazar: todo para ti y tu hogar. Hasta 15 cuotas sin recargo. Ver el catálogo del Bazar." />
     <div class="bloque__cabecera">
       <div>
         <span class="eyebrow">Hipermercado · Bazar</span>
@@ -76,7 +81,7 @@ const accesos = [
   <!-- ── Servicios sociales: banner + servicios ── -->
   <section class="bloque bloque--suave" aria-labelledby="servicios-titulo">
     <div class="contenedor bloque__interior">
-      <BannerSeccion src={bannerServicios} href="/beneficios/servicios-sociales/" alt="COPOL Servicios sociales. Ver todos los servicios sociales." />
+      <BannerSeccion src={bannerServicios} movil={bannerServiciosMovil} href="/beneficios/servicios-sociales/" alt="COPOL Servicios sociales. Ver todos los servicios sociales." />
       <div class="bloque__cabecera">
         <div>
           <span class="eyebrow">Beneficios</span>
@@ -100,7 +105,7 @@ const accesos = [
 
   <!-- ── Pinecoop: banner + detalle ── -->
   <section class="contenedor bloque" aria-labelledby="pinecoop-titulo">
-    <BannerSeccion src={bannerPinecoop} href="/beneficios/servicios-sociales/pinecoop/" alt="Pinecoop: piscina, reposeras y sombrillas del Parque Vacacional. Ver más sobre Pinecoop." />
+    <BannerSeccion src={bannerPinecoop} movil={bannerPinecoopMovil} href="/beneficios/servicios-sociales/pinecoop/" alt="Pinecoop: piscina, reposeras y sombrillas del Parque Vacacional. Ver más sobre Pinecoop." />
     <div class="pinecoop">
       <div class="pinecoop__texto">
         <span class="eyebrow">Servicios sociales · Turismo</span>
@@ -129,7 +134,7 @@ const accesos = [
   <!-- ── Hacete socio: banner + beneficios ── -->
   <section class="bloque bloque--suave bloque--final" aria-labelledby="socio-titulo">
     <div class="contenedor bloque__interior">
-      <BannerSeccion src={bannerSocio} href="/hacete-socio/" alt="Hacete socio de COPOL. Ver cómo hacerte socio." />
+      <BannerSeccion src={bannerSocio} movil={bannerSocioMovil} href="/hacete-socio/" alt="Hacete socio de COPOL. Ver cómo hacerte socio." />
       <div class="bloque__cabecera">
         <div>
           <span class="eyebrow">Hacete socio</span>
