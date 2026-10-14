@@ -271,6 +271,19 @@ select.input { padding-right: 28px; }
 .asistente__modelo .input { min-height: 34px; padding-block: 4px; font-size: .875rem; }
 .asistente__nota { font-size: .8125rem; }
 .asistente__error[hidden] { display: none; }
+.propuesta { display: grid; gap: 10px; max-width: min(100%, 680px); padding: 14px 16px; border: 1px solid var(--ok-borde); border-left: 4px solid var(--primary); border-radius: var(--radius); background: var(--card); }
+.propuesta__titulo { display: flex; gap: 8px; align-items: center; font-size: .9375rem; }
+.propuesta__lista { margin: 0; padding-left: 18px; display: grid; gap: 8px; }
+.propuesta__lista ul { margin: 4px 0 0; padding-left: 18px; display: grid; gap: 2px; font-size: .875rem; }
+.propuesta__antes { color: var(--muted-foreground); text-decoration: line-through; }
+.propuesta__errores { font-size: .875rem; color: var(--aviso); background: var(--aviso-bg); border-radius: var(--radius-sm); padding: 8px 12px; }
+.propuesta__errores ul { margin: 4px 0 0; padding-left: 18px; }
+.propuesta__acciones { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
+.propuesta__acciones form { margin: 0; }
+.propuesta__nota { font-size: .75rem; }
+.propuesta--aplicada { border-left-color: var(--ok); }
+.propuesta--cancelada, .propuesta--reemplazada { opacity: .6; border-left-color: var(--gris-borde); }
+.propuesta--reemplazada .propuesta__acciones, .propuesta--reemplazada .propuesta__nota { display: none; }
 @media (max-width: 479px) { .asistente__modelo { margin-right: 0; width: 100%; } .asistente__acciones .btn[type="submit"] { flex: 1; } }
 
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; } }

@@ -344,7 +344,8 @@ describe('asistente', () => {
       return respuesta({ content: [{ type: 'text', text: `Resultado: ${JSON.stringify(ultimo.content)}` }], stop_reason: 'end_turn', usage: { input_tokens: 50, output_tokens: 20 } });
     }
     const q = ultimo.content;
-    const herramienta = /stock/.test(q) ? { name: 'buscar_productos', input: { texto: 'parlante' } }
+    const herramienta = q.startsWith('proponer:') ? { name: 'proponer_cambios', input: { cambios: JSON.parse(q.slice('proponer:'.length)) } }
+      : /stock/.test(q) ? { name: 'buscar_productos', input: { texto: 'parlante' } }
       : /panel/.test(q) ? { name: 'leer_pagina', input: { ruta: '/panel/usuarios' } }
       : /contacto/.test(q) ? { name: 'leer_pagina', input: { ruta: '/contacto/' } }
       : null;
@@ -373,7 +374,7 @@ describe('asistente', () => {
     await n.ingresar('principal');
     const html = await (await n.pedir('/panel/asistente')).text();
     assert.match(html, /name="pregunta"/);
-    assert.match(html, /Solo consulto: no cambio nada/);
+    assert.match(html, /nada se aplica hasta que lo confirmes/);
   });
   it('consulta el inventario con herramientas de solo lectura y deja registro', async () => {
     const n = new Navegador();
@@ -389,7 +390,8 @@ describe('asistente', () => {
     const gateway = pedidos.filter((p) => p.url.startsWith('https://ai-gateway.vercel.sh/'));
     assert.equal(gateway.at(-1)!.cuerpo!.model, 'anthropic/claude-haiku-5.5');
     const herramientas = (gateway.at(-1)!.cuerpo!.tools as { name: string }[]).map((t) => t.name);
-    assert.deepEqual(herramientas.sort(), ['buscar_productos', 'leer_pagina', 'listar_novedades', 'resumen_stock', 'ultimos_cambios']);
+    assert.deepEqual(herramientas.sort(), ['buscar_productos', 'leer_pagina', 'listar_novedades', 'proponer_cambios', 'resumen_stock', 'ultimos_cambios']);
+    assert.equal(datos.propuesta, null);
     const ev = await fila<{ detalle: string; usuario: string }>("SELECT detalle, usuario FROM auditoria WHERE accion = 'asistente.consulta' ORDER BY id DESC LIMIT 1");
     assert.equal(ev?.usuario, 'principal');
     assert.match(ev!.detalle, /buscar_productos/);
@@ -418,6 +420,96 @@ describe('asistente', () => {
     assert.equal(r.status, 429);
     assert.match((await r.json()).error, /límite/);
   });
+  describe('cambios propuestos', () => {
+    const estufa = () => fila<{ stock_estado: string; stock_cantidad: number | null; nombre: string; version: number }>("SELECT stock_estado, stock_cantidad, nombre, version FROM productos WHERE id = 'estufa-2'");
+    const proponer = async (n: Navegador, cambios: unknown[]) => (await preguntar(n, `proponer:${JSON.stringify(cambios)}`)).json();
+    const decidir = (n: Navegador, id: string, accion: 'confirmar' | 'cancelar') => n.post(`/panel/asistente/propuestas/${id}`, { accion }, json);
+    const admin = async (usuario = 'principal') => {
+      await db.execute("DELETE FROM auditoria WHERE accion = 'asistente.consulta'"); // límite diario de la prueba (5)
+      const n = new Navegador();
+      await n.ingresar(usuario);
+      await n.pedir('/panel/asistente');
+      return n;
+    };
+
+    it('propone sin aplicar y aplica solo al confirmar, una sola vez', async () => {
+      const n = await admin();
+      const antes = await estufa();
+      const r = await proponer(n, [{ codigo: '100002', estado: 'con-stock', cantidad: 3 }]);
+      assert.equal(r.ok, true);
+      assert.equal(r.propuesta.items.length, 1);
+      assert.deepEqual(r.propuesta.items[0].cambios.map((c: { campo: string }) => c.campo).sort(), ['Cantidad', 'Stock']);
+      assert.match(r.respuesta, /PENDIENTE DE CONFIRMACIÓN/);
+      assert.deepEqual(await estufa(), antes, 'proponer no modifica nada');
+      const ok = await decidir(n, r.propuesta.id, 'confirmar');
+      assert.equal(ok.status, 200);
+      assert.match((await ok.json()).mensaje, /1 de 1 cambio aplicado/);
+      const despues = await estufa();
+      assert.equal(despues!.stock_estado, 'con-stock');
+      assert.equal(despues!.stock_cantidad, 3);
+      const ev = await fila<{ accion: string; detalle: string; usuario: string }>("SELECT accion, detalle, usuario FROM auditoria WHERE entidad_id = 'estufa-2' ORDER BY id DESC LIMIT 1");
+      assert.equal(ev!.accion, 'stock.cambio');
+      assert.equal(ev!.usuario, 'principal');
+      assert.match(ev!.detalle, /"via":"asistente"/);
+      assert.equal((await decidir(n, r.propuesta.id, 'confirmar')).status, 409, 'no se aplica dos veces');
+    });
+    it('edita datos del producto y rechaza lo inválido', async () => {
+      const n = await admin();
+      const r = await proponer(n, [
+        { codigo: '100002', nombre: 'ESTUFA PRUEBA 2000W', marca: 'Marca X' },
+        { codigo: '999999', estado: 'sin-stock' },
+        { codigo: '100001', descripcion: 'Oferta a $ 1990' },
+        { codigo: '100001', categoria: 'no-existe' },
+      ]);
+      assert.equal(r.propuesta.items.length, 1);
+      assert.equal(r.propuesta.errores.length, 3);
+      assert.ok(r.propuesta.errores.some((e: string) => /999999/.test(e)));
+      assert.ok(r.propuesta.errores.some((e: string) => /precio/.test(e)));
+      assert.equal((await decidir(n, r.propuesta.id, 'confirmar')).status, 200);
+      assert.equal((await estufa())!.nombre, 'ESTUFA PRUEBA 2000W');
+      const ev = await fila<{ accion: string }>("SELECT accion FROM auditoria WHERE entidad_id = 'estufa-2' ORDER BY id DESC LIMIT 1");
+      assert.equal(ev!.accion, 'producto.edicion');
+      const nada = await proponer(n, [{ codigo: '999999', estado: 'sin-stock' }]);
+      assert.equal(nada.propuesta, null);
+    });
+    it('cancelar, vencer, conflicto y propuestas ajenas no cambian nada', async () => {
+      const n = await admin();
+      const otro = await admin('admin2');
+      // Cancelada
+      const a = await proponer(n, [{ codigo: '100002', estado: 'sin-stock' }]);
+      assert.equal((await decidir(n, a.propuesta.id, 'cancelar')).status, 200);
+      assert.equal((await decidir(n, a.propuesta.id, 'confirmar')).status, 409);
+      assert.equal((await estufa())!.stock_estado, 'con-stock');
+      // Ajena: otro administrador no puede confirmarla
+      const b = await proponer(n, [{ codigo: '100002', estado: 'sin-stock' }]);
+      assert.equal((await decidir(otro, b.propuesta.id, 'confirmar')).status, 404);
+      // Vencida
+      await db.execute({ sql: 'UPDATE propuestas SET expira_en = ? WHERE id = ?', args: [new Date(Date.now() - 1000).toISOString(), b.propuesta.id] });
+      assert.equal((await decidir(n, b.propuesta.id, 'confirmar')).status, 409);
+      // Conflicto: el producto cambió después de la propuesta
+      const c = await proponer(n, [{ codigo: '100002', estado: 'sin-stock' }]);
+      await db.execute("UPDATE productos SET version = version + 1 WHERE id = 'estufa-2'");
+      const res = await (await decidir(n, c.propuesta.id, 'confirmar')).json();
+      assert.equal(res.resultados[0].ok, false);
+      assert.match(res.mensaje, /0 de 1/);
+      assert.equal((await estufa())!.stock_estado, 'con-stock');
+      // Una propuesta nueva reemplaza a la anterior pendiente
+      const d1 = await proponer(n, [{ codigo: '100002', estado: 'sin-stock' }]);
+      const d2 = await proponer(n, [{ codigo: '100002', cantidad: 7 }]);
+      assert.equal((await decidir(n, d1.propuesta.id, 'confirmar')).status, 409);
+      assert.equal((await decidir(n, d2.propuesta.id, 'confirmar')).status, 200);
+      assert.equal((await estufa())!.stock_cantidad, 7);
+    });
+    it('sin JavaScript muestra la tarjeta con Confirmar y Cancelar', async () => {
+      const n = await admin();
+      const r = await n.post('/panel/asistente', { pregunta: `proponer:${JSON.stringify([{ codigo: '100001', estado: 'sin-dato' }])}`, modelo: 'rapido', historial: '[]' });
+      const html = await r.text();
+      assert.match(html, /Cambios para confirmar \(1\)/);
+      assert.match(html, /name="accion" value="confirmar"/);
+      assert.match(html, /name="accion" value="cancelar"/);
+    });
+  });
+
   it('limpia el historial y el HTML de las páginas', () => {
     assert.deepEqual(limpiarHistorial([{ rol: 'asistente', texto: 'x' }, { rol: 'sistema', texto: 'y' }, { rol: 'usuario', texto: ' hola ' }]), [{ rol: 'usuario', texto: 'hola' }]);
     assert.deepEqual(limpiarHistorial('nada'), []);

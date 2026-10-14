@@ -29,13 +29,14 @@ Panel (/panel)  ──escribe──►  Base de datos (Turso / libSQL)  ◄─�
 | **Usuarios** | Alta con usuario o correo, rol y contraseña temporal; cambio de rol, desactivación, restablecimiento de contraseña y baja. |
 | **Mi perfil** | Cada persona cambia su propia contraseña. |
 | **Registro** | Ingresos, cambios de stock (antes → después), productos, imágenes, novedades y usuarios, con fecha, usuario e IP. |
-| **Asistente** | Chat con Claude para preguntas sobre la web pública, el inventario y el uso del panel. Solo administradores y **solo lectura**. |
+| **Asistente** | Chat con Claude para preguntas sobre la web pública, el inventario y el uso del panel, y para **preparar cambios de productos** que se aplican solo al confirmarlos. Solo administradores. |
 
 ### Asistente
 
 - **Modelo:** Claude Haiku por defecto ("Rápido") o Claude Sonnet ("Detallado"), a través de **Vercel AI Gateway** (`panel/src/asistente.ts`). En Vercel se autentica con el token OIDC del propio despliegue: no hay claves en el código ni en el repositorio.
-- **Qué puede consultar:** el texto visible de las páginas públicas (nunca `/panel`), el inventario (búsqueda y resumen por categoría), los últimos cambios del registro (sin IP) y las novedades. No tiene ninguna herramienta que modifique datos.
-- **Límites:** 80 consultas por administrador y por día (`PANEL_ASISTENTE_LIMITE_DIA`), historial de hasta 12 mensajes y respuestas de hasta ~1500 tokens. Cada consulta queda en el Registro (modelo, pregunta recortada, herramientas usadas y tokens).
+- **Qué puede consultar:** el texto visible de las páginas públicas (nunca `/panel`), el inventario (búsqueda y resumen por categoría), los últimos cambios del registro (sin IP) y las novedades.
+- **Cambios de productos (con confirmación):** por ejemplo "poné sin stock el 436249 y 5 unidades al 460460". El asistente identifica cada producto por su código interno COPOL y arma una **propuesta** (`panel/src/propuestas.ts`): stock, cantidad, nombre, marca, descripción, categoría o código. La tarjeta muestra "antes → después" y lo que no se pudo incluir; **nada se guarda hasta tocar "Confirmar cambios"**. Se valida con las mismas reglas que el formulario (sin precios, categorías existentes, códigos únicos), se aplica con control de versión (si alguien cambió el producto mientras tanto, ese cambio no se aplica), cada propuesta sirve una sola vez, es solo del usuario que la pidió y vence a los 15 minutos. En el Registro, los cambios figuran como siempre, con `"via": "asistente"`. No puede tocar imágenes, novedades, usuarios ni textos de páginas.
+- **Límites:** 80 consultas por administrador y por día (`PANEL_ASISTENTE_LIMITE_DIA`), historial de hasta 12 mensajes, hasta 50 productos por propuesta y respuestas de hasta ~4000 tokens. Cada consulta queda en el Registro (modelo, pregunta recortada, herramientas usadas y tokens).
 - **Costo:** con Haiku, una consulta cuesta alrededor de US$ 0,001–0,003; Vercel AI Gateway incluye un crédito gratuito mensual. **Requisito:** AI Gateway se habilita registrando una tarjeta en la cuenta de Vercel (Vercel → AI Gateway); hasta entonces el asistente muestra ese aviso.
 - La conversación se guarda solo en la pestaña del navegador (sessionStorage) y se borra con "Nueva conversación".
 

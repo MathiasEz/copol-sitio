@@ -81,6 +81,13 @@ const MIGRACIONES: string[] = [
   );
   CREATE INDEX novedades_orden ON novedades(publicado, orden)
   `,
+  /* 3 · cambios propuestos por el asistente (se aplican solo al confirmarlos) */ `
+  CREATE TABLE propuestas (
+    id TEXT PRIMARY KEY, usuario_id INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE, creada_en TEXT NOT NULL, expira_en TEXT NOT NULL,
+    estado TEXT NOT NULL CHECK (estado IN ('pendiente', 'aplicada', 'cancelada')), items TEXT NOT NULL, resultado TEXT
+  );
+  CREATE INDEX propuestas_usuario ON propuestas(usuario_id, estado)
+  `,
 ];
 
 /** Versión del esquema en una tabla propia (PRAGMA user_version no se conserva igual en todos los destinos). */

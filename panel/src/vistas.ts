@@ -424,7 +424,26 @@ export function vistaRegistro(c: Contexto, eventos: Evento[], pagina: number, ha
 <nav class="paginacion" aria-label="Páginas">${pagina > 1 ? html`<a class="btn btn--outline btn--sm" href="${r(`/registro?pagina=${pagina - 1}`)}">Más recientes</a>` : ''}<span>Página ${pagina}</span>${hayMas ? html`<a class="btn btn--outline btn--sm" href="${r(`/registro?pagina=${pagina + 1}`)}">Anteriores</a>` : ''}</nav>`);
 }
 
-// ── Asistente (Claude vía Vercel AI Gateway; solo lectura) ──
+// ── Asistente (Claude vía Vercel AI Gateway; los cambios se aplican solo al confirmarlos) ──
+export interface PropuestaVisible {
+  id: string;
+  expira: string;
+  errores: string[];
+  items: { codigo: string | null; nombre: string; cambios: { campo: string; antes: string; despues: string }[] }[];
+}
+/** Tarjeta "antes → después" con Confirmar y Cancelar (el JavaScript del asistente arma la misma tarjeta). */
+const tarjetaPropuesta = (c: Contexto, p: PropuestaVisible) => html`<section class="propuesta" data-propuesta aria-label="Cambios para confirmar">
+  <h2 class="propuesta__titulo">${icono('editar', 16)}Cambios para confirmar (${p.items.length})</h2>
+  <ul class="propuesta__lista">${p.items.map((i) => html`<li><strong>${i.nombre}</strong> <span class="muted">· ${etiquetaCodigo} ${i.codigo ?? '—'}</span>
+    <ul>${i.cambios.map((x) => html`<li>${x.campo}: <span class="propuesta__antes">${x.antes}</span> → <strong>${x.despues}</strong></li>`)}</ul></li>`)}</ul>
+  ${p.errores.length ? html`<div class="propuesta__errores"><strong>No incluidos:</strong><ul>${p.errores.map((e) => html`<li>${e}</li>`)}</ul></div>` : ''}
+  <div class="propuesta__acciones">
+    <form method="post" action="${r(`/asistente/propuestas/${p.id}`)}">${csrfCampo(c)}<input type="hidden" name="accion" value="cancelar"><button class="btn btn--ghost btn--sm" type="submit">Cancelar</button></form>
+    <form method="post" action="${r(`/asistente/propuestas/${p.id}`)}">${csrfCampo(c)}<input type="hidden" name="accion" value="confirmar"><button class="btn btn--sm" type="submit">${icono('check', 16)}Confirmar cambios</button></form>
+  </div>
+  <p class="muted propuesta__nota">Nada se modifica hasta que confirmes. La propuesta vence en 15 minutos.</p>
+</section>`;
+
 export interface DatosAsistente {
   disponible: boolean;
   restantes: number;
@@ -432,13 +451,14 @@ export interface DatosAsistente {
   modelo: string;
   /** Conversación ya respondida (solo sin JavaScript: el formulario se envía de forma normal). */
   conversacion: { rol: 'usuario' | 'asistente'; texto: string }[];
+  propuesta?: PropuestaVisible | null;
   error?: string | null;
 }
 const SUGERENCIAS = [
   '¿Cuántos productos sin stock hay en Celulares?',
-  '¿Qué horarios y teléfono tiene la Casa Central?',
   '¿Qué cambios de stock se hicieron hoy?',
-  '¿Qué dice la página de Historia sobre 1957?',
+  '¿Qué horarios y teléfono tiene la Casa Central?',
+  'Poné sin stock el producto con código …',
 ];
 export function vistaAsistente(c: Contexto, d: DatosAsistente) {
   return layout(c, 'Asistente', html`
@@ -447,9 +467,10 @@ export function vistaAsistente(c: Contexto, d: DatosAsistente) {
   <div class="asistente__registro" data-registro role="log" aria-live="polite" aria-label="Conversación con el asistente">
     ${d.conversacion.length ? d.conversacion.map((m) => html`<div class="msj msj--${m.rol}"><span class="msj__autor">${m.rol === 'usuario' ? 'Vos' : 'Asistente'}</span><div class="msj__texto">${m.texto}</div></div>`) : html`
     <div class="asistente__vacio" data-vacio>
-      <p>Preguntame sobre la web pública, el stock del Bazar o cómo usar el panel. <strong>Solo consulto: no cambio nada.</strong></p>
+      <p>Preguntame sobre la web pública, el stock del Bazar o cómo usar el panel. También puedo preparar cambios de stock, cantidades o datos de productos: <strong>nada se aplica hasta que lo confirmes.</strong></p>
       <ul class="asistente__sugerencias">${SUGERENCIAS.map((s) => html`<li><button class="btn btn--outline btn--sm" type="button" data-sugerencia>${s}</button></li>`)}</ul>
     </div>`}
+    ${d.propuesta ? tarjetaPropuesta(c, d.propuesta) : ''}
   </div>
   ${d.error ? html`<div class="alert alert--error" role="alert">${icono('info')}<p>${d.error}</p></div>` : ''}
   <p class="asistente__error alert alert--error" role="alert" data-error hidden></p>

@@ -23,7 +23,7 @@ if (!values.confirmar) {
   process.exit(0);
 }
 const db = await conectar();
-const lote: { sql: string; args: (string | number | null)[] }[] = [{ sql: 'DELETE FROM sesiones', args: [] }];
+const lote: { sql: string; args: (string | number | null)[] }[] = [{ sql: 'DELETE FROM sesiones', args: [] }, { sql: 'DELETE FROM propuestas', args: [] }];
 for (const t of [...ORDEN].reverse()) lote.push({ sql: `DELETE FROM ${t}`, args: [] });
 for (const t of ORDEN) {
   for (const fila of respaldo.tablas[t]) {

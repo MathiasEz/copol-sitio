@@ -12,6 +12,7 @@ import { ahora, ejecutar, una, type Db } from './db.ts';
 import { almacenConfigurado, ErrorImagen, procesarImagen, variante, type Almacen } from './imagenes.ts';
 import * as N from './novedades.ts';
 import * as P from './productos.ts';
+import * as PR from './propuestas.ts';
 import { hashFicticio, Limitador, problemaClave, puede, tokenAleatorio, verificarClave, type Permiso } from './seguridad.ts';
 import * as U from './usuarios.ts';
 import { leerCantidad, rutaInterna, texto, validarNovedad, validarProducto, validarUsuarioNuevo, type Campos } from './validacion.ts';
@@ -504,16 +505,51 @@ export function crearApp({ db: fuenteDb, config, almacen, asistente }: OpcionesA
     if ((await consultasHoy(c)) >= config.asistenteLimiteDia) return fallar(429, `Llegaste al límite de ${config.asistenteLimiteDia} consultas por día. Mañana podés seguir.`);
     let res: A.Resultado;
     try {
-      res = await A.consultar({ historial, modelo, db: c.get('db'), origen: new URL(c.req.url).origin, token, fetch: asistente?.fetch });
+      res = await A.consultar({ historial, modelo, db: c.get('db'), origen: new URL(c.req.url).origin, token, usuarioId: c.get('usuario')!.id, fetch: asistente?.fetch });
     } catch (e) {
       if (e instanceof A.ErrorAsistente) return fallar(502, e.message);
       if ((e as Error).name === 'TimeoutError') return fallar(502, 'Claude tardó demasiado en responder. Probá con una pregunta más concreta.');
       throw e;
     }
-    await registrar(c.get('db'), actor(c), 'asistente.consulta', 'asistente', null, { modelo: A.MODELOS[modelo].id, pregunta: historial.at(-1)!.texto.slice(0, 300), herramientas: res.herramientas, tokens: res.tokens });
+    await registrar(c.get('db'), actor(c), 'asistente.consulta', 'asistente', null, { modelo: A.MODELOS[modelo].id, pregunta: historial.at(-1)!.texto.slice(0, 300), herramientas: res.herramientas, tokens: res.tokens, propuesta: res.propuesta?.items.length ?? 0 });
     const restantes = Math.max(0, config.asistenteLimiteDia - (await consultasHoy(c)));
-    if (quiereJson) return c.json({ ok: true, respuesta: res.texto, restantes });
-    return c.html(V.vistaAsistente(ctx(c), await datosAsistente(c, { modelo, conversacion: [...historial, { rol: 'asistente', texto: res.texto }] })));
+    const propuesta = propuestaVisible(res.propuesta);
+    if (quiereJson) return c.json({ ok: true, respuesta: res.texto, restantes, propuesta });
+    return c.html(V.vistaAsistente(ctx(c), await datosAsistente(c, { modelo, propuesta, conversacion: [...historial, { rol: 'asistente', texto: res.texto }] })));
+  });
+
+  // Cambios propuestos por el asistente: se aplican solo cuando el administrador los confirma.
+  const propuestaVisible = (p: PR.Propuesta | null): V.PropuestaVisible | null =>
+    p?.items.length ? { id: p.id, expira: p.expira, errores: p.errores, items: p.items.map((i) => ({ codigo: i.codigo, nombre: i.nombre, cambios: i.cambios })) } : null;
+  const MOTIVOS: Record<'no-existe' | 'vencida' | 'usada' | 'sin-permiso', [404 | 409 | 403, string]> = {
+    'no-existe': [404, 'La propuesta no existe.'],
+    vencida: [409, 'La propuesta venció (duran 15 minutos). Pedile los cambios de nuevo al asistente.'],
+    usada: [409, 'Esta propuesta ya se aplicó o se canceló.'],
+    'sin-permiso': [403, 'Tu rol solo permite cambiar el stock.'],
+  };
+  app.post('/asistente/propuestas/:id', requiere('asistente'), async (c) => {
+    const db = c.get('db');
+    const u = c.get('usuario')!;
+    const b = await cuerpo(c);
+    const quiereJson = c.req.header('accept')?.includes('application/json');
+    const id = texto(c.req.param('id'), 40);
+    const responder = async (estado: 200 | 403 | 404 | 409, ok: boolean, mensaje: string, extra: Record<string, unknown> = {}) =>
+      quiereJson ? c.json({ ok, mensaje, ...extra }, estado)
+        : c.html(V.vistaAsistente(ctx(c), await datosAsistente(c, ok ? { conversacion: [{ rol: 'asistente', texto: mensaje }] } : { error: mensaje })), estado);
+    if (b.accion === 'cancelar') {
+      await PR.cancelar(db, id, u.id);
+      return responder(200, true, 'Cambios cancelados: no se modificó nada.');
+    }
+    if (!puede(u.rol, 'stock')) return responder(403, false, MOTIVOS['sin-permiso'][1]);
+    const r = await PR.aplicar(db, id, { ...actor(c), id: u.id, usuario: u.usuario }, puede(u.rol, 'productos'));
+    if (r.estado !== 'ok') return responder(MOTIVOS[r.estado][0], false, MOTIVOS[r.estado][1]);
+    const bien = r.resultados.filter((x) => x.ok);
+    const mal = r.resultados.filter((x) => !x.ok);
+    const mensaje = [
+      `${bien.length} de ${r.resultados.length} ${r.resultados.length === 1 ? 'cambio aplicado' : 'cambios aplicados'} y verificados. La web pública ya los muestra.`,
+      ...mal.map((x) => `- No se aplicó ${x.nombre} (${x.codigo ?? 'sin código'}): ${x.error}`),
+    ].join('\n');
+    return responder(200, true, mensaje, { resultados: r.resultados });
   });
 
   // ── Registro de cambios ──
