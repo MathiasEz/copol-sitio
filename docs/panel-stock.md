@@ -29,7 +29,8 @@ Panel (/panel)  ──escribe──►  Base de datos (Turso / libSQL)  ◄─�
 | **Usuarios** | Alta con usuario o correo, rol y contraseña temporal; cambio de rol, desactivación, restablecimiento de contraseña y baja. |
 | **Mi perfil** | Cada persona cambia su propia contraseña. |
 | **Registro** | Ingresos, cambios de stock (antes → después), productos, imágenes, novedades y usuarios, con fecha, usuario e IP. |
-| **Asistente** | Chat con Claude para preguntas sobre la web pública, el inventario y el uso del panel, y para **preparar cambios de productos** que se aplican solo al confirmarlos. Todos los roles: el visualizador solo consulta. |
+| **Asistente** | Chat con IA (Gemini 2.5 Flash) para preguntas sobre la web pública, el inventario y el uso del panel, y para **preparar cambios de productos** que se aplican solo al confirmarlos. Todos los roles: el visualizador solo consulta. |
+| **Modo claro / oscuro** | Botón "Modo oscuro" / "Modo claro" en la barra lateral (y arriba a la derecha en la pantalla de ingreso). Sin elección, sigue el modo del sistema; la elección queda guardada en ese navegador (`public/panel-recursos/tema.js`). |
 
 ### Asistente
 

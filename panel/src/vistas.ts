@@ -47,6 +47,8 @@ const ICONOS: Record<string, string> = {
   llave: '<circle cx="7.5" cy="15.5" r="5.5"/><path d="m21 2-9.6 9.6M15.5 7.5l3 3L22 7l-3-3"/>',
   chispa: '<path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9Z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8Z"/>',
   enviar: '<path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/>',
+  luna: '<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>',
+  sol: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
 };
 export const icono = (n: string, t = 18) => raw(`<svg class="i" width="${t}" height="${t}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONOS[n] ?? ''}</svg>`);
 
@@ -61,12 +63,18 @@ function cabeza(titulo: string) {
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
+<meta name="color-scheme" content="light dark">
 <title>${titulo} · Panel de stock COPOL</title>
 <link rel="stylesheet" href="/panel-recursos/panel.css">
 <link rel="icon" href="/favicon.png">
+<script src="/panel-recursos/tema.js"></script>
 <script src="/panel-recursos/panel.js" defer></script>
 </head>`;
 }
+
+/** Alterna claro/oscuro; lo activa tema.js (sin JavaScript queda oculto). */
+const botonTema = (clase: string) =>
+  html`<button type="button" class="${clase}" data-tema-boton aria-pressed="false" hidden>${raw(icono('luna', 16).toString().replace('class="i"', 'class="i i--luna"'))}${raw(icono('sol', 16).toString().replace('class="i"', 'class="i i--sol"'))}<span data-tema-texto>Modo oscuro</span></button>`;
 
 const alerta = (a: Contexto['aviso']) =>
   a ? html`<div class="alert alert--${a.tipo}" role="${a.tipo === 'error' ? 'alert' : 'status'}" data-aviso>${icono(a.tipo === 'ok' ? 'check' : 'info')}<p>${a.texto}</p></div>` : '';
@@ -95,6 +103,7 @@ export function layout(c: Contexto, titulo: string, cuerpo: H, acciones: H | '' 
         <span class="avatar" aria-hidden="true">${u.usuario.slice(0, 1).toUpperCase()}</span>
         <span class="perfil__texto"><strong>${u.usuario}</strong><small>${ROLES[u.rol].nombre}</small></span>
       </a>
+      ${botonTema('btn btn--ghost btn--sm btn--bloque')}
       <form method="post" action="${r('/salir')}">${csrfCampo(c)}<button class="btn btn--ghost btn--sm btn--bloque" type="submit">${icono('salir', 16)}Cerrar sesión</button></form>
     </div>
   </details>
@@ -111,7 +120,7 @@ export function layout(c: Contexto, titulo: string, cuerpo: H, acciones: H | '' 
 /** Páginas sin barra lateral (ingreso y cambio obligatorio de contraseña). */
 function pantallaSimple(c: Contexto, titulo: string, cuerpo: H) {
   return html`${cabeza(titulo)}
-<body class="simple"><main id="contenido" class="simple__caja card">
+<body class="simple">${botonTema('btn btn--outline btn--sm tema-flotante')}<main id="contenido" class="simple__caja card">
   <img src="/panel-recursos/logo-copol.svg" alt="COPOL" width="110" height="46">
   ${alerta(c.aviso)}
   ${cuerpo}
