@@ -92,5 +92,5 @@ Movimiento: transiciones cortas, aparición progresiva al hacer scroll (solo con
 | Tema | Decisión |
 |---|---|
 | Carrusel de Inicio | A pedido de la cooperativa: dos flechas discretas (ícono de 18 px en un círculo tenue, área táctil de 44 px) a los lados de los indicadores, y avance automático cada **2,5 s en bucle** (antes 7 s y se detenía tras una vuelta). Usar una flecha, un indicador o deslizar reinicia la cuenta sin apagar el avance. Se pausa con el puntero o el foco encima y con la pestaña oculta; con movimiento reducido no avanza. Sigue sin botón de pausa grande. |
-| Locales | Dos bloques: "Casa Central y sucursales" (4 tarjetas iguales, una fila en escritorio, 2 en tablet, 1 en teléfono) y debajo "Agencias" (15). Los filtros ocultan el bloque que queda vacío. Los correos se cortan después de la arroba. |
+| Locales | Dos bloques: "Casa Central y sucursales" (4 tarjetas grandes en 2 × 2 desde 760 px, 1 columna en teléfono; Casa Central resaltada con borde verde más grueso, sombra, sello amarillo "Sede principal" y título mayor) y debajo "Agencias" (15). Los filtros ocultan el bloque que queda vacío. Los correos se cortan después de la arroba. |
 | Banners de Inicio en celular | Versiones 5:4 entregadas por la cooperativa, usadas por debajo de 640 px (ver registro de activos). |

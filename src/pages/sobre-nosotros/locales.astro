@@ -70,12 +70,13 @@ const GRUPOS = [
                 alt={`Letras con el nombre de ${l.ciudad}, ciudad donde está ${l.tipo === 'casa-central' ? 'la Casa Central' : `la ${TIPO_LOCAL[l.tipo].toLowerCase()}`} de COPOL`}
                 ratio="16/9"
                 widths={[400, 640, 800]}
-                sizes={g.id === 'principales' ? '(min-width: 1100px) 310px, (min-width: 640px) 50vw, 100vw' : '(min-width: 1100px) 410px, (min-width: 640px) 50vw, 100vw'}
+                sizes={g.id === 'principales' ? '(min-width: 1344px) 632px, (min-width: 760px) 50vw, 100vw' : '(min-width: 1100px) 410px, (min-width: 640px) 50vw, 100vw'}
                 loading={gi === 0 ? 'eager' : 'lazy'}
                 radio="var(--radio-md)"
               />
               {/* El nombre del local va justo debajo; sobre la foto solo se indica la localidad cuando difiere. */}
               {l.tipo === 'casa-central' ? <figcaption class="local__etiqueta">{l.ciudad}</figcaption> : <figcaption class="visualmente-oculto">{nombre}</figcaption>}
+              {l.tipo === 'casa-central' && <span class="local__sello" aria-hidden="true"><Icono nombre="estrella" tamano={14} /> Sede principal</span>}
             </figure>
           )}
           <div class="local__cabecera">
@@ -152,10 +153,17 @@ const GRUPOS = [
     grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr));
   }
   /* Casa Central + 3 sucursales: 4 columnas iguales en escritorio, 2 en tablet, 1 en teléfono. */
-  .locales--principales { grid-template-columns: 1fr; }
-  @media (min-width: 640px) { .locales--principales { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-  @media (min-width: 1100px) { .locales--principales { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+  /* Casa Central + 3 sucursales: tarjetas grandes en 2 × 2 (escritorio y tablet), 1 columna en teléfono. */
+  .locales--principales { grid-template-columns: 1fr; gap: 20px; }
+  @media (min-width: 760px) { .locales--principales { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; } }
   .local__nombre { font-size: 1.1875rem; font-weight: 700; letter-spacing: -0.01em; }
+  .locales--principales .local { gap: 18px; }
+  .locales--principales .local__nombre { font-size: 1.5rem; }
+  .locales--principales .local__datos { font-size: 1rem; }
+  @media (min-width: 1100px) {
+    .locales--principales .local { padding: 12px 12px 22px; }
+    .locales--principales .local > :not(.local__foto) { margin-inline: 12px; }
+  }
   .local { gap: 16px; }
   .local__foto { position: relative; margin: -8px -8px 0; }
   .local__etiqueta {
@@ -163,7 +171,14 @@ const GRUPOS = [
     background: rgb(255 255 255 / 0.94); color: var(--verde-oscuro); font-weight: 700; font-size: 0.8125rem;
     box-shadow: 0 1px 3px rgb(0 0 0 / 0.15);
   }
-  .local--casa-central { box-shadow: inset 0 0 0 1.5px var(--verde-oscuro); }
+  /* Casa Central resaltada: borde verde más grueso, sombra, sello amarillo y título mayor. */
+  .local--casa-central { box-shadow: inset 0 0 0 2.5px var(--verde-oscuro), 0 18px 40px -22px rgb(0 51 26 / 0.45); }
+  .locales--principales .local--casa-central .local__nombre { font-size: 1.75rem; }
+  .local__sello {
+    position: absolute; left: 10px; top: 10px; display: inline-flex; align-items: center; gap: 6px;
+    padding: 5px 12px; border-radius: var(--radio-pill); background: var(--amarillo-copol); color: var(--verde-profundo);
+    font-weight: 800; font-size: 0.8125rem; box-shadow: 0 2px 8px rgb(0 0 0 / 0.18);
+  }
   .local__cabecera { display: grid; gap: 6px; justify-items: start; }
   .local__depto { font-size: 0.875rem; color: var(--muted-foreground); }
   .local__datos { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; font-size: 0.9375rem; }
