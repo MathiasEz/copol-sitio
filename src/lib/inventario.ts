@@ -6,6 +6,7 @@ import bazarJson from '../data/catalogo/bazar.json';
 import { obtenerDb, todas } from '../../panel/src/db.ts';
 import { novedadesPublicadas, type Novedad } from '../../panel/src/novedades.ts';
 import { CONTACTO, whatsapp } from '../data/confirmado/sitio';
+import { agruparVariantes } from './variantes';
 
 export type EstadoStock = 'con-stock' | 'sin-stock' | 'sin-dato';
 export const ESTADO_STOCK: Record<EstadoStock, string> = { 'con-stock': 'Con stock', 'sin-stock': 'Sin stock', 'sin-dato': 'Consultar disponibilidad' };
@@ -22,6 +23,8 @@ export interface Producto {
   imagen: ImagenProducto | null;
   estado: EstadoStock;
   consulta: string;
+  /** Largo de la descripción guardada (0 = sin descripción). */
+  largoDescripcion: number;
 }
 export interface CategoriaCatalogo { id: string; nombre: string; total: number; conStock: number; sinStock: number }
 export interface Catalogo {
@@ -60,6 +63,7 @@ export function imagenDe(imagen: string | null | undefined): ImagenProducto | nu
 interface Fila {
   id: string; codigo: string | null; nombre: string; marca: string | null; categoria_id: string; categoria_nombre: string;
   subcategoria: string | null; imagen: string | null; imagen_publicable: number; stock_estado: EstadoStock; orden_cat: number;
+  largo_desc: number | null;
 }
 
 const desdeJson = () => bazarJson.productos
@@ -69,13 +73,14 @@ const desdeJson = () => bazarJson.productos
     categoria_nombre: bazarJson.categorias.find((c) => c.id === p.categoria)?.nombre ?? p.categoria, subcategoria: p.subcategoria,
     imagen: p.imagen, imagen_publicable: (p as { imagenPublicable?: boolean }).imagenPublicable === false ? 0 : 1,
     stock_estado: 'sin-dato', orden_cat: bazarJson.categorias.findIndex((c) => c.id === p.categoria),
+    largo_desc: p.descripcion?.length ?? 0,
   }));
 
 async function filas(): Promise<{ filas: Fila[]; enVivo: boolean }> {
   try {
     const db = await obtenerDb();
     const r = await todas<Fila>(db, `SELECT p.id, p.codigo, p.nombre, p.marca, p.categoria_id, c.nombre categoria_nombre, p.subcategoria, p.imagen,
-      p.imagen_publicable, p.stock_estado, c.orden orden_cat
+      p.imagen_publicable, p.stock_estado, c.orden orden_cat, LENGTH(p.descripcion) largo_desc
       FROM productos p JOIN categorias c ON c.rubro_id = p.rubro_id AND c.id = p.categoria_id
       WHERE p.rubro_id = 'bazar' AND p.publicado = 1 ORDER BY c.orden, p.orden, p.nombre`);
     if (r.length) return { filas: r, enVivo: true };
@@ -101,6 +106,7 @@ export async function obtenerCatalogo(): Promise<Catalogo> {
     imagen: Number(f.imagen_publicable) ? imagenDe(f.imagen) : null,
     estado: enVivo ? f.stock_estado : 'sin-dato',
     consulta: consultaProducto(f.nombre, f.codigo),
+    largoDescripcion: Number(f.largo_desc) || 0,
   }));
   const ids = [...new Set(rows.map((f) => f.categoria_id))];
   const categorias = ids.map((id) => {
@@ -133,4 +139,89 @@ export async function obtenerNovedades(): Promise<Novedad[]> {
     console.error('novedades: no se pudo leer la base de datos:', (e as Error).message);
     return [];
   }
+}
+
+// ── Catálogo agrupado por modelo (solo para mostrar en la web; el inventario no cambia) ──
+export interface VarianteWeb { id: string; color: string | null; codigo: string | null; estado: EstadoStock; consulta: string }
+export interface ModeloWeb {
+  /** Id del primer producto del modelo (ancla estable de la tarjeta). */
+  id: string;
+  nombre: string;
+  marca: string | null;
+  categoria: string;
+  categoriaId: string;
+  subcategoria: string | null;
+  imagen: ImagenProducto | null;
+  /** Con stock si alguna variante tiene; sin stock si ninguna; si no, consultar. */
+  estado: EstadoStock;
+  variantes: VarianteWeb[];
+  /** Producto cuya descripción se muestra en la ficha (la más completa del modelo), o null si no hay. */
+  descripcionId: string | null;
+  texto: string;
+}
+export interface CatalogoModelos {
+  modelos: ModeloWeb[];
+  categorias: CategoriaCatalogo[];
+  totales: { total: number; conStock: number; sinStock: number };
+  /** Cantidad de productos (variantes) detrás de los modelos. */
+  productos: number;
+  enVivo: boolean;
+}
+
+const estadoModelo = (estados: EstadoStock[]): EstadoStock =>
+  estados.includes('con-stock') ? 'con-stock' : estados.every((e) => e === 'sin-stock') ? 'sin-stock' : 'sin-dato';
+
+export async function obtenerCatalogoModelos(): Promise<CatalogoModelos> {
+  const catalogo = await obtenerCatalogo();
+  const modelos = agruparVariantes(catalogo.productos).map<ModeloWeb>(({ base, variantes }) => {
+    // "CEL" es una abreviatura del sistema: en el nombre del modelo se muestra completo.
+    const nombre = variantes.length > 1 ? capitalizar(base.replace(/^CEL\b/, 'CELULAR')) : variantes[0].nombre;
+    const conImagen = variantes.find((v) => v.imagen && v.estado === 'con-stock') ?? variantes.find((v) => v.imagen);
+    const conDesc = [...variantes].sort((a, b) => b.largoDescripcion - a.largoDescripcion)[0];
+    const p0 = variantes[0];
+    return {
+      id: p0.id,
+      nombre,
+      marca: p0.marca,
+      categoria: p0.categoria,
+      categoriaId: p0.categoriaId,
+      subcategoria: p0.subcategoria,
+      imagen: conImagen?.imagen ?? null,
+      estado: estadoModelo(variantes.map((v) => v.estado)),
+      variantes: variantes.map((v) => ({
+        id: v.id,
+        color: v.color,
+        codigo: v.codigo,
+        estado: v.estado,
+        consulta: consultaProducto(v.color ? `${nombre}, color ${v.color.toLowerCase()}` : nombre, v.codigo),
+      })),
+      descripcionId: conDesc.largoDescripcion > 0 ? conDesc.id : null,
+      texto: [nombre, ...variantes.map((v) => `${v.nombre} ${v.color ?? ''} ${v.codigo ?? ''}`), p0.marca ?? '', p0.categoria, p0.subcategoria ?? ''].join(' ').toLowerCase(),
+    };
+  });
+  const contar = (lista: ModeloWeb[], e: EstadoStock) => lista.filter((m) => m.estado === e).length;
+  const categorias = catalogo.categorias.map((c) => {
+    const lista = modelos.filter((m) => m.categoriaId === c.id);
+    return { ...c, total: lista.length, conStock: contar(lista, 'con-stock'), sinStock: contar(lista, 'sin-stock') };
+  });
+  return {
+    modelos,
+    categorias,
+    totales: { total: modelos.length, conStock: contar(modelos, 'con-stock'), sinStock: contar(modelos, 'sin-stock') },
+    productos: catalogo.productos.length,
+    enVivo: catalogo.enVivo,
+  };
+}
+
+/** Descripción de un producto publicado del Bazar (para la ficha que se abre en la web). */
+export async function descripcionProducto(id: string): Promise<string | null> {
+  try {
+    const db = await obtenerDb();
+    const [fila] = await todas<{ descripcion: string | null }>(db, "SELECT descripcion FROM productos WHERE id = ? AND rubro_id = 'bazar' AND publicado = 1", [id]);
+    if (fila) return fila.descripcion?.trim() || null;
+  } catch (e) {
+    console.error('descripción: no se pudo leer la base de datos:', (e as Error).message);
+  }
+  const p = bazarJson.productos.find((x) => x.id === id && !x.revisarPrecio);
+  return p?.descripcion?.trim() || null;
 }

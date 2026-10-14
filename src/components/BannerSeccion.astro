@@ -17,8 +17,12 @@ interface Props {
   href: string;
   prioridad?: boolean;
   class?: string;
+  /** Color de fondo mientras carga (el tono dominante del banner). */
+  fondo?: string;
+  /** Enlace externo (p. ej. WhatsApp): se abre en otra pestaña. */
+  externo?: boolean;
 }
-const { src, movil, alt, href, prioridad = false, class: clase } = Astro.props;
+const { src, movil, alt, href, prioridad = false, class: clase, fondo = '#f1bcd6', externo = false } = Astro.props;
 
 const variantes = async (img: ImageMetadata, anchos: number[], format: 'avif' | 'webp') => {
   const lista = anchos.filter((w) => w <= img.width);
@@ -39,7 +43,7 @@ const fuentes = [
 ];
 const respaldo = await getImage({ src, width: Math.min(1366, src.width), format: 'webp', quality: 78 });
 ---
-<a href={href} class:list={['banner', { 'banner--con-movil': movil }, clase]} style={`--ratio: ${src.width} / ${src.height}${movil ? `; --ratio-movil: ${movil.width} / ${movil.height}` : ''}`} data-banner>
+<a href={href} class:list={['banner', { 'banner--con-movil': movil }, clase]} style={`--ratio: ${src.width} / ${src.height}; --banner-fondo: ${fondo}${movil ? `; --ratio-movil: ${movil.width} / ${movil.height}` : ''}`} target={externo ? '_blank' : undefined} rel={externo ? 'noopener' : undefined} data-banner>
   <picture>
     {fuentes.map((f) => <source media={f.media} type={f.type} srcset={f.srcset} sizes={f.sizes} />)}
     <img
@@ -61,7 +65,7 @@ const respaldo = await getImage({ src, width: Math.min(1366, src.width), format:
     aspect-ratio: var(--ratio);
     overflow: hidden;
     border-radius: var(--radio-xl);
-    background: #f1bcd6; /* tono de fondo de los banners: evita un hueco blanco mientras carga */
+    background: var(--banner-fondo); /* tono dominante del banner: evita un hueco blanco mientras carga */
     isolation: isolate;
     transition: box-shadow var(--transicion), transform 500ms var(--resorte);
   }

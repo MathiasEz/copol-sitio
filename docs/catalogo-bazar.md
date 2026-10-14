@@ -80,3 +80,14 @@ Después de importar:
 4. `npm run verificar` y publicar.
 
 Los productos que solo aparecen en la portada de Google Sites (maquetación distinta, con imágenes de fondo) se cargan desde `scripts/catalogo-portada.json`, verificado a mano; si cambian en el origen, actualizar ese archivo.
+
+## Modelos y colores en la web (14/10/2026)
+
+La página del Bazar muestra una tarjeta por **modelo**; cada **color** sigue siendo un producto con su propio código interno COPOL y su propio stock (el inventario y el panel no cambian). Código: `src/lib/variantes.ts` y `obtenerCatalogoModelos()` en `src/lib/inventario.ts`.
+
+- Dos productos se agrupan solo si, en la misma categoría, el nombre es **idéntico sin el color del final**. Los colores salen de una lista cerrada que incluye las abreviaturas y cortes del sistema ("NEG", "VDE", "BLANC", "PLATE", "GRIS OSCUR", "NEGRO/AZUL", "MIX NEGRO Y AZUL").
+- Hacen falta al menos dos colores reconocidos; un único producto del mismo nombre sin color se suma como "Color no indicado". Nombres de menos de 3 palabras ("AURICULAR SONY") nunca se agrupan.
+- Resultado con el catálogo actual: 806 productos → 774 tarjetas (22 modelos con 54 colores, p. ej. iPhone 15 128GB: negro 436249, rosado 439133, azul claro 437058).
+- Estado del modelo: "Con stock" si algún color tiene; "Sin stock" si ninguno; si no, "Consultar disponibilidad". Los filtros usan ese estado.
+- Descripción: la más completa entre los colores del modelo, pedida a `/api/bazar/descripcion/<id>` al abrir la ficha (lee la base; si no responde, el catálogo importado). 797 de 806 productos tienen descripción importada; los demás muestran "Consultanos por WhatsApp".
+- Nombres con errores de tipeo en el sistema (p. ej. "REMDI" por "REDMI") no se corrigen ni se fuerzan: conviene corregirlos en el panel para que se agrupen.

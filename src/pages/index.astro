@@ -22,6 +22,8 @@ import bannerBazar from '../assets/banners/bazar.webp';
 import bannerServicios from '../assets/banners/servicios-sociales.webp';
 import bannerPinecoop from '../assets/banners/pinecoop.webp';
 import bannerSocio from '../assets/banners/hacete-socio.webp';
+// Banner "Consultá acá por tus beneficios" (entregado el 14/10/2026): lleva al WhatsApp general.
+import bannerBeneficios from '../assets/banners/beneficios.webp';
 // Versiones para celular (5:4), entregadas por la cooperativa: se usan por debajo de 640 px.
 import bannerBazarMovil from '../assets/banners/bazar-movil.webp';
 import bannerServiciosMovil from '../assets/banners/servicios-sociales-movil.webp';
@@ -44,6 +46,16 @@ const accesos = [
 ---
 <Base titulo="Inicio">
   <CarruselInicio />
+
+  <div class="contenedor banner-beneficios">
+    <BannerSeccion
+      src={bannerBeneficios}
+      href={whatsapp(CONTACTO.whatsappGeneral.numero, 'Hola! Quiero consultar por mis beneficios de COPOL')}
+      externo
+      fondo="#3dae38"
+      alt="Consultá acá por tus beneficios por WhatsApp. 2 parques vacacionales, más de 20 locales en todo el país y comprás en cuotas aún estando en clearing. Salud mental, estudio jurídico, Viajá con COPOL, clínica veterinaria y COPOL Salud Bucal."
+    />
+  </div>
 
   <section class="contenedor accesos" aria-labelledby="accesos-titulo">
     <h2 id="accesos-titulo" class="accesos__titulo"><span class="mascara"><span>¿Qué necesitás hoy?</span></span></h2>
@@ -162,6 +174,8 @@ const accesos = [
 </Base>
 
 <style>
+  /* Banner de beneficios entre el carrusel y los accesos rápidos */
+  .banner-beneficios { padding-top: clamp(24px, 4vw, 48px); }
   .accesos { padding-top: clamp(40px, 5vw, 64px); }
   .accesos__titulo { font-size: clamp(1.5rem, 2.4vw, 1.875rem); margin-bottom: 20px; }
   .accesos__lista {

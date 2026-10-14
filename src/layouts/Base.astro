@@ -38,7 +38,7 @@ const organizacion = {
 };
 ---
 <!doctype html>
-<html lang="es-UY" data-fondo="verdoso">
+<html lang="es-UY">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -64,11 +64,6 @@ const organizacion = {
   <script is:inline>
     // Las animaciones de aparición solo se activan con JS disponible y sin preferencia de movimiento reducido.
     if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) document.documentElement.classList.add('js-animar');
-    // Fondo elegido con el switch de la barra superior (antes de pintar, para evitar un parpadeo).
-    try {
-      const fondo = localStorage.getItem('copol-fondo');
-      if (fondo === 'blanco' || fondo === 'verdoso' || fondo === 'amarillo') document.documentElement.dataset.fondo = fondo;
-    } catch (e) { /* almacenamiento no disponible */ }
   </script>
 </head>
 <body>

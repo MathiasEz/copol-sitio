@@ -28,6 +28,7 @@ const VIEWPORTS = { movil: { width: 375, height: 812 }, escritorio: { width: 136
       const visibles = [...document.querySelectorAll('.producto')].filter((p) => !p.hidden && !p.closest('[hidden]'));
       return {
         total: document.querySelectorAll('.producto').length,
+        variantes: [...document.querySelectorAll('.producto')].reduce((a, p) => a + Number(p.dataset.variantes ?? 1), 0),
         visibles: visibles.length,
         categorias: new Set(visibles.map((p) => p.getAttribute('data-categoria'))).size,
         vacioVisible: getComputedStyle(document.querySelector('[data-vacio]')).display !== 'none',
@@ -39,7 +40,7 @@ const VIEWPORTS = { movil: { width: 375, height: 812 }, escritorio: { width: 136
   const esperados = catalogo.productos.filter((p) => !p.revisarPrecio && !p.retirado).length;
   let e = await estado();
   verificar(!e.vacioVisible, `Bazar · estado inicial sin el mensaje "No encontramos productos" (${e.texto})`);
-  verificar(e.visibles === e.total && e.total === esperados, `Bazar · estado inicial muestra todo el catálogo (${e.visibles}/${e.total}, esperados ${esperados})`);
+  verificar(e.visibles === e.total && e.variantes === esperados && e.total < esperados, `Bazar · estado inicial muestra todo el catálogo: ${e.total} tarjetas con ${e.variantes} productos (esperados ${esperados})`);
   verificar(e.categorias >= 10, `Bazar · estado inicial muestra todas las categorías (${e.categorias})`);
 
   // Estado de stock visible y no solo por color
@@ -97,6 +98,27 @@ const VIEWPORTS = { movil: { width: 375, height: 812 }, escritorio: { width: 136
   await page.waitForTimeout(300);
   const iphones = await page.$$eval('.producto', (els) => els.filter((p) => !p.hidden && !p.closest('[hidden]')).map((p) => [p.dataset.estado, p.dataset.texto.includes('iphone')]));
   verificar(iphones.every(([st, t]) => st === 'con-stock' && t), `Bazar · búsqueda + stock combinados ("iphone" con stock: ${iphones.length})`);
+
+  // Ficha de un modelo con colores: cada color con su código, su stock y su consulta; descripción real.
+  await page.fill('input[name="q"]', '');
+  await page.click('input[name="stock"][value=""]', { force: true });
+  await page.waitForTimeout(200);
+  const conColores = page.locator('.producto:not([data-variantes="1"])').first();
+  const ids = (await conColores.getAttribute('data-ids')).split(' ');
+  await conColores.locator('[data-abrir]').click();
+  await page.waitForSelector('[data-ficha][open]');
+  await page.waitForFunction(() => !document.querySelector('[data-ficha-descripcion]').textContent.includes('Cargando'));
+  const ficha = await page.evaluate(() => {
+    const f = document.querySelector('[data-ficha]');
+    return {
+      filas: [...f.querySelectorAll('.variante')].map((v) => ({ id: v.dataset.id, codigo: v.querySelector('.variante__codigo')?.textContent ?? '', stock: v.querySelector('.variante__stock').textContent.trim(), wa: v.querySelector('a').href })),
+      lineas: f.querySelectorAll('[data-ficha-descripcion] li').length,
+    };
+  });
+  verificar(ficha.filas.length === ids.length && ficha.filas.every((f, i) => f.id === ids[i] && /Código interno COPOL \d+/.test(f.codigo) && f.stock && f.wa.includes('wa.me') && decodeURIComponent(f.wa).includes(f.codigo.replace('Código interno COPOL ', ''))), `Bazar · la ficha lista cada color con código, stock y consulta por WhatsApp (${ficha.filas.length})`);
+  verificar(ficha.lineas > 0, `Bazar · la ficha carga la descripción del catálogo (${ficha.lineas} líneas)`);
+  await page.keyboard.press('Escape');
+  verificar(!(await page.evaluate(() => document.querySelector('[data-ficha]').open)), 'Bazar · la ficha se cierra con Escape');
   await page.close();
 
   // Enlace directo con filtros en la URL (los usan los accesos de Inicio)
@@ -176,7 +198,9 @@ for (const [nombre, vp] of Object.entries(VIEWPORTS)) {
     const ok2 = Math.abs(b.natural - b.caja) / b.natural < 0.01 && b.fit !== 'cover';
     verificar(ok2, `Banner (${nombre}) ${b.href} · proporción ${b.caja.toFixed(3)} vs original ${b.natural.toFixed(3)}, ${b.ancho}px de ancho (${b.archivo})`);
   }
-  verificar(banners.length === 4, `Banners (${nombre}) · 4 banners en Inicio`);
+  verificar(banners.length === 5, `Banners (${nombre}) · 5 banners en Inicio (${banners.length})`);
+  // El primero (entre el carrusel y "¿Qué necesitás hoy?") lleva al WhatsApp general 098 872 727.
+  verificar(banners[0]?.href?.startsWith('https://wa.me/59898872727'), `Banners (${nombre}) · el banner de beneficios abre WhatsApp 098 872 727 (${banners[0]?.href?.slice(0, 40)})`);
   await page.close();
 }
 

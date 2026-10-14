@@ -53,6 +53,10 @@ Piezas propias de ≈ 2000 × 521 px. Son los recursos principales de Inicio: no
 
 **Versiones para celular (entregadas el 14/10/2026):** `bazar-movil`, `servicios-sociales-movil`, `pinecoop-movil` y `hacete-socio-movil` (originales PNG de 5625 × 4500, proporción 5:4). En el sitio: `src/assets/banners/<nombre>-movil.webp` de 1600 × 1280 (76–155 KB), del que Astro genera AVIF y WebP de 480, 768 y 1080 px; copia maestra de 2400 × 1920 en `assets-source/banners/`. `BannerSeccion` las usa por debajo de 640 px de ancho (en un teléfono de 390 px el banner mide 390 × 312, a todo el ancho) y la versión ancha (2000 × 521) por encima. Con esto los textos chicos ("Todo para ti y tu hogar", "Cuotas sin recargo") se leen en el teléfono.
 
+## Banner de beneficios (entregado el 14/10/2026)
+
+"Consultá acá por tus beneficios" (PNG de 8000 × 2786). En el sitio: `src/assets/banners/beneficios.webp` (2000 × 697, 106 KB; Astro genera AVIF/WebP de 480 a 2000 px); copia maestra de 3000 px en `assets-source/banners/`. Va entre el carrusel y "¿Qué necesitás hoy?" y abre el WhatsApp general 098 872 727. En un teléfono mide 390 × 136: la franja de servicios de abajo queda chica; si se entrega una versión 1080 × 1080, se usa automáticamente en pantallas angostas.
+
 ## Fotos de ciudades para Locales (Imágenes Ciudades.zip, entregado el 14/10/2026)
 
 20 imágenes con el nombre de la ciudad en el archivo y en el cartel. Se asociaron por ese nombre a los 19 locales confirmados (`src/data/confirmado/locales.json`); no se dedujo ninguna.

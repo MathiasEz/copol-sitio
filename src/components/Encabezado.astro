@@ -8,7 +8,6 @@ import { CONTACTO, SITIO, whatsapp } from '../data/confirmado/sitio';
 import logo from '../assets/brand/logo-copol.svg';
 import Icono from './Icono.astro';
 import Button from './ui/Button.astro';
-import SelectorFondo from './SelectorFondo.astro';
 
 const ruta = Astro.url.pathname.replace(/\/?$/, '/');
 const activo = (href: string) => (href === '/' ? ruta === '/' : ruta.startsWith(href));
@@ -18,7 +17,6 @@ const actual = (href: string) => ruta === href;
   <div class="contenedor barra-superior__fila">
     <p class="barra-superior__lema">{SITIO.lema}</p>
     <div class="barra-superior__acciones">
-      <SelectorFondo />
       <a href={whatsapp(CONTACTO.whatsappGeneral.numero)} class="barra-superior__enlace" rel="noopener">
         <Icono nombre="whatsapp" tamano={16} />
         <span><span class="visualmente-oculto">WhatsApp </span>{CONTACTO.whatsappGeneral.texto}</span>

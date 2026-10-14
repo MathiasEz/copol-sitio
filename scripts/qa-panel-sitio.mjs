@@ -78,7 +78,8 @@ try {
 
   // ── 1. Stock de punta a punta ──
   await sitio.goto(`${BASE}/hipermercado/bazar/`);
-  const elegido = await sitio.$$eval('.producto[data-estado="con-stock"]', (els) => {
+  // Una tarjeta de un solo color: su etiqueta refleja directamente el stock de ese producto.
+  const elegido = await sitio.$$eval('.producto[data-estado="con-stock"][data-variantes="1"]', (els) => {
     const el = els.find((e) => /Código interno COPOL \d+/.test(e.textContent));
     return { id: el.dataset.id, codigo: el.textContent.match(/Código interno COPOL (\d+)/)[1] };
   });

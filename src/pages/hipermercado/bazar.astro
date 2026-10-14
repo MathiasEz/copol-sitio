@@ -1,13 +1,13 @@
 ---
 import Base from '../../layouts/Base.astro';
 import EncabezadoPagina from '../../components/EncabezadoPagina.astro';
-import TarjetaProducto from '../../components/TarjetaProducto.astro';
+import TarjetaModelo from '../../components/TarjetaModelo.astro';
 import Icono from '../../components/Icono.astro';
 import Button from '../../components/ui/Button.astro';
 import Badge from '../../components/ui/Badge.astro';
 import Campo from '../../components/ui/Campo.astro';
 import Toggle from '../../components/ui/Toggle.astro';
-import { obtenerCatalogo } from '../../lib/inventario';
+import { obtenerCatalogoModelos } from '../../lib/inventario';
 import { CONTACTO, whatsapp } from '../../data/confirmado/sitio';
 
 // Se genera en cada visita (no es una página estática): el stock sale de la misma base de datos que
@@ -15,12 +15,14 @@ import { CONTACTO, whatsapp } from '../../data/confirmado/sitio';
 // Textos e imágenes del catálogo importado siguen guardados en el proyecto. Sin precios.
 export const prerender = false;
 Astro.response.headers.set('Cache-Control', 'no-store, max-age=0');
-const catalogo = await obtenerCatalogo();
-const PRODUCTOS_BAZAR = catalogo.productos;
+// Los productos que son el mismo modelo en distintos colores se muestran juntos en una tarjeta
+// (src/lib/variantes.ts); cada color conserva su código interno COPOL y su stock.
+const catalogo = await obtenerCatalogoModelos();
+const MODELOS = catalogo.modelos;
 const TOTALES_STOCK = catalogo.totales;
-const secciones = catalogo.categorias.map((c) => ({ ...c, productos: PRODUCTOS_BAZAR.filter((p) => p.categoriaId === c.id) }));
+const secciones = catalogo.categorias.map((c) => ({ ...c, modelos: MODELOS.filter((m) => m.categoriaId === c.id) }));
 ---
-<Base titulo="Bazar" descripcion={`Catálogo del Bazar COPOL: ${PRODUCTOS_BAZAR.length} productos de tecnología, hogar, audio, bicicletas y más. Consultá stock y condiciones por WhatsApp.`}>
+<Base titulo="Bazar" descripcion={`Catálogo del Bazar COPOL: ${MODELOS.length} productos de tecnología, hogar, audio, bicicletas y más. Consultá stock y condiciones por WhatsApp.`}>
   <EncabezadoPagina
     titulo="Catálogo del Bazar"
     antetitulo="Hipermercado · Bazar"
@@ -45,7 +47,7 @@ const secciones = catalogo.categorias.map((c) => ({ ...c, productos: PRODUCTOS_B
       </div>
       <fieldset class="toggle-group barra__categorias">
         <legend class="label">Categoría</legend>
-        <Toggle name="categoria" value="" checked contador={PRODUCTOS_BAZAR.length}>Todos los productos</Toggle>
+        <Toggle name="categoria" value="" checked contador={MODELOS.length}>Todos los productos</Toggle>
         {secciones.map((c) => <Toggle name="categoria" value={c.id} contador={c.total}>{c.nombre}</Toggle>)}
       </fieldset>
     </form>
@@ -55,7 +57,7 @@ const secciones = catalogo.categorias.map((c) => ({ ...c, productos: PRODUCTOS_B
     )}
 
     <div class="estado">
-      <p class="estado__texto" aria-live="polite" data-resultado>{PRODUCTOS_BAZAR.length} productos en {secciones.length} categorías.</p>
+      <p class="estado__texto" aria-live="polite" data-resultado>{MODELOS.length} productos en {secciones.length} categorías.</p>
       <button type="button" class="btn btn--ghost btn--sm" data-limpiar hidden>Limpiar filtros</button>
     </div>
 
@@ -67,7 +69,7 @@ const secciones = catalogo.categorias.map((c) => ({ ...c, productos: PRODUCTOS_B
             <Badge variant="outline"><span><span data-contador>{s.total}</span> productos</span></Badge>
           </header>
           <div class="grilla-productos" data-grilla>
-            {s.productos.map((p, i) => <TarjetaProducto producto={p} nivel="h4" cargaDiferida={!(s === secciones[0] && i < 4)} />)}
+            {s.modelos.map((m, i) => <TarjetaModelo modelo={m} nivel="h4" cargaDiferida={!(s === secciones[0] && i < 4)} />)}
           </div>
         </section>
       ))}
@@ -86,6 +88,30 @@ const secciones = catalogo.categorias.map((c) => ({ ...c, productos: PRODUCTOS_B
       <p class="vacio__titulo" data-vacio-filtro-texto>No hay productos con esos filtros.</p>
       <button type="button" class="btn btn--outline" data-ver-todos>Ver todos los productos</button>
     </div>
+
+    <!-- Ficha de producto: se completa con la tarjeta tocada; la descripción se pide al abrirla -->
+    <dialog class="ficha" data-ficha aria-labelledby="ficha-titulo">
+      <div class="ficha__caja">
+        <button type="button" class="ficha__cerrar" data-ficha-cerrar aria-label="Cerrar"><Icono nombre="cerrar" tamano={20} /></button>
+        <div class="ficha__cabecera">
+          <div class="ficha__imagen" data-ficha-imagen></div>
+          <div class="ficha__titulos">
+            <span class="producto__categoria" data-ficha-categoria></span>
+            <h2 id="ficha-titulo" class="ficha__titulo" data-ficha-titulo></h2>
+            <span class="ficha__resumen" data-ficha-resumen></span>
+          </div>
+        </div>
+        <section class="ficha__seccion" aria-labelledby="ficha-var-titulo">
+          <h3 id="ficha-var-titulo" class="ficha__subtitulo" data-ficha-var-titulo>Colores y stock</h3>
+          <div data-ficha-variantes></div>
+        </section>
+        <section class="ficha__seccion" aria-labelledby="ficha-desc-titulo">
+          <h3 id="ficha-desc-titulo" class="ficha__subtitulo">Descripción</h3>
+          <div class="ficha__descripcion" data-ficha-descripcion></div>
+          <p class="ficha__nota">Datos del catálogo, sujetos a cambios: confirmá especificaciones, colores y stock por WhatsApp.</p>
+        </section>
+      </div>
+    </dialog>
 
     <div class="aviso-legal">
       <p>Las imágenes son ilustrativas y pueden presentar diferencias con el producto real. Las características, colores y especificaciones técnicas están sujetos a cambios sin previo aviso.</p>
@@ -212,6 +238,86 @@ const secciones = catalogo.categorias.map((c) => ({ ...c, productos: PRODUCTOS_B
   document.querySelector('[data-ver-todos]')!.addEventListener('click', reiniciar);
   filtrar();
 
+  // ── Ficha de producto (colores con código, stock y consulta + descripción) ──
+  const ficha = document.querySelector<HTMLDialogElement>('[data-ficha]')!;
+  const fichaDesc = ficha.querySelector<HTMLElement>('[data-ficha-descripcion]')!;
+  const descripciones = new Map<string, Promise<string | null>>();
+  const pedirDescripcion = (id: string) => {
+    if (!descripciones.has(id)) {
+      descripciones.set(id, fetch(`/api/bazar/descripcion/${encodeURIComponent(id)}`, { headers: { Accept: 'application/json' } })
+        .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
+        .then((d: { descripcion: string | null }) => d.descripcion)
+        .catch((e) => { descripciones.delete(id); throw e; }));
+    }
+    return descripciones.get(id)!;
+  };
+  const mostrarDescripcion = (texto: string | null) => {
+    fichaDesc.replaceChildren();
+    if (!texto) {
+      const p = document.createElement('p');
+      p.textContent = 'Este producto no tiene descripción en el catálogo. Consultanos por WhatsApp y te pasamos los detalles.';
+      fichaDesc.append(p);
+      return;
+    }
+    // Cada renglón del catálogo es una característica: se muestran como lista (texto plano, sin HTML).
+    const ul = document.createElement('ul');
+    for (const l of texto.split(/\n+/).map((x) => x.trim()).filter(Boolean)) {
+      const li = document.createElement('li');
+      li.textContent = l;
+      ul.append(li);
+    }
+    fichaDesc.append(ul);
+  };
+  let tarjetaAbierta: HTMLElement | null = null;
+  const abrirFicha = async (tarjeta: HTMLElement) => {
+    tarjetaAbierta = tarjeta;
+    const img = tarjeta.querySelector<HTMLImageElement>('.producto__media img');
+    const cajaImg = ficha.querySelector<HTMLElement>('[data-ficha-imagen]')!;
+    cajaImg.replaceChildren();
+    if (img) {
+      const copia = img.cloneNode() as HTMLImageElement;
+      copia.loading = 'eager';
+      copia.sizes = '200px';
+      cajaImg.append(copia);
+    }
+    ficha.dataset.estado = tarjeta.dataset.estado ?? '';
+    ficha.querySelector('[data-ficha-categoria]')!.textContent = tarjeta.querySelector('.producto__categoria')?.textContent ?? '';
+    ficha.querySelector('[data-ficha-titulo]')!.textContent = tarjeta.querySelector('[data-nombre]')?.textContent ?? '';
+    ficha.querySelector('[data-ficha-resumen]')!.textContent = tarjeta.querySelector('.producto__codigo')?.textContent ?? '';
+    const n = Number(tarjeta.dataset.variantes ?? 1);
+    ficha.querySelector('[data-ficha-var-titulo]')!.textContent = n > 1 ? `Colores (${n}) y stock` : 'Código y stock';
+    const lista = tarjeta.querySelector('[data-variantes-lista]')!.cloneNode(true) as HTMLElement;
+    ficha.querySelector('[data-ficha-variantes]')!.replaceChildren(lista);
+    if (!ficha.open) ficha.showModal();
+    ficha.querySelector<HTMLElement>('.ficha__caja')!.scrollTop = 0;
+    const id = tarjeta.dataset.descripcion;
+    if (!id) return mostrarDescripcion(null);
+    fichaDesc.textContent = 'Cargando descripción…';
+    try {
+      const texto = await pedirDescripcion(id);
+      if (tarjetaAbierta === tarjeta) mostrarDescripcion(texto);
+    } catch {
+      if (tarjetaAbierta === tarjeta) fichaDesc.textContent = 'No pudimos cargar la descripción. Consultanos por WhatsApp.';
+    }
+  };
+  document.querySelector('[data-secciones]')!.addEventListener('click', (e) => {
+    const objetivo = e.target as HTMLElement;
+    const tarjeta = objetivo.closest<HTMLElement>('.producto--modelo');
+    if (!tarjeta) return;
+    // "Ver detalle" es el <summary> de un <details>: con JS abre la ficha en vez de desplegar la lista.
+    if (objetivo.closest('[data-abrir]') || objetivo.closest('[data-abrir-imagen]')) {
+      e.preventDefault();
+      abrirFicha(tarjeta);
+    }
+  });
+  ficha.querySelector('[data-ficha-cerrar]')!.addEventListener('click', () => ficha.close());
+  // Clic en el fondo oscuro: cierra.
+  ficha.addEventListener('click', (e) => { if (e.target === ficha) ficha.close(); });
+  ficha.addEventListener('close', () => {
+    tarjetaAbierta?.querySelector<HTMLElement>('[data-abrir]')?.focus();
+    tarjetaAbierta = null;
+  });
+
   // ── Barra de filtros compacta al bajar ──
   // Escritorio: se compacta al bajar y vuelve a su tamaño al subir. Móvil: queda compacta mientras se
   // recorre la lista (completa ocuparía casi media pantalla) y vuelve al llegar arriba.
@@ -323,4 +429,40 @@ const secciones = catalogo.categorias.map((c) => ({ ...c, productos: PRODUCTOS_B
   .vacio { align-items: center; text-align: center; padding: 40px 24px; margin-top: 16px; }
   .vacio__titulo { font-weight: 700; font-size: 1.125rem; color: var(--foreground) !important; }
   .aviso-legal { margin-top: 48px; padding: 20px 24px; border-radius: var(--radio-lg); background: var(--card); box-shadow: var(--anillo); font-size: 0.875rem; color: var(--muted-foreground); display: grid; gap: 8px; }
+</style>
+
+<style is:global>
+  /* Ficha de producto (dialog nativo: foco atrapado, Esc cierra, fondo inerte) */
+  .ficha {
+    width: min(100% - 32px, 640px); max-height: min(100dvh - 48px, 860px); padding: 0; border: 0;
+    border-radius: var(--radio-xl); background: var(--card); color: var(--foreground); box-shadow: var(--sombra);
+  }
+  .ficha::backdrop { background: rgb(0 30 15 / 0.55); }
+  .ficha__caja { position: relative; display: grid; gap: 22px; padding: clamp(20px, 3vw, 28px); max-height: inherit; overflow-y: auto; overscroll-behavior: contain; }
+  .ficha__cerrar {
+    position: sticky; top: 0; justify-self: end; margin-bottom: -56px; z-index: 2;
+    display: inline-grid; place-items: center; width: 44px; height: 44px; border: 0; border-radius: var(--radio-pill);
+    background: var(--card); color: var(--verde-oscuro); box-shadow: var(--anillo-fuerte); cursor: pointer;
+  }
+  .ficha__cerrar:hover { background: var(--muted); }
+  .ficha__cabecera { display: grid; grid-template-columns: 132px minmax(0, 1fr); gap: 18px; align-items: center; padding-right: 48px; }
+  .ficha__imagen { aspect-ratio: 1; border-radius: var(--radio-lg); background: #fff; box-shadow: var(--anillo); display: grid; place-items: center; overflow: hidden; }
+  .ficha__imagen img { width: 100%; height: 100%; object-fit: contain; padding: 10px; mix-blend-mode: multiply; }
+  .ficha[data-estado='sin-stock'] .ficha__imagen img { filter: grayscale(1); opacity: 0.7; }
+  .ficha__titulos { display: grid; gap: 6px; }
+  .ficha__titulo { font-size: clamp(1.25rem, 2.6vw, 1.5rem); line-height: 1.2; }
+  .ficha__resumen { color: var(--muted-foreground); font-size: 0.9375rem; }
+  .ficha__seccion { display: grid; gap: 10px; }
+  .ficha__subtitulo { font-size: 1rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--verde-oscuro); }
+  .ficha__descripcion { font-size: 0.9375rem; line-height: 1.55; color: var(--foreground); }
+  .ficha__descripcion ul { margin: 0; padding-left: 20px; display: grid; gap: 4px; }
+  .ficha__nota { font-size: 0.8125rem; color: var(--muted-foreground); }
+  @media (max-width: 559px) {
+    .ficha { width: 100%; max-width: 100%; max-height: 92dvh; margin: auto 0 0; border-radius: var(--radio-xl) var(--radio-xl) 0 0; }
+    .ficha__cabecera { grid-template-columns: 88px minmax(0, 1fr); gap: 14px; }
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .ficha[open] { animation: ficha-entra 280ms var(--ease-out-quart); }
+    @keyframes ficha-entra { from { opacity: 0; transform: translateY(16px); } }
+  }
 </style>

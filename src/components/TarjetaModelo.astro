@@ -1,0 +1,110 @@
+---
+// Tarjeta de un MODELO del Bazar (uno o varios colores). Por decisión de la cooperativa NO muestra precios.
+// - La etiqueta de stock resume el modelo: "Con stock" si algún color tiene, "Sin stock" si ninguno.
+// - "Ver detalle" abre la ficha (descripción + cada color con su código interno COPOL, su stock y su
+//   consulta por WhatsApp). Sin JavaScript, el mismo botón despliega la lista de colores en la tarjeta.
+// Agrupación conservadora de variantes: src/lib/variantes.ts.
+import type { ModeloWeb } from '../lib/inventario';
+import { ESTADO_STOCK } from '../lib/inventario';
+import Icono from './Icono.astro';
+import '../styles/producto.css';
+
+interface Props {
+  modelo: ModeloWeb;
+  nivel?: 'h2' | 'h3' | 'h4';
+  cargaDiferida?: boolean;
+}
+const { modelo: m, nivel = 'h3', cargaDiferida = true } = Astro.props;
+const Titulo = nivel;
+const ICONO_ESTADO = { 'con-stock': 'check', 'sin-stock': 'cerrar', 'sin-dato': 'info' } as const;
+const n = m.variantes.length;
+const conStock = m.variantes.filter((v) => v.estado === 'con-stock').length;
+const resumen = n > 1
+  ? `${n} colores${conStock && conStock < n ? ` · ${conStock} con stock` : ''}`
+  : m.variantes[0].codigo ? `Código interno COPOL ${m.variantes[0].codigo}` : '';
+---
+<article
+  class="producto producto--modelo"
+  data-id={m.id}
+  data-ids={m.variantes.map((v) => v.id).join(' ')}
+  data-variantes={n}
+  data-estado={m.estado}
+  data-categoria={m.categoriaId}
+  data-descripcion={m.descripcionId ?? ''}
+  data-texto={m.texto}
+>
+  <div class="producto__marco" data-abrir-imagen>
+    {m.imagen ? (
+      <div class="media media--contain producto__media" style="aspect-ratio: 1; --media-radio: var(--radio-lg)">
+        <img
+          src={m.imagen.src}
+          srcset={m.imagen.srcset}
+          sizes="(min-width: 1100px) 240px, (min-width: 600px) 30vw, 46vw"
+          alt={m.nombre}
+          width="400"
+          height="400"
+          loading={cargaDiferida ? 'lazy' : 'eager'}
+          decoding="async"
+        />
+      </div>
+    ) : (
+      <div class="producto__sin-imagen"><Icono nombre="imagen" tamano={28} /><span>Imagen no disponible</span></div>
+    )}
+    <span class="stock-etiqueta" data-stock-etiqueta>
+      <Icono nombre={ICONO_ESTADO[m.estado]} tamano={14} />
+      <span data-stock-texto>{ESTADO_STOCK[m.estado]}</span>
+    </span>
+  </div>
+  <div class="producto__cuerpo">
+    <span class="producto__categoria">{m.categoria}{m.marca && ` · ${m.marca}`}</span>
+    <Titulo class="producto__nombre" data-nombre>{m.nombre}</Titulo>
+    {resumen && <span class="producto__codigo">{resumen}</span>}
+  </div>
+  <details class="producto__detalle" data-detalle>
+    <summary class="btn btn--secondary btn--sm producto__accion" data-abrir>
+      <Icono nombre="info" tamano={17} /><span>{n > 1 ? 'Ver colores y stock' : 'Ver detalle'}<span class="visualmente-oculto">: {m.nombre}</span></span>
+    </summary>
+    <ul class="variantes" data-variantes-lista>
+      {m.variantes.map((v) => (
+        <li class="variante" data-id={v.id} data-estado={v.estado}>
+          <span class="variante__color">{v.color ?? (n > 1 ? 'Color no indicado' : 'Modelo único')}</span>
+          {v.codigo && <span class="variante__codigo">Código interno COPOL {v.codigo}</span>}
+          <span class="variante__stock"><Icono nombre={ICONO_ESTADO[v.estado]} tamano={14} />{ESTADO_STOCK[v.estado]}</span>
+          <a href={v.consulta} class="btn btn--outline btn--sm variante__consulta" rel="noopener">
+            <Icono nombre="whatsapp" tamano={16} /><span>Consultar<span class="visualmente-oculto">: {m.nombre}{v.color ? `, color ${v.color.toLowerCase()}` : ''}</span></span>
+          </a>
+        </li>
+      ))}
+    </ul>
+  </details>
+</article>
+
+<style is:global>
+  .producto--modelo .producto__marco { cursor: pointer; }
+  .producto__detalle { margin-top: auto; }
+  .producto__detalle > summary { list-style: none; width: fit-content; }
+  .producto__detalle > summary::-webkit-details-marker { display: none; }
+  .producto__detalle[open] > summary { margin-bottom: 10px; }
+
+  /* Lista de colores (dentro de la tarjeta sin JS y dentro de la ficha con JS) */
+  .variantes { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+  .variante {
+    display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; align-items: center;
+    padding: 10px 12px; border-radius: var(--radio-md); background: var(--card); box-shadow: var(--anillo-fuerte);
+  }
+  .variante__color { font-weight: 700; color: var(--foreground); }
+  .variante__codigo { grid-column: 1; font-size: 0.8125rem; color: var(--muted-foreground); }
+  .variante__stock {
+    grid-column: 1; justify-self: start; display: inline-flex; align-items: center; gap: 5px;
+    padding: 2px 9px 2px 7px; border-radius: var(--radio-pill); font-size: 0.75rem; font-weight: 700;
+  }
+  .variante[data-estado='con-stock'] .variante__stock { background: #e3f4e9; color: #0b6b32; box-shadow: inset 0 0 0 1px #b5dfc4; }
+  .variante[data-estado='sin-stock'] .variante__stock { background: #eceeed; color: #4f5753; box-shadow: inset 0 0 0 1px #d3d7d5; }
+  .variante[data-estado='sin-dato'] .variante__stock { background: #fff; color: var(--tinta-suave); box-shadow: inset 0 0 0 1px var(--borde-fuerte); }
+  .variante__consulta { grid-column: 2; grid-row: 1 / span 3; align-self: center; }
+  @media (max-width: 420px) {
+    .variante__color, .variante__codigo { grid-column: 1 / -1; }
+    .variante__stock { grid-column: 1; }
+    .variante__consulta { grid-column: 2; grid-row: auto; }
+  }
+</style>

@@ -6,6 +6,7 @@
 import type { Producto } from '../lib/inventario';
 import { ESTADO_STOCK } from '../lib/inventario';
 import Icono from './Icono.astro';
+import '../styles/producto.css';
 
 interface Props {
   producto: Producto;
@@ -54,40 +55,3 @@ const ICONO_ESTADO = { 'con-stock': 'check', 'sin-stock': 'cerrar', 'sin-dato': 
     <Icono nombre="whatsapp" tamano={17} /><span>Consultar<span class="producto__stock"> stock</span><span class="visualmente-oculto">: {producto.nombre}</span></span>
   </a>
 </article>
-
-<style is:global>
-  .producto { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
-  .producto__marco { position: relative; }
-  .producto .producto__media { padding: 12px; }
-  .producto .producto__media img { object-fit: contain; mix-blend-mode: multiply; transition: filter 300ms var(--ease-out-quart), opacity 300ms var(--ease-out-quart); }
-  .producto__sin-imagen {
-    aspect-ratio: 1; border-radius: var(--radio-lg); background: var(--muted); color: var(--muted-foreground);
-    display: grid; place-content: center; justify-items: center; gap: 8px; font-size: 0.8125rem; font-weight: 600; text-align: center; padding: 12px;
-  }
-  .producto__cuerpo { display: grid; gap: 4px; padding-inline: 2px; }
-  .producto__categoria { font-size: 0.75rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--verde-oscuro); }
-  .producto__nombre { font-size: 0.98rem; font-weight: 650; line-height: 1.35; color: var(--foreground); letter-spacing: -0.005em; transition: color var(--transicion); }
-  .producto:hover .producto__nombre { color: var(--verde-oscuro); }
-  .producto__codigo { font-size: 0.8125rem; color: var(--muted-foreground); }
-  .producto__accion { margin-top: auto; align-self: flex-start; }
-
-  /* Etiqueta de stock sobre la imagen */
-  .stock-etiqueta {
-    position: absolute; top: 10px; left: 10px; z-index: 1;
-    display: inline-flex; align-items: center; gap: 5px;
-    padding: 4px 10px 4px 8px; border-radius: var(--radio-pill);
-    font-size: 0.75rem; font-weight: 700; line-height: 1.2; letter-spacing: 0.01em;
-  }
-  .producto[data-estado='con-stock'] .stock-etiqueta { background: #e3f4e9; color: #0b6b32; box-shadow: inset 0 0 0 1px #b5dfc4; }
-  .producto[data-estado='sin-stock'] .stock-etiqueta { background: #eceeed; color: #4f5753; box-shadow: inset 0 0 0 1px #d3d7d5; }
-  .producto[data-estado='sin-dato'] .stock-etiqueta { background: #fff; color: var(--tinta-suave); box-shadow: inset 0 0 0 1px var(--borde-fuerte); }
-  /* Sin stock: la foto pasa a gris; el texto y el botón siguen con contraste completo. */
-  .producto[data-estado='sin-stock'] .producto__media img { filter: grayscale(1); opacity: 0.6; }
-
-  @media (max-width: 559px) {
-    .producto__nombre { font-size: 0.875rem; }
-    .producto__accion { align-self: stretch; padding-inline: 8px; font-size: 0.875rem; gap: 6px; }
-    .producto__stock { display: none; }
-    .stock-etiqueta { top: 6px; left: 6px; font-size: 0.6875rem; padding: 3px 8px 3px 6px; }
-  }
-</style>
