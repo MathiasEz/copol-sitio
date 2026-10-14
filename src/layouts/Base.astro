@@ -67,7 +67,7 @@ const organizacion = {
     // Fondo elegido con el switch de la barra superior (antes de pintar, para evitar un parpadeo).
     try {
       const fondo = localStorage.getItem('copol-fondo');
-      if (fondo === 'blanco' || fondo === 'verdoso') document.documentElement.dataset.fondo = fondo;
+      if (fondo === 'blanco' || fondo === 'verdoso' || fondo === 'amarillo') document.documentElement.dataset.fondo = fondo;
     } catch (e) { /* almacenamiento no disponible */ }
   </script>
 </head>

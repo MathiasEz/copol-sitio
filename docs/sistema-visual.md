@@ -10,6 +10,7 @@ Fuente: **Manual de marca COPOL 2026**. Los valores están definidos como variab
 | `--verde-copol` | `#008D36` | Manual | Acentos e íconos. Texto blanco encima **solo ≥ 24 px** o negrita ≥ 19 px (4,3:1). |
 | `--amarillo-copol` | `#F8EA39` | Manual | Resaltados, chips, CTA secundarios. Siempre con texto verde oscuro o `--tinta`. **Nunca texto amarillo sobre blanco.** |
 | `--blanco-verdozo` | `#EAF4EE` | Manual | Fondos de sección, tarjetas suaves. |
+| `--blanco-amarillo` | `#FEFCE3` | Derivado (Amarillo al 14 %) | Fondo de página de la opción "Amarillo". Verde oscuro encima: 6,9:1. |
 | `--tinta` | `#12261A` | Derivado | Texto de cuerpo. |
 | `--tinta-suave` | `#3D5A49` | Derivado | Texto secundario (≥ 4,5:1 sobre blanco y sobre Blanco verdozo). |
 | `--borde` / `--borde-fuerte` | `#D6E8DC` / `#9CC6AA` | Derivado | Bordes de tarjetas y campos. |

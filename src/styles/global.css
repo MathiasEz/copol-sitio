@@ -18,6 +18,8 @@
   --verde-copol: #008d36;
   --amarillo-copol: #f8ea39;
   --blanco-verdozo: #eaf4ee;
+  /* Amarillo del manual mezclado con blanco (14 %): fondo de página cálido, elegido en Claude Design. */
+  --blanco-amarillo: #fefce3;
 
   /* Derivados funcionales (tonos del verde oscuro) */
   --tinta: #12261a;
@@ -29,7 +31,7 @@
   --blanco: #ffffff;
   --sobre-verde: #d9ecdf;
 
-  /* Fondo de página uniforme (switch "Fondo" de la barra superior): blanco o blanco verdoso.
+  /* Fondo de página uniforme (switch "Fondo" de la barra superior): blanco, blanco verdoso o amarillo.
      Tarjetas y secciones se distinguen con espaciado, bordes y sombras sutiles, no con bloques de color. */
   --fondo-pagina: var(--blanco);
 
@@ -82,6 +84,16 @@ html[data-fondo='verdoso'] {
   --fondo-pagina: var(--blanco-verdozo);
   --muted: #dcece2;
   --secondary: #d3e8da;
+  --anillo: inset 0 0 0 1px rgb(0 51 26 / 0.1);
+}
+
+/* Opción "Amarillo": la página toma un amarillo tenue derivado del manual (#F8EA39 al 14 %). Chips,
+   íconos y botones secundarios usan tintes más intensos del mismo amarillo; el texto sigue verde/tinta
+   (contraste del Verde oscuro sobre el fondo: 6,9:1). */
+html[data-fondo='amarillo'] {
+  --fondo-pagina: var(--blanco-amarillo);
+  --muted: #fbf4c2;
+  --secondary: #f9eea6;
   --anillo: inset 0 0 0 1px rgb(0 51 26 / 0.1);
 }
 
