@@ -13,6 +13,7 @@ public/catalogo/
 public/panel-recursos/zxing-browser.min.js
 .claude/
 .agents/
+skills-lock.json
 *.tmp.mjs
 *.log
 .DS_Store

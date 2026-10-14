@@ -21,6 +21,7 @@ public/panel-recursos/zxing-browser.min.js
 # Herramientas locales del editor/asistente
 .claude/
 .agents/
+skills-lock.json
 
 # Sistema y temporales
 *.tmp.mjs
