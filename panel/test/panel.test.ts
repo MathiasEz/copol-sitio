@@ -378,7 +378,8 @@ describe('asistente', () => {
     assert.doesNotMatch(pantallaLector, /Poné sin stock/);
     const hl = await herramientasDe(lector);
     assert.ok(!hl.nombres.includes('proponer_cambios'), 'el visualizador no recibe la herramienta de cambios');
-    assert.match(hl.sistema, /solo puede consultar/);
+    assert.ok(hl.sistema.includes('rol de **solo consulta**'), 'el instructivo indica que el rol es de solo consulta');
+    assert.doesNotMatch(hl.sistema, /proponer_cambios con todos/);
     const propuestaLector = await (await preguntar(lector, `proponer:${JSON.stringify([{ codigo: '100001', estado: 'sin-dato' }])}`)).json();
     assert.equal(propuestaLector.propuesta, null, 'aunque lo intente, no se crea una propuesta');
 
@@ -405,7 +406,8 @@ describe('asistente', () => {
     const actual = await fila<{ stock_estado: string }>("SELECT stock_estado FROM productos WHERE id = 'parlante-1'");
     assert.ok(datos.respuesta.includes(actual!.stock_estado === 'con-stock' ? 'Con stock' : actual!.stock_estado === 'sin-stock' ? 'Sin stock' : 'Sin dato'));
     const gateway = pedidos.filter((p) => p.url.startsWith('https://ai-gateway.vercel.sh/'));
-    assert.equal(gateway.at(-1)!.cuerpo!.model, 'anthropic/claude-haiku-5.5');
+    assert.equal(gateway.at(-1)!.cuerpo!.model, 'google/gemini-2.5-flash');
+    assert.equal(gateway.at(-1)!.cuerpo!.temperature, 0.2);
     const herramientas = (gateway.at(-1)!.cuerpo!.tools as { name: string }[]).map((t) => t.name);
     assert.deepEqual(herramientas.sort(), ['buscar_productos', 'leer_pagina', 'listar_novedades', 'proponer_cambios', 'resumen_stock', 'ultimos_cambios']);
     assert.equal(datos.propuesta, null);

@@ -522,11 +522,13 @@ export function vistaAsistente(c: Contexto, d: DatosAsistente) {
     <label class="sr" for="pregunta">Tu pregunta</label>
     <textarea class="input" id="pregunta" name="pregunta" rows="2" maxlength="1000" required placeholder="Escribí tu pregunta…" ${si(!d.disponible || d.restantes <= 0, 'disabled')}></textarea>
     <div class="asistente__acciones">
-      <label class="asistente__modelo"><span class="sr">Modelo</span><select class="input" name="modelo" data-modelo>${d.modelos.map((m) => html`<option value="${m.valor}" ${si(m.valor === d.modelo, 'selected')}>${m.nombre}</option>`)}</select></label>
+      ${d.modelos.length > 1
+        ? html`<label class="asistente__modelo"><span class="sr">Modelo</span><select class="input" name="modelo" data-modelo>${d.modelos.map((m) => html`<option value="${m.valor}" ${si(m.valor === d.modelo, 'selected')}>${m.nombre}</option>`)}</select></label>`
+        : html`<input type="hidden" name="modelo" value="${d.modelo}"><span class="asistente__modelo muted">${d.modelos[0]?.nombre ?? ''}</span>`}
       <button class="btn btn--ghost btn--sm" type="button" data-nueva hidden>Nueva conversación</button>
       <button class="btn" type="submit" ${si(!d.disponible || d.restantes <= 0, 'disabled')}>${icono('enviar', 16)}Enviar</button>
     </div>
-    <p class="asistente__nota muted"><span data-restantes>${d.restantes <= 0 ? 'Llegaste al límite de consultas de hoy.' : `Te quedan ${d.restantes} consultas hoy.`}</span> Usa Claude (Anthropic) a través de Vercel AI Gateway. Las respuestas pueden tener errores: confirmá los datos importantes.</p>
+    <p class="asistente__nota muted"><span data-restantes>${d.restantes <= 0 ? 'Llegaste al límite de consultas de hoy.' : `Te quedan ${d.restantes} consultas hoy.`}</span> Usa Gemini 2.5 Flash (Google) a través de Vercel AI Gateway. Las respuestas pueden tener errores: confirmá los datos importantes.</p>
   </form>
 </section>
 <script src="/panel-recursos/asistente.js" defer></script>`);

@@ -516,7 +516,7 @@ export function crearApp({ db: fuenteDb, config, almacen, asistente }: OpcionesA
       res = await A.consultar({ historial, modelo, db: c.get('db'), origen: new URL(c.req.url).origin, token, usuarioId: c.get('usuario')!.id, rol: c.get('usuario')!.rol, fetch: asistente?.fetch });
     } catch (e) {
       if (e instanceof A.ErrorAsistente) return fallar(502, e.message);
-      if ((e as Error).name === 'TimeoutError') return fallar(502, 'Claude tardó demasiado en responder. Probá con una pregunta más concreta.');
+      if ((e as Error).name === 'TimeoutError') return fallar(502, 'El asistente tardó demasiado en responder. Probá con una pregunta más concreta.');
       throw e;
     }
     await registrar(c.get('db'), actor(c), 'asistente.consulta', 'asistente', null, { modelo: A.MODELOS[modelo].id, pregunta: historial.at(-1)!.texto.slice(0, 300), herramientas: res.herramientas, tokens: res.tokens, propuesta: res.propuesta?.items.length ?? 0 });
