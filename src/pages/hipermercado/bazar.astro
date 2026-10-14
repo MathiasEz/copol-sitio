@@ -92,7 +92,7 @@ const secciones = catalogo.categorias.map((c) => ({ ...c, modelos: MODELOS.filte
     <!-- Ficha de producto: se completa con la tarjeta tocada; la descripción se pide al abrirla -->
     <dialog class="ficha" data-ficha aria-labelledby="ficha-titulo">
       <div class="ficha__caja">
-        <button type="button" class="ficha__cerrar" data-ficha-cerrar aria-label="Cerrar"><Icono nombre="cerrar" tamano={20} /></button>
+        <div class="ficha__barra"><button type="button" class="ficha__cerrar" data-ficha-cerrar aria-label="Cerrar"><Icono nombre="cerrar" tamano={20} /></button></div>
         <div class="ficha__cabecera">
           <div class="ficha__imagen" data-ficha-imagen></div>
           <div class="ficha__titulos">
@@ -110,6 +110,32 @@ const secciones = catalogo.categorias.map((c) => ({ ...c, modelos: MODELOS.filte
           <div class="ficha__descripcion" data-ficha-descripcion></div>
           <p class="ficha__nota">Datos del catálogo, sujetos a cambios: confirmá especificaciones, colores y stock por WhatsApp.</p>
         </section>
+      </div>
+    </dialog>
+
+    <!-- Carrito COPOL: se guarda solo en este navegador y se envía por WhatsApp (sin precios ni pagos) -->
+    <button type="button" class="carrito-boton" data-carrito-abrir hidden aria-haspopup="dialog">
+      <Icono nombre="carrito" tamano={20} /><span>Mi carrito</span><span class="carrito-boton__cuenta" data-carrito-cuenta>0</span>
+    </button>
+    <p class="carrito-aviso" role="status" aria-live="polite" data-carrito-aviso></p>
+    <dialog class="ficha carrito" data-carrito aria-labelledby="carrito-titulo" data-wa={CONTACTO.whatsappGeneral.numero}>
+      <div class="ficha__caja">
+        <div class="ficha__barra"><button type="button" class="ficha__cerrar" data-carrito-cerrar aria-label="Cerrar"><Icono nombre="cerrar" tamano={20} /></button></div>
+        <div class="carrito__cabecera">
+          <h2 id="carrito-titulo" class="ficha__titulo"><Icono nombre="carrito" tamano={22} /> Tu carrito COPOL</h2>
+          <p class="ficha__resumen" data-carrito-resumen></p>
+        </div>
+        <ul class="carrito__lista" data-carrito-lista></ul>
+        <div class="carrito__vacio" data-carrito-vacio>
+          <p>Todavía no agregaste productos. Abrí un producto con "Ver detalle" o "Ver colores y stock" y tocá <strong>Agregar</strong> en el color que quieras.</p>
+        </div>
+        <div class="carrito__pie" data-carrito-pie>
+          <p class="ficha__nota">Al enviar se abre WhatsApp con tu pedido ya escrito para mandar a COPOL. El pedido queda confirmado solo cuando nuestro equipo lo gestiona por WhatsApp; el stock puede variar durante el día.</p>
+          <div class="carrito__acciones">
+            <button type="button" class="btn btn--ghost btn--sm" data-carrito-vaciar>Vaciar carrito</button>
+            <a class="btn btn--default" href="#" target="_blank" rel="noopener" data-carrito-enviar><Icono nombre="whatsapp" tamano={18} /> Enviar por WhatsApp</a>
+          </div>
+        </div>
       </div>
     </dialog>
 
@@ -318,6 +344,172 @@ const secciones = catalogo.categorias.map((c) => ({ ...c, modelos: MODELOS.filte
     tarjetaAbierta = null;
   });
 
+  // ── Carrito COPOL ──
+  // Se guarda en este navegador (localStorage). Cada ítem es un producto (un color) identificado por su
+  // código interno COPOL; al enviar se arma un mensaje de WhatsApp ordenado por categoría.
+  interface ItemCarrito { id: string; codigo: string; modelo: string; color: string; categoria: string; estado: string; cantidad: number }
+  const CLAVE_CARRITO = 'copol-carrito';
+  const MAX_ITEMS_CARRITO = 40;
+  const MAX_UNIDADES = 20;
+  const carritoDialogo = document.querySelector<HTMLDialogElement>('[data-carrito]')!;
+  const carritoBoton = document.querySelector<HTMLButtonElement>('[data-carrito-abrir]')!;
+  const carritoCuenta = document.querySelector<HTMLElement>('[data-carrito-cuenta]')!;
+  const carritoAviso = document.querySelector<HTMLElement>('[data-carrito-aviso]')!;
+  const carritoLista = carritoDialogo.querySelector<HTMLElement>('[data-carrito-lista]')!;
+  const carritoEnviar = carritoDialogo.querySelector<HTMLAnchorElement>('[data-carrito-enviar]')!;
+  let carrito: ItemCarrito[] = [];
+  try {
+    const guardado = JSON.parse(localStorage.getItem(CLAVE_CARRITO) ?? '[]');
+    if (Array.isArray(guardado)) carrito = guardado.filter((x) => x && typeof x.id === 'string' && typeof x.modelo === 'string').slice(0, MAX_ITEMS_CARRITO);
+  } catch { /* sin almacenamiento: el carrito vive mientras la página esté abierta */ }
+
+  // El stock mostrado en el carrito se actualiza con el de esta carga de la página.
+  const filaDe = (id: string) => document.querySelector<HTMLElement>(`[data-secciones] .variante[data-id="${CSS.escape(id)}"]`);
+  carrito.forEach((i) => { const f = filaDe(i.id); if (f) i.estado = f.dataset.estado ?? i.estado; });
+
+  const unidades = () => carrito.reduce((a, i) => a + i.cantidad, 0);
+  const guardarCarrito = () => {
+    try { localStorage.setItem(CLAVE_CARRITO, JSON.stringify(carrito)); } catch { /* sin almacenamiento */ }
+  };
+  const nombreItem = (i: ItemCarrito) => `${i.modelo}${i.color ? ` (${i.color.toLowerCase()})` : ''}`;
+  const mensajeWhatsapp = () => {
+    const porCategoria = new Map<string, ItemCarrito[]>();
+    for (const i of carrito) (porCategoria.get(i.categoria) ?? porCategoria.set(i.categoria, []).get(i.categoria)!).push(i);
+    const categorias = [...porCategoria.keys()].sort((a, b) => a.localeCompare(b, 'es'));
+    let n = 0;
+    const lineas = ['Hola! Quiero consultar por estos productos del Bazar COPOL:', ''];
+    for (const c of categorias) {
+      lineas.push(`*${c}*`);
+      for (const i of porCategoria.get(c)!.sort((a, b) => nombreItem(a).localeCompare(nombreItem(b), 'es'))) {
+        n++;
+        lineas.push(`${n}. ${i.modelo}${i.color ? ` — Color: ${i.color}` : ''} — Código interno COPOL: ${i.codigo || 's/c'} — Cantidad: ${i.cantidad}`);
+      }
+      lineas.push('');
+    }
+    lineas.push(`Total: ${carrito.length} ${carrito.length === 1 ? 'producto' : 'productos'} (${unidades()} ${unidades() === 1 ? 'unidad' : 'unidades'}).`);
+    lineas.push('¿Me confirman disponibilidad y condiciones de pago? ¡Gracias!');
+    return lineas.join('\n');
+  };
+
+  const botonCantidad = (etiqueta: string, icono: 'mas' | 'menos', accion: () => void, deshabilitado = false) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'carrito__cantidad-boton';
+    b.setAttribute('aria-label', etiqueta);
+    b.disabled = deshabilitado;
+    b.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true">${icono === 'mas' ? '<path d="M12 5v14M5 12h14"/>' : '<path d="M5 12h14"/>'}</svg>`;
+    b.addEventListener('click', accion);
+    return b;
+  };
+  const ETIQUETA_STOCK: Record<string, string> = { 'con-stock': 'Con stock', 'sin-stock': 'Sin stock', 'sin-dato': 'Consultar disponibilidad' };
+  const pintarCarrito = () => {
+    const total = unidades();
+    carritoCuenta.textContent = String(total);
+    carritoBoton.hidden = carrito.length === 0;
+    carritoBoton.setAttribute('aria-label', `Mi carrito: ${total} ${total === 1 ? 'unidad' : 'unidades'}`);
+    carritoDialogo.querySelector('[data-carrito-vacio]')!.toggleAttribute('hidden', carrito.length > 0);
+    carritoDialogo.querySelector('[data-carrito-pie]')!.toggleAttribute('hidden', carrito.length === 0);
+    carritoDialogo.querySelector('[data-carrito-resumen]')!.textContent = carrito.length ? `${carrito.length} ${carrito.length === 1 ? 'producto' : 'productos'} · ${total} ${total === 1 ? 'unidad' : 'unidades'}` : '';
+    carritoLista.replaceChildren(...carrito.map((i) => {
+      const li = document.createElement('li');
+      li.className = 'carrito__item';
+      li.dataset.estado = i.estado;
+      const info = document.createElement('div');
+      info.className = 'carrito__info';
+      const nombre = document.createElement('strong');
+      nombre.textContent = i.modelo;
+      const detalle = document.createElement('span');
+      detalle.className = 'carrito__detalle';
+      detalle.textContent = [i.color && `Color: ${i.color}`, i.codigo && `Código interno COPOL ${i.codigo}`].filter(Boolean).join(' · ');
+      const stock = document.createElement('span');
+      stock.className = 'carrito__stock';
+      stock.textContent = ETIQUETA_STOCK[i.estado] ?? '';
+      info.append(nombre, detalle, stock);
+      const controles = document.createElement('div');
+      controles.className = 'carrito__controles';
+      const cant = document.createElement('span');
+      cant.className = 'carrito__cantidad';
+      cant.textContent = String(i.cantidad);
+      cant.setAttribute('aria-label', `Cantidad: ${i.cantidad}`);
+      const quitar = document.createElement('button');
+      quitar.type = 'button';
+      quitar.className = 'btn btn--ghost btn--sm carrito__quitar';
+      quitar.textContent = 'Quitar';
+      quitar.setAttribute('aria-label', `Quitar ${nombreItem(i)} del carrito`);
+      quitar.addEventListener('click', () => { carrito = carrito.filter((x) => x.id !== i.id); cambio(); });
+      controles.append(
+        botonCantidad(`Una unidad menos de ${nombreItem(i)}`, 'menos', () => { i.cantidad = Math.max(1, i.cantidad - 1); cambio(); }, i.cantidad <= 1),
+        cant,
+        botonCantidad(`Una unidad más de ${nombreItem(i)}`, 'mas', () => { i.cantidad = Math.min(MAX_UNIDADES, i.cantidad + 1); cambio(); }, i.cantidad >= MAX_UNIDADES),
+        quitar,
+      );
+      li.append(info, controles);
+      return li;
+    }));
+    carritoEnviar.href = `https://wa.me/${carritoDialogo.dataset.wa}?text=${encodeURIComponent(mensajeWhatsapp())}`;
+    // Marca los botones "Agregar" de lo que ya está en el carrito (en las tarjetas y en la ficha abierta).
+    document.querySelectorAll<HTMLButtonElement>('[data-agregar]').forEach((b) => {
+      const id = b.closest<HTMLElement>('.variante')?.dataset.id ?? '';
+      const item = carrito.find((x) => x.id === id);
+      b.toggleAttribute('data-en-carrito', Boolean(item));
+      const t = b.querySelector('[data-agregar-texto]');
+      if (t) t.textContent = item ? `En el carrito (${item.cantidad})` : 'Agregar';
+    });
+  };
+  const cambio = () => { guardarCarrito(); pintarCarrito(); };
+
+  let ocultarAviso: number | undefined;
+  const avisar = (texto: string) => {
+    // Con una ventana abierta (ficha o carrito) el aviso va dentro de ella para verse por encima del fondo.
+    const contenedor = [ficha, carritoDialogo].find((d) => d.open) ?? document.body;
+    if (carritoAviso.parentElement !== contenedor) contenedor.append(carritoAviso);
+    carritoAviso.textContent = texto;
+    carritoAviso.classList.add('carrito-aviso--visible');
+    clearTimeout(ocultarAviso);
+    ocultarAviso = window.setTimeout(() => carritoAviso.classList.remove('carrito-aviso--visible'), 2600);
+  };
+  const agregar = (fila: HTMLElement) => {
+    const id = fila.dataset.id ?? '';
+    const existente = carrito.find((x) => x.id === id);
+    if (existente) {
+      existente.cantidad = Math.min(MAX_UNIDADES, existente.cantidad + 1);
+    } else {
+      if (carrito.length >= MAX_ITEMS_CARRITO) return avisar(`El carrito admite hasta ${MAX_ITEMS_CARRITO} productos distintos.`);
+      carrito.push({ id, codigo: fila.dataset.codigo ?? '', modelo: fila.dataset.modelo ?? '', color: fila.dataset.color ?? '', categoria: fila.dataset.categoriaNombre ?? 'Bazar', estado: fila.dataset.estado ?? 'sin-dato', cantidad: 1 });
+    }
+    cambio();
+    const item = carrito.find((x) => x.id === id)!;
+    avisar(`Agregado al carrito: ${nombreItem(item)} · ${item.cantidad} ${item.cantidad === 1 ? 'unidad' : 'unidades'}`);
+  };
+
+  document.querySelectorAll<HTMLButtonElement>('[data-agregar]').forEach((b) => { b.hidden = false; });
+  document.addEventListener('click', (e) => {
+    const b = (e.target as HTMLElement).closest<HTMLButtonElement>('[data-agregar]');
+    const fila = b?.closest<HTMLElement>('.variante');
+    if (b && fila) { e.preventDefault(); agregar(fila); }
+  });
+  carritoBoton.addEventListener('click', () => {
+    if (ficha.open) ficha.close();
+    carritoAviso.classList.remove('carrito-aviso--visible');
+    pintarCarrito();
+    carritoDialogo.showModal();
+  });
+  carritoDialogo.querySelector('[data-carrito-cerrar]')!.addEventListener('click', () => carritoDialogo.close());
+  carritoDialogo.addEventListener('click', (e) => { if (e.target === carritoDialogo) carritoDialogo.close(); });
+  carritoDialogo.addEventListener('close', () => { if (!carritoBoton.hidden) carritoBoton.focus(); });
+  carritoDialogo.querySelector('[data-carrito-vaciar]')!.addEventListener('click', () => {
+    if (!confirm('¿Vaciar el carrito?')) return;
+    carrito = [];
+    cambio();
+  });
+  // Otra pestaña cambió el carrito: se sincroniza.
+  window.addEventListener('storage', (e) => {
+    if (e.key !== CLAVE_CARRITO) return;
+    try { carrito = JSON.parse(e.newValue ?? '[]'); } catch { carrito = []; }
+    pintarCarrito();
+  });
+  pintarCarrito();
+
   // ── Barra de filtros compacta al bajar ──
   // Escritorio: se compacta al bajar y vuelve a su tamaño al subir. Móvil: queda compacta mientras se
   // recorre la lista (completa ocuparía casi media pantalla) y vuelve al llegar arriba.
@@ -438,14 +630,19 @@ const secciones = catalogo.categorias.map((c) => ({ ...c, modelos: MODELOS.filte
     border-radius: var(--radio-xl); background: var(--card); color: var(--foreground); box-shadow: var(--sombra);
   }
   .ficha::backdrop { background: rgb(0 30 15 / 0.55); }
-  .ficha__caja { position: relative; display: grid; gap: 22px; padding: clamp(20px, 3vw, 28px); max-height: inherit; overflow-y: auto; overscroll-behavior: contain; }
+  .ficha__caja { --pad: clamp(20px, 3vw, 28px); position: relative; display: grid; gap: 22px; padding: 0 var(--pad) var(--pad); max-height: inherit; overflow-y: auto; overscroll-behavior: contain; }
+  /* Barra con el botón de cerrar: queda fija arriba y el contenido pasa por debajo (no tapa botones). */
+  .ficha__barra {
+    position: sticky; top: 0; z-index: 2; display: flex; justify-content: flex-end;
+    margin: 0 calc(-1 * var(--pad)) -26px; padding: 12px 12px 4px;
+    background: linear-gradient(var(--card) 75%, rgb(255 255 255 / 0));
+  }
   .ficha__cerrar {
-    position: sticky; top: 0; justify-self: end; margin-bottom: -56px; z-index: 2;
     display: inline-grid; place-items: center; width: 44px; height: 44px; border: 0; border-radius: var(--radio-pill);
     background: var(--card); color: var(--verde-oscuro); box-shadow: var(--anillo-fuerte); cursor: pointer;
   }
   .ficha__cerrar:hover { background: var(--muted); }
-  .ficha__cabecera { display: grid; grid-template-columns: 132px minmax(0, 1fr); gap: 18px; align-items: center; padding-right: 48px; }
+  .ficha__cabecera { display: grid; grid-template-columns: 132px minmax(0, 1fr); gap: 18px; align-items: center; }
   .ficha__imagen { aspect-ratio: 1; border-radius: var(--radio-lg); background: #fff; box-shadow: var(--anillo); display: grid; place-items: center; overflow: hidden; }
   .ficha__imagen img { width: 100%; height: 100%; object-fit: contain; padding: 10px; mix-blend-mode: multiply; }
   .ficha[data-estado='sin-stock'] .ficha__imagen img { filter: grayscale(1); opacity: 0.7; }
@@ -465,4 +662,58 @@ const secciones = catalogo.categorias.map((c) => ({ ...c, modelos: MODELOS.filte
     .ficha[open] { animation: ficha-entra 280ms var(--ease-out-quart); }
     @keyframes ficha-entra { from { opacity: 0; transform: translateY(16px); } }
   }
+
+  /* Carrito COPOL */
+  .carrito-boton {
+    position: fixed; z-index: 40; right: max(16px, env(safe-area-inset-right)); bottom: max(16px, env(safe-area-inset-bottom));
+    display: inline-flex; align-items: center; gap: 8px; min-height: 52px; padding: 8px 10px 8px 18px; border: 0; border-radius: var(--radio-pill);
+    background: var(--verde-oscuro); color: var(--blanco); font: inherit; font-weight: 700; cursor: pointer;
+    box-shadow: 0 14px 30px -12px rgb(0 51 26 / 0.6);
+    transition: transform var(--transicion), background var(--transicion);
+  }
+  .carrito-boton:hover { background: var(--verde-hover); transform: translateY(-1px); }
+  .carrito-boton:focus-visible { outline: 3px solid var(--amarillo-copol); outline-offset: 3px; }
+  .carrito-boton__cuenta {
+    display: inline-grid; place-items: center; min-width: 30px; height: 30px; padding: 0 8px; border-radius: var(--radio-pill);
+    background: var(--amarillo-copol); color: var(--verde-profundo); font-size: 0.9375rem; font-weight: 800;
+  }
+  .carrito-aviso {
+    position: fixed; z-index: 41; left: 50%; bottom: 84px; transform: translate(-50%, 12px); margin: 0;
+    max-width: min(92vw, 460px); padding: 10px 16px; border-radius: var(--radio-pill);
+    background: var(--verde-profundo); color: var(--blanco); font-weight: 600; font-size: 0.9375rem; text-align: center;
+    box-shadow: var(--sombra); opacity: 0; pointer-events: none; transition: opacity 200ms, transform 300ms var(--ease-out-quart);
+  }
+  .carrito-aviso--visible { opacity: 1; transform: translate(-50%, 0); }
+  .carrito__cabecera { display: grid; gap: 4px; }
+  .carrito__cabecera .ficha__titulo { display: flex; align-items: center; gap: 10px; }
+  .carrito__lista { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+  .carrito__item {
+    display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px 14px; align-items: center;
+    padding: 12px 14px; border-radius: var(--radio-md); background: var(--card); box-shadow: var(--anillo-fuerte);
+  }
+  .carrito__info { display: grid; gap: 3px; min-width: 0; }
+  .carrito__info strong { line-height: 1.3; }
+  .carrito__detalle { font-size: 0.8125rem; color: var(--muted-foreground); overflow-wrap: anywhere; }
+  .carrito__stock { justify-self: start; font-size: 0.75rem; font-weight: 700; padding: 1px 8px; border-radius: var(--radio-pill); }
+  .carrito__item[data-estado='con-stock'] .carrito__stock { background: #e3f4e9; color: #0b6b32; }
+  .carrito__item[data-estado='sin-stock'] .carrito__stock { background: #eceeed; color: #4f5753; }
+  .carrito__item[data-estado='sin-dato'] .carrito__stock { background: var(--muted); color: var(--tinta-suave); }
+  .carrito__controles { display: flex; align-items: center; gap: 6px; }
+  .carrito__cantidad-boton {
+    display: inline-grid; place-items: center; width: 36px; height: 36px; border: 0; border-radius: var(--radio-pill);
+    background: var(--muted); color: var(--verde-oscuro); cursor: pointer;
+  }
+  .carrito__cantidad-boton:disabled { opacity: 0.4; cursor: default; }
+  .carrito__cantidad { min-width: 24px; text-align: center; font-weight: 800; font-variant-numeric: tabular-nums; }
+  .carrito__vacio p { margin: 0; color: var(--muted-foreground); }
+  .carrito__pie { display: grid; gap: 12px; }
+  .carrito__acciones { display: flex; flex-wrap: wrap; gap: 10px; justify-content: space-between; align-items: center; }
+  [data-carrito-vacio][hidden], [data-carrito-pie][hidden] { display: none; }
+  @media (max-width: 559px) {
+    .carrito__item { grid-template-columns: 1fr; }
+    .carrito__acciones .btn--default { flex: 1 1 100%; }
+    .carrito-boton span:not(.carrito-boton__cuenta) { display: none; }
+    .carrito-boton { padding: 8px 10px 8px 14px; }
+  }
+  @media (prefers-reduced-motion: reduce) { .carrito-aviso, .carrito-boton { transition: none; } }
 </style>

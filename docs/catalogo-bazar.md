@@ -91,3 +91,11 @@ La página del Bazar muestra una tarjeta por **modelo**; cada **color** sigue si
 - Estado del modelo: "Con stock" si algún color tiene; "Sin stock" si ninguno; si no, "Consultar disponibilidad". Los filtros usan ese estado.
 - Descripción: la más completa entre los colores del modelo, pedida a `/api/bazar/descripcion/<id>` al abrir la ficha (lee la base; si no responde, el catálogo importado). 797 de 806 productos tienen descripción importada; los demás muestran "Consultanos por WhatsApp".
 - Errores de tipeo evidentes del sistema, confirmados por la cooperativa, se corrigen solo en lo que muestra la web (no en la base): REMDI → Redmi, MOTORLA → Motorola, BICILETA → Bicicleta, ESPESSO → Espresso (además de Xioami y Smasung). Lista en `src/lib/variantes.ts` (TIPEOS) y `capitalizar()` en `src/lib/inventario.ts`.
+
+## Carrito COPOL (14/10/2026)
+
+En la ficha de cada producto, cada color tiene **Agregar** (además de Consultar). Un botón flotante **Mi carrito** muestra las unidades y abre el carrito: cantidades (1 a 20 por producto, hasta 40 productos), quitar, vaciar y **Enviar por WhatsApp** al 098 872 727 con un mensaje ordenado por categoría y por nombre, con color, código interno COPOL y cantidad de cada producto. Sin precios ni pagos: el pedido se confirma cuando el equipo lo gestiona por WhatsApp.
+
+- Se guarda solo en el navegador de la persona (localStorage, clave `copol-carrito`); no llega a la base ni al panel. Si el almacenamiento no está disponible, dura mientras la página esté abierta.
+- Al cargar la página, el estado de stock de cada producto del carrito se actualiza con el vigente.
+- Código: `src/pages/hipermercado/bazar.astro` (§ Carrito COPOL) y el botón en `src/components/TarjetaModelo.astro`.

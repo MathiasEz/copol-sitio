@@ -66,13 +66,19 @@ const resumen = n > 1
     </summary>
     <ul class="variantes" data-variantes-lista>
       {m.variantes.map((v) => (
-        <li class="variante" data-id={v.id} data-estado={v.estado}>
+        <li class="variante" data-id={v.id} data-estado={v.estado} data-codigo={v.codigo ?? ''} data-color={v.color ?? ''} data-modelo={m.nombre} data-categoria-nombre={m.categoria}>
           <span class="variante__color">{v.color ?? (n > 1 ? 'Color no indicado' : 'Modelo único')}</span>
           {v.codigo && <span class="variante__codigo">Código interno COPOL {v.codigo}</span>}
           <span class="variante__stock"><Icono nombre={ICONO_ESTADO[v.estado]} tamano={14} />{ESTADO_STOCK[v.estado]}</span>
-          <a href={v.consulta} class="btn btn--outline btn--sm variante__consulta" rel="noopener">
-            <Icono nombre="whatsapp" tamano={16} /><span>Consultar<span class="visualmente-oculto">: {m.nombre}{v.color ? `, color ${v.color.toLowerCase()}` : ''}</span></span>
-          </a>
+          <div class="variante__acciones">
+            {/* Carrito COPOL: se activa con JavaScript (src/pages/hipermercado/bazar.astro). */}
+            <button type="button" class="btn btn--default btn--sm variante__agregar" data-agregar hidden>
+              <Icono nombre="carrito" tamano={16} /><span data-agregar-texto>Agregar</span><span class="visualmente-oculto"> al carrito: {m.nombre}{v.color ? `, color ${v.color.toLowerCase()}` : ''}</span>
+            </button>
+            <a href={v.consulta} class="btn btn--outline btn--sm variante__consulta" rel="noopener">
+              <Icono nombre="whatsapp" tamano={16} /><span>Consultar<span class="visualmente-oculto">: {m.nombre}{v.color ? `, color ${v.color.toLowerCase()}` : ''}</span></span>
+            </a>
+          </div>
         </li>
       ))}
     </ul>
@@ -101,10 +107,12 @@ const resumen = n > 1
   .variante[data-estado='con-stock'] .variante__stock { background: #e3f4e9; color: #0b6b32; box-shadow: inset 0 0 0 1px #b5dfc4; }
   .variante[data-estado='sin-stock'] .variante__stock { background: #eceeed; color: #4f5753; box-shadow: inset 0 0 0 1px #d3d7d5; }
   .variante[data-estado='sin-dato'] .variante__stock { background: #fff; color: var(--tinta-suave); box-shadow: inset 0 0 0 1px var(--borde-fuerte); }
-  .variante__consulta { grid-column: 2; grid-row: 1 / span 3; align-self: center; }
+  .variante__acciones { grid-column: 2; grid-row: 1 / span 3; align-self: center; display: flex; flex-direction: column; gap: 6px; align-items: stretch; }
+  .variante__agregar[data-en-carrito] { background: var(--secondary); color: var(--secondary-foreground); }
   @media (max-width: 420px) {
-    .variante__color, .variante__codigo { grid-column: 1 / -1; }
-    .variante__stock { grid-column: 1; }
-    .variante__consulta { grid-column: 2; grid-row: auto; }
+    .variante { grid-template-columns: 1fr; }
+    .variante__color, .variante__codigo, .variante__stock { grid-column: 1; }
+    .variante__acciones { grid-column: 1; grid-row: auto; flex-direction: row; flex-wrap: wrap; margin-top: 6px; }
+    .variante__acciones .btn { flex: 1 1 auto; }
   }
 </style>

@@ -119,6 +119,30 @@ const VIEWPORTS = { movil: { width: 375, height: 812 }, escritorio: { width: 136
   verificar(ficha.lineas > 0, `Bazar · la ficha carga la descripción del catálogo (${ficha.lineas} líneas)`);
   await page.keyboard.press('Escape');
   verificar(!(await page.evaluate(() => document.querySelector('[data-ficha]').open)), 'Bazar · la ficha se cierra con Escape');
+
+  // Carrito COPOL: agregar desde la ficha, ver el contador y armar el mensaje de WhatsApp con nombre y código.
+  page.on('dialog', (d) => d.accept());
+  verificar(await page.locator('[data-carrito-abrir]').isHidden(), 'Carrito · el botón no aparece con el carrito vacío');
+  await conColores.locator('[data-abrir]').click();
+  await page.waitForSelector('[data-ficha][open]');
+  await page.locator('[data-ficha] .variante [data-agregar]').nth(0).click();
+  await page.locator('[data-ficha] .variante [data-agregar]').nth(1).click();
+  await page.locator('[data-ficha] .variante [data-agregar]').nth(1).click();
+  await page.keyboard.press('Escape');
+  verificar((await page.locator('[data-carrito-cuenta]').textContent()) === '3', 'Carrito · el contador suma unidades (3)');
+  await page.locator('[data-carrito-abrir]').click();
+  await page.waitForSelector('[data-carrito][open]');
+  const carrito = await page.evaluate(() => {
+    const enlace = document.querySelector('[data-carrito-enviar]');
+    return { items: document.querySelectorAll('[data-carrito] .carrito__item').length, url: enlace.href.split('?')[0], texto: new URL(enlace.href).searchParams.get('text') };
+  });
+  verificar(carrito.items === 2 && carrito.url === 'https://wa.me/59898872727', `Carrito · 2 productos y envío al WhatsApp 098 872 727 (${carrito.items}, ${carrito.url})`);
+  verificar(ids.length >= 2 && /Código interno COPOL: \d+ — Cantidad: 2/.test(carrito.texto) && /Total: 2 productos \(3 unidades\)/.test(carrito.texto), 'Carrito · el mensaje lista cada producto con su código y cantidad');
+  await page.reload({ waitUntil: 'networkidle' });
+  verificar((await page.locator('[data-carrito-cuenta]').textContent()) === '3', 'Carrito · se conserva al recargar la página');
+  await page.locator('[data-carrito-abrir]').click();
+  await page.locator('[data-carrito-vaciar]').click();
+  verificar(await page.locator('[data-carrito-abrir]').isHidden(), 'Carrito · "Vaciar carrito" lo deja vacío');
   await page.close();
 
   // Enlace directo con filtros en la URL (los usan los accesos de Inicio)
