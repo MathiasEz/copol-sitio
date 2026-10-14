@@ -33,7 +33,7 @@ Cargados en `src/data/confirmado/historia.ts` con `pendiente`; se publican cuand
 
 | Pendiente | Detalle |
 |---|---|
-| Publicación en Vercel | Crear el repositorio privado, el proyecto de Vercel, la base Turso y el Blob Store, y cargar los datos (README § Publicar). Estado al 13/10/2026: el conector de Vercel de Claude está vinculado a otra cuenta y devuelve "403 forbidden" al listar proyectos; en GitHub (MathiasEz) no hay repositorios accesibles y el equipo no tiene Git. No se subió ni se desplegó nada. |
+| Publicación en Vercel | Crear el repositorio privado, el proyecto de Vercel, la base Turso y el Blob Store, y cargar los datos (README § Publicar). Estado al 14/10/2026: repositorio privado https://github.com/MathiasEz/copol-sitio (rama `main`) y proyecto de Vercel `copol` (cuenta brandonpevz-6978), creado con la CLI. Dirección pública: https://copol-ruddy.vercel.app (primer despliegue; las vistas previas siguientes piden iniciar sesión en Vercel). Todo `*.vercel.app` responde con `X-Robots-Tag: noindex` (vercel.json). **Falta:** conectar Turso y Blob (sin ellos el panel responde error 500 y el Bazar se muestra sin estado de stock), vincular el repositorio de GitHub al proyecto para que cada `git push` despliegue solo, y el dominio (solo con aprobación). |
 | Administrador en producción | Crear el administrador principal en la base de producción (o migrar la base local con respaldo/restauración). |
 | Dominio | Vincular cooperativapolicial.com.uy cuando la cooperativa lo apruebe (no se tocó el DNS). |
 
