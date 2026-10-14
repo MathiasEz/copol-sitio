@@ -52,13 +52,13 @@ export const ROLES: Record<Rol, { nombre: string; descripcion: string; permisos:
   },
   editor: {
     nombre: 'Editor de stock',
-    descripcion: 'Consulta el inventario, cambia el stock y agrega o edita productos e imágenes.',
-    permisos: ['ver', 'stock', 'productos'],
+    descripcion: 'Consulta el inventario, cambia el stock, agrega o edita productos e imágenes y usa el asistente.',
+    permisos: ['ver', 'stock', 'productos', 'asistente'],
   },
   visualizador: {
     nombre: 'Visualizador de stock',
-    descripcion: 'Solo consulta el inventario. No puede modificar nada.',
-    permisos: ['ver'],
+    descripcion: 'Solo consulta el inventario (también con el asistente). No puede modificar nada.',
+    permisos: ['ver', 'asistente'],
   },
 };
 export const esRol = (r: unknown): r is Rol => typeof r === 'string' && r in ROLES;

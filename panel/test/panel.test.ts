@@ -361,19 +361,35 @@ describe('asistente', () => {
   });
   after(() => { app = original; });
 
-  it('solo lo ven los administradores', async () => {
+  it('lo usan todos los roles, cada uno con sus herramientas', async () => {
+    const herramientasDe = async (n: Navegador) => {
+      const antes = pedidos.length;
+      assert.equal((await preguntar(n, 'hola')).status, 200);
+      const llamada = pedidos.slice(antes).find((x) => x.url.startsWith('https://ai-gateway.vercel.sh/'))!;
+      return { nombres: (llamada.cuerpo!.tools as { name: string }[]).map((h) => h.name), sistema: String(llamada.cuerpo!.system) };
+    };
+    await db.execute("DELETE FROM auditoria WHERE accion = 'asistente.consulta'");
     // "lector" cambió su contraseña en una prueba anterior.
-    for (const [usuario, clave] of [['editor', CLAVE], ['lector', 'Propia-Clave-2026!']]) {
-      const n = new Navegador();
-      assert.equal((await n.ingresar(usuario, clave)).status, 302);
-      const html = await (await n.pedir('/panel/productos')).text();
-      assert.doesNotMatch(html, /href="\/panel\/asistente"/);
-      assert.equal((await n.pedir('/panel/asistente')).status, 403);
-      assert.equal((await preguntar(n, 'hola')).status, 403);
-    }
-    const n = new Navegador();
-    await n.ingresar('principal');
-    const html = await (await n.pedir('/panel/asistente')).text();
+    const lector = new Navegador();
+    await lector.ingresar('lector', 'Propia-Clave-2026!');
+    assert.match(await (await lector.pedir('/panel/productos')).text(), /href="\/panel\/asistente"/);
+    const pantallaLector = await (await lector.pedir('/panel/asistente')).text();
+    assert.match(pantallaLector, /Tu rol es de solo consulta/);
+    assert.doesNotMatch(pantallaLector, /Poné sin stock/);
+    const hl = await herramientasDe(lector);
+    assert.ok(!hl.nombres.includes('proponer_cambios'), 'el visualizador no recibe la herramienta de cambios');
+    assert.match(hl.sistema, /solo puede consultar/);
+    const propuestaLector = await (await preguntar(lector, `proponer:${JSON.stringify([{ codigo: '100001', estado: 'sin-dato' }])}`)).json();
+    assert.equal(propuestaLector.propuesta, null, 'aunque lo intente, no se crea una propuesta');
+
+    const editor = new Navegador();
+    await editor.ingresar('editor');
+    assert.match(await (await editor.pedir('/panel/asistente')).text(), /nada se aplica hasta que lo confirmes/);
+    assert.ok((await herramientasDe(editor)).nombres.includes('proponer_cambios'));
+
+    const admin = new Navegador();
+    await admin.ingresar('principal');
+    const html = await (await admin.pedir('/panel/asistente')).text();
     assert.match(html, /name="pregunta"/);
     assert.match(html, /nada se aplica hasta que lo confirmes/);
   });

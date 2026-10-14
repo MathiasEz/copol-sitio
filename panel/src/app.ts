@@ -489,6 +489,7 @@ export function crearApp({ db: fuenteDb, config, almacen, asistente }: OpcionesA
   };
   const datosAsistente = async (c: C, extra: Partial<V.DatosAsistente> = {}): Promise<V.DatosAsistente> => ({
     disponible: Boolean(tokenIA(c)),
+    puedeCambiar: puede(c.get('usuario')!.rol, 'stock'),
     restantes: Math.max(0, config.asistenteLimiteDia - (await consultasHoy(c))),
     modelos: (Object.keys(A.MODELOS) as A.Modelo[]).map((m) => ({ valor: m, nombre: A.MODELOS[m].nombre })),
     modelo: 'rapido',
@@ -512,7 +513,7 @@ export function crearApp({ db: fuenteDb, config, almacen, asistente }: OpcionesA
     if ((await consultasHoy(c)) >= config.asistenteLimiteDia) return fallar(429, `Llegaste al límite de ${config.asistenteLimiteDia} consultas por día. Mañana podés seguir.`);
     let res: A.Resultado;
     try {
-      res = await A.consultar({ historial, modelo, db: c.get('db'), origen: new URL(c.req.url).origin, token, usuarioId: c.get('usuario')!.id, fetch: asistente?.fetch });
+      res = await A.consultar({ historial, modelo, db: c.get('db'), origen: new URL(c.req.url).origin, token, usuarioId: c.get('usuario')!.id, rol: c.get('usuario')!.rol, fetch: asistente?.fetch });
     } catch (e) {
       if (e instanceof A.ErrorAsistente) return fallar(502, e.message);
       if ((e as Error).name === 'TimeoutError') return fallar(502, 'Claude tardó demasiado en responder. Probá con una pregunta más concreta.');

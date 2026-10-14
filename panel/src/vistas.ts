@@ -484,6 +484,8 @@ const tarjetaPropuesta = (c: Contexto, p: PropuestaVisible) => html`<section cla
 
 export interface DatosAsistente {
   disponible: boolean;
+  /** Rol con permiso de stock: puede preparar y confirmar cambios. */
+  puedeCambiar: boolean;
   restantes: number;
   modelos: { valor: string; nombre: string }[];
   modelo: string;
@@ -505,8 +507,10 @@ export function vistaAsistente(c: Contexto, d: DatosAsistente) {
   <div class="asistente__registro" data-registro role="log" aria-live="polite" aria-label="Conversación con el asistente">
     ${d.conversacion.length ? d.conversacion.map((m) => html`<div class="msj msj--${m.rol}"><span class="msj__autor">${m.rol === 'usuario' ? 'Vos' : 'Asistente'}</span><div class="msj__texto">${m.texto}</div></div>`) : html`
     <div class="asistente__vacio" data-vacio>
-      <p>Preguntame sobre la web pública, el stock del Bazar o cómo usar el panel. También puedo preparar cambios de stock, cantidades o datos de productos: <strong>nada se aplica hasta que lo confirmes.</strong></p>
-      <ul class="asistente__sugerencias">${SUGERENCIAS.map((s) => html`<li><button class="btn btn--outline btn--sm" type="button" data-sugerencia>${s}</button></li>`)}</ul>
+      ${d.puedeCambiar
+        ? html`<p>Preguntame sobre la web pública, el stock del Bazar o cómo usar el panel. También puedo preparar cambios de stock, cantidades o datos de productos: <strong>nada se aplica hasta que lo confirmes.</strong></p>`
+        : html`<p>Preguntame sobre la web pública, el stock del Bazar o cómo usar el panel. <strong>Tu rol es de solo consulta: no puedo hacer cambios.</strong></p>`}
+      <ul class="asistente__sugerencias">${SUGERENCIAS.filter((s) => d.puedeCambiar || !s.startsWith('Poné')).map((s) => html`<li><button class="btn btn--outline btn--sm" type="button" data-sugerencia>${s}</button></li>`)}</ul>
     </div>`}
     ${d.propuesta ? tarjetaPropuesta(c, d.propuesta) : ''}
   </div>
