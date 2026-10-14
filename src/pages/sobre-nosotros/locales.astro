@@ -14,6 +14,11 @@ import { CONTACTO, HORARIOS, whatsapp } from '../../data/confirmado/sitio';
 const departamentos = [...new Set(LOCALES.map((l) => l.departamento))].sort((a, b) => a.localeCompare(b, 'es'));
 const conteo = (t: TipoLocal) => LOCALES.filter((l) => l.tipo === t).length;
 const varianteTipo = { 'casa-central': 'default', sucursal: 'accent', agencia: 'secondary' } as const;
+// Dos bloques: Casa Central y las sucursales juntas (una fila en escritorio) y, debajo, las agencias.
+const GRUPOS = [
+  { id: 'principales', titulo: 'Casa Central y sucursales', locales: LOCALES.filter((l) => l.tipo !== 'agencia') },
+  { id: 'agencias', titulo: 'Agencias', locales: LOCALES.filter((l) => l.tipo === 'agencia') },
+];
 ---
 <Base titulo="Locales" descripcion={`Los ${LOCALES.length} locales de COPOL en todo el país: Casa Central, sucursales y agencias, con direcciones, teléfonos y cómo llegar.`}>
   <EncabezadoPagina
@@ -39,7 +44,7 @@ const varianteTipo = { 'casa-central': 'default', sucursal: 'accent', agencia: '
         <legend class="visualmente-oculto">Tipo de local</legend>
         <Toggle name="tipo" value="" checked contador={LOCALES.length}>Todos</Toggle>
         {(['casa-central', 'sucursal', 'agencia'] as TipoLocal[]).map((t) => (
-          <Toggle name="tipo" value={t} contador={conteo(t)}>{t === 'casa-central' ? 'Casa Central' : `${TIPO_LOCAL[t]}s`}</Toggle>
+          <Toggle name="tipo" value={t} contador={conteo(t)}>{t === 'casa-central' ? 'Casa Central' : t === 'sucursal' ? 'Sucursales' : 'Agencias'}</Toggle>
         ))}
       </fieldset>
       <Campo etiqueta="Departamento" name="departamento" control="select" class="filtros__depto">
@@ -49,8 +54,11 @@ const varianteTipo = { 'casa-central': 'default', sucursal: 'accent', agencia: '
     </form>
     <p class="resultado" aria-live="polite" data-resultado>Mostrando {LOCALES.length} locales.</p>
 
-    <ul class="locales" data-locales>
-      {LOCALES.map((l, i) => {
+    {GRUPOS.map((g, gi) => (
+    <section class="grupo" data-grupo aria-labelledby={`grupo-${g.id}`}>
+    <h3 class="grupo__titulo" id={`grupo-${g.id}`}>{g.titulo} <span class="grupo__cuenta">{g.locales.length}</span></h3>
+    <ul class:list={['locales', `locales--${g.id}`]} data-locales>
+      {g.locales.map((l, i) => {
         const foto = fotoLocal(l.id);
         const nombre = l.tipo === 'casa-central' ? 'Casa Central' : `${TIPO_LOCAL[l.tipo]} ${l.ciudad}`;
         return (
@@ -62,8 +70,8 @@ const varianteTipo = { 'casa-central': 'default', sucursal: 'accent', agencia: '
                 alt={`Letras con el nombre de ${l.ciudad}, ciudad donde está ${l.tipo === 'casa-central' ? 'la Casa Central' : `la ${TIPO_LOCAL[l.tipo].toLowerCase()}`} de COPOL`}
                 ratio="16/9"
                 widths={[400, 640, 800]}
-                sizes={l.tipo === 'casa-central' ? '(min-width: 720px) 640px, 100vw' : '(min-width: 1100px) 400px, (min-width: 720px) 50vw, 100vw'}
-                loading={i < 3 ? 'eager' : 'lazy'}
+                sizes={g.id === 'principales' ? '(min-width: 1100px) 310px, (min-width: 640px) 50vw, 100vw' : '(min-width: 1100px) 410px, (min-width: 640px) 50vw, 100vw'}
+                loading={gi === 0 ? 'eager' : 'lazy'}
                 radio="var(--radio-md)"
               />
               {/* El nombre del local va justo debajo; sobre la foto solo se indica la localidad cuando difiere. */}
@@ -72,7 +80,7 @@ const varianteTipo = { 'casa-central': 'default', sucursal: 'accent', agencia: '
           )}
           <div class="local__cabecera">
             <Badge variant={varianteTipo[l.tipo]}>{TIPO_LOCAL[l.tipo]}</Badge>
-            <h3>{l.tipo === 'casa-central' ? 'Casa Central' : l.ciudad}</h3>
+            <h4 class="local__nombre">{l.tipo === 'casa-central' ? 'Casa Central' : l.ciudad}</h4>
             <span class="local__depto">{l.departamento}</span>
           </div>
           <ul class="local__datos">
@@ -87,7 +95,7 @@ const varianteTipo = { 'casa-central': 'default', sucursal: 'accent', agencia: '
               </li>
             )}
             {l.celular && <li><Icono nombre="whatsapp" tamano={18} /><a href={telHref(l.celular)}>{l.celular}</a></li>}
-            {l.email && <li><Icono nombre="correo" tamano={18} /><a href={`mailto:${l.email}`} class="local__email">{l.email}</a></li>}
+            {l.email && <li><Icono nombre="correo" tamano={18} /><a href={`mailto:${l.email}`} class="local__email">{l.email.split('@')[0]}@<wbr />{l.email.split('@')[1]}</a></li>}
             {l.tipo === 'casa-central' && <li><Icono nombre="reloj" tamano={18} /><span>{HORARIOS.casaCentral.map((h) => `${h.dias}: ${h.horas}`).join(' · ')}</span></li>}
           </ul>
           <Button href={l.comoLlegar} variant={l.tipo === 'casa-central' ? 'default' : 'secondary'} size="sm" class="local__mapa">
@@ -97,6 +105,8 @@ const varianteTipo = { 'casa-central': 'default', sucursal: 'accent', agencia: '
         );
       })}
     </ul>
+    </section>
+    ))}
     <div class="card card--dashed vacio" data-vacio hidden>
       <p>No hay locales con esos filtros. Probá con otro departamento o escribinos por WhatsApp.</p>
     </div>
@@ -108,6 +118,7 @@ const varianteTipo = { 'casa-central': 'default', sucursal: 'accent', agencia: '
   const items = [...document.querySelectorAll<HTMLElement>('[data-locales] > li')];
   const resultado = document.querySelector<HTMLElement>('[data-resultado]')!;
   const vacio = document.querySelector<HTMLElement>('[data-vacio]')!;
+  const grupos = [...document.querySelectorAll<HTMLElement>('[data-grupo]')];
   form.addEventListener('change', () => {
     const datos = new FormData(form);
     const tipo = String(datos.get('tipo') ?? '');
@@ -118,6 +129,7 @@ const varianteTipo = { 'casa-central': 'default', sucursal: 'accent', agencia: '
       li.hidden = !ok;
       if (ok) visibles++;
     });
+    grupos.forEach((g) => { g.hidden = !g.querySelector('[data-locales] > li:not([hidden])'); });
     resultado.textContent = `Mostrando ${visibles} ${visibles === 1 ? 'local' : 'locales'}.`;
     vacio.hidden = visibles > 0;
   });
@@ -128,10 +140,22 @@ const varianteTipo = { 'casa-central': 'default', sucursal: 'accent', agencia: '
   .filtros :global(.filtros__depto) { min-width: min(100%, 280px); }
   .resultado { margin: 20px 0 16px; color: var(--muted-foreground); font-weight: 600; }
 
+  .grupo + .grupo { margin-top: clamp(32px, 5vw, 56px); }
+  .grupo[hidden] { display: none; }
+  .grupo__titulo { display: flex; align-items: center; gap: 10px; margin: 0 0 16px; font-size: 1.375rem; }
+  .grupo__cuenta {
+    display: inline-grid; place-items: center; min-width: 28px; height: 28px; padding: 0 8px; border-radius: var(--radio-pill);
+    background: var(--muted); color: var(--verde-oscuro); font-size: 0.875rem; font-weight: 700;
+  }
   .locales {
     list-style: none; margin: 0; padding: 0; display: grid; gap: 16px;
     grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr));
   }
+  /* Casa Central + 3 sucursales: 4 columnas iguales en escritorio, 2 en tablet, 1 en teléfono. */
+  .locales--principales { grid-template-columns: 1fr; }
+  @media (min-width: 640px) { .locales--principales { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (min-width: 1100px) { .locales--principales { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+  .local__nombre { font-size: 1.1875rem; font-weight: 700; letter-spacing: -0.01em; }
   .local { gap: 16px; }
   .local__foto { position: relative; margin: -8px -8px 0; }
   .local__etiqueta {
@@ -139,7 +163,6 @@ const varianteTipo = { 'casa-central': 'default', sucursal: 'accent', agencia: '
     background: rgb(255 255 255 / 0.94); color: var(--verde-oscuro); font-weight: 700; font-size: 0.8125rem;
     box-shadow: 0 1px 3px rgb(0 0 0 / 0.15);
   }
-  @media (min-width: 720px) { .local--casa-central { grid-column: span 2; } }
   .local--casa-central { box-shadow: inset 0 0 0 1.5px var(--verde-oscuro); }
   .local__cabecera { display: grid; gap: 6px; justify-items: start; }
   .local__depto { font-size: 0.875rem; color: var(--muted-foreground); }
@@ -148,7 +171,7 @@ const varianteTipo = { 'casa-central': 'default', sucursal: 'accent', agencia: '
   .local__datos :global(svg) { color: var(--verde-copol); flex: none; margin-top: 2px; }
   .local__datos small { display: block; color: var(--muted-foreground); }
   .local__datos :global(.local__pendiente) { display: flex; margin-top: 6px; white-space: normal; }
-  .local__email { word-break: break-all; }
+  .local__email { overflow-wrap: anywhere; }
   .local :global(.local__mapa) { margin-top: auto; align-self: flex-start; }
   .vacio { margin-top: 16px; text-align: center; align-items: center; }
 </style>

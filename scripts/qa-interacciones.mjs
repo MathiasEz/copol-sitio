@@ -154,7 +154,7 @@ const VIEWPORTS = { movil: { width: 375, height: 812 }, escritorio: { width: 136
 {
   const page = await browser.newPage({ viewport: VIEWPORTS.movil });
   await page.goto(`${BASE}/sobre-nosotros/locales/`, { waitUntil: 'networkidle' });
-  const fotos = await page.$$eval('[data-locales] > li', (lis) => lis.map((li) => ({ nombre: li.querySelector('h3')?.textContent.trim(), alt: li.querySelector('.local__foto img')?.alt ?? '' })));
+  const fotos = await page.$$eval('[data-locales] > li', (lis) => lis.map((li) => ({ nombre: li.querySelector('h4')?.textContent.trim(), alt: li.querySelector('.local__foto img')?.alt ?? '' })));
   verificar(fotos.length === 19 && fotos.every((f) => f.alt.length > 20), `Locales · 19 tarjetas con foto y texto alternativo (${fotos.filter((f) => f.alt).length})`);
   await page.close();
 }
