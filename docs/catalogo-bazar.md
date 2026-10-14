@@ -90,4 +90,4 @@ La página del Bazar muestra una tarjeta por **modelo**; cada **color** sigue si
 - Resultado con el catálogo actual: 806 productos → 774 tarjetas (22 modelos con 54 colores, p. ej. iPhone 15 128GB: negro 436249, rosado 439133, azul claro 437058).
 - Estado del modelo: "Con stock" si algún color tiene; "Sin stock" si ninguno; si no, "Consultar disponibilidad". Los filtros usan ese estado.
 - Descripción: la más completa entre los colores del modelo, pedida a `/api/bazar/descripcion/<id>` al abrir la ficha (lee la base; si no responde, el catálogo importado). 797 de 806 productos tienen descripción importada; los demás muestran "Consultanos por WhatsApp".
-- Nombres con errores de tipeo en el sistema (p. ej. "REMDI" por "REDMI") no se corrigen ni se fuerzan: conviene corregirlos en el panel para que se agrupen.
+- Errores de tipeo evidentes del sistema, confirmados por la cooperativa, se corrigen solo en lo que muestra la web (no en la base): REMDI → Redmi, MOTORLA → Motorola, BICILETA → Bicicleta, ESPESSO → Espresso (además de Xioami y Smasung). Lista en `src/lib/variantes.ts` (TIPEOS) y `capitalizar()` en `src/lib/inventario.ts`.

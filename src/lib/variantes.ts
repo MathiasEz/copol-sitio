@@ -29,7 +29,10 @@ const CORTABLES = ['NEGRO', 'BLANCO', 'VERDE', 'ROSADO', 'PLATEADO', 'DORADO', '
 const MODIFICADOR: Record<string, string> = { CLARO: 'claro', OSCURO: 'oscuro', MARINO: 'marino', TI: 'titanio', TITANIO: 'titanio' };
 
 const sinTildes = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '');
-const limpiarNombre = (n: string) => n.toUpperCase().replace(/\s+/g, ' ').trim();
+// Errores de tipeo evidentes del sistema (confirmados por la cooperativa): se corrigen antes de comparar,
+// para que el nombre del modelo y la agrupación usen la forma correcta.
+const TIPEOS: [RegExp, string][] = [[/\bREMDI\b/g, 'REDMI'], [/\bMOTORLA\b/g, 'MOTOROLA'], [/\bBICILETA\b/g, 'BICICLETA'], [/\bESPESSO\b/g, 'ESPRESSO'], [/\bXIOAMI\b/g, 'XIAOMI'], [/\bSMASUNG\b/g, 'SAMSUNG']];
+const limpiarNombre = (n: string) => TIPEOS.reduce((s, [re, ok]) => s.replace(re, ok), n.toUpperCase().replace(/\s+/g, ' ').trim());
 
 function colorDe(palabra: string): string | null {
   const w = sinTildes(palabra);

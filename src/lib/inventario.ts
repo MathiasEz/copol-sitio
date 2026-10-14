@@ -41,7 +41,9 @@ const capitalizar = (s: string) =>
     .replace(/\b(Usb|Led|Uhd|Hd|Fhd|Qled|Tv|Wifi|Bt|Rgb|Ssd|Ram|Pc|Ps5|Ps4|Hdmi|Ip\d+|Jbl|Msi|Hp|Lg|Tcl)\b/g, (m) => m.toUpperCase())
     .replace(/\b(\d)g\b/gi, '$1G')
     .replace(/\bIphone\b/g, 'iPhone').replace(/\bIpad\b/g, 'iPad').replace(/\bPlaystation\b/g, 'PlayStation')
-    .replace(/\bXioami\b/g, 'Xiaomi').replace(/\bSmasung\b/g, 'Samsung').replace(/\bTp-link\b/g, 'TP-Link');
+    .replace(/\bXioami\b/g, 'Xiaomi').replace(/\bSmasung\b/g, 'Samsung').replace(/\bTp-link\b/g, 'TP-Link')
+    // Errores de tipeo del sistema confirmados por la cooperativa (14/10/2026): solo cambia lo que se muestra.
+    .replace(/\bRemdi\b/g, 'Redmi').replace(/\bMotorla\b/g, 'Motorola').replace(/\bBicileta\b/g, 'Bicicleta').replace(/\bEspesso\b/g, 'Espresso');
 
 export const consultaProducto = (nombre: string, codigo: string | null) =>
   whatsapp(CONTACTO.whatsappGeneral.numero, `Hola! Quiero consultar por el producto: ${nombre}${codigo ? ` (código interno COPOL ${codigo})` : ''}`);
