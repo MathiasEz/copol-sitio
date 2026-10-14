@@ -1,0 +1,82 @@
+---
+// Fechas editables en src/data/confirmado/creditos.json. Solo se muestran las futuras (según la fecha del build).
+import { proximasAperturas } from '../lib/datos';
+import Icono from './Icono.astro';
+import Button from './ui/Button.astro';
+import Badge from './ui/Badge.astro';
+
+const aperturas = proximasAperturas();
+const anio = new Date().getFullYear();
+---
+<section class="contenedor creditos" aria-labelledby="creditos-titulo">
+  <div class="creditos__caja sobre-verde aparecer">
+    <div class="creditos__texto">
+      <span class="creditos__antetitulo">Aperturas de crédito</span>
+      <h2 id="creditos-titulo">Lo que queda de {anio}</h2>
+      <p>Consultá tu crédito disponible desde Acceso web o acercate a cualquiera de nuestros locales.</p>
+    </div>
+    {aperturas.length > 0 ? (
+      <ul class="creditos__fechas">
+        {aperturas.map((a, i) => (
+          <li class="creditos__fecha" style={`--i: ${i}`}>
+            <time datetime={a.iso}>
+              <span class="creditos__dia">{a.dia}</span>
+              <span class="creditos__mes">{a.mes}</span>
+            </time>
+            {!a.confirmada && <Badge variant="accent">Fecha a confirmar</Badge>}
+          </li>
+        ))}
+      </ul>
+    ) : (
+      <p class="creditos__vacio">
+        <Badge variant="accent">Fecha a confirmar</Badge>
+        <span>Las próximas aperturas se publicarán aquí.</span>
+      </p>
+    )}
+    <Button href="/acceso-web/" variant="accent">
+      <Icono nombre="candado" tamano={18} /> Consultá tu crédito
+    </Button>
+  </div>
+</section>
+
+<style>
+  .creditos { padding-top: var(--seccion); }
+  .creditos__caja {
+    background: var(--verde-oscuro);
+    color: var(--blanco);
+    border-radius: var(--radio-xl);
+    padding: clamp(28px, 4vw, 44px);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 24px 36px;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .creditos__texto { flex: 1 1 320px; display: grid; gap: 8px; }
+  .creditos__texto h2 { color: var(--blanco); }
+  .creditos__texto p { color: var(--sobre-verde); }
+  .creditos__antetitulo { color: var(--amarillo-copol); font-weight: 700; font-size: 0.8125rem; letter-spacing: 0.08em; text-transform: uppercase; }
+  .creditos__fechas { display: flex; flex-wrap: wrap; gap: 14px; list-style: none; margin: 0; padding: 0; }
+  .creditos__fecha {
+    background: var(--blanco);
+    color: var(--verde-oscuro);
+    border-radius: var(--radio-lg);
+    padding: 16px 26px;
+    min-width: 136px;
+    display: grid;
+    justify-items: center;
+    gap: 6px;
+  }
+  .creditos__fecha time { display: grid; justify-items: center; }
+  .creditos__dia { font-size: 2.75rem; font-weight: 800; line-height: 1; }
+  .creditos__mes { font-weight: 700; }
+  .creditos__vacio { display: grid; gap: 8px; justify-items: start; color: var(--sobre-verde); }
+  /* Las fechas entran como fichas, una tras otra, con un resorte leve. */
+  :global(.js-animar) .creditos__fecha {
+    opacity: 0;
+    transform: translateY(18px) scale(0.92);
+    transition: opacity 500ms var(--ease-out-quart), transform 900ms var(--resorte);
+    transition-delay: calc(250ms + var(--i, 0) * 110ms);
+  }
+  :global(.js-animar) .creditos__caja:global(.visible) .creditos__fecha { opacity: 1; transform: none; }
+</style>

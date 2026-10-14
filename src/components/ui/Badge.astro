@@ -1,0 +1,9 @@
+---
+// Badge (anatomía shadcn/ui): default · secondary · outline · accent
+interface Props {
+  variant?: 'default' | 'secondary' | 'outline' | 'accent';
+  class?: string;
+}
+const { variant = 'secondary', class: clase } = Astro.props;
+---
+<span class:list={['badge', `badge--${variant}`, clase]}><slot /></span>

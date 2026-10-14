@@ -1,0 +1,18 @@
+---
+// Alert (anatomía shadcn/ui). `demo` y `pendiente` marcan contenido no definitivo.
+import Icono from '../Icono.astro';
+
+interface Props {
+  variant?: 'default' | 'demo' | 'pendiente';
+  titulo: string;
+  class?: string;
+  id?: string;
+}
+const { variant = 'default', titulo, class: clase, id } = Astro.props;
+const icono = variant === 'default' ? 'info' : 'alerta';
+---
+<div class:list={['alert', `alert--${variant}`, clase]} role={variant === 'default' ? undefined : 'note'} id={id}>
+  <Icono nombre={icono} tamano={20} />
+  <p class="alert__titulo">{titulo}</p>
+  {Astro.slots.has('default') && <p class="alert__texto"><slot /></p>}
+</div>

@@ -1,0 +1,106 @@
+---
+import Base from '../../layouts/Base.astro';
+import EncabezadoPagina from '../../components/EncabezadoPagina.astro';
+import Icono from '../../components/Icono.astro';
+import { foto } from '../../lib/imagenes';
+import { CONTACTO, HORARIOS, REDES, whatsapp } from '../../data/confirmado/sitio';
+import Button from '../../components/ui/Button.astro';
+import Badge from '../../components/ui/Badge.astro';
+import Media from '../../components/ui/Media.astro';
+
+// Contenido: página "Tienda" del sitio anterior (revisada el 12/10/2026).
+const rubros = [
+  { nombre: 'Joyería', detalle: 'Anillos, cadenas, pulseras y más' },
+  { nombre: 'Calzados', detalle: 'Marcas nacionales e importadas' },
+  { nombre: 'Indumentaria', detalle: 'Ropa para toda la familia' },
+  { nombre: 'Perfumería', detalle: 'Perfumes importados de primera línea' },
+  { nombre: 'Óptica', detalle: 'Anteojos y lentes con asesoría' },
+];
+---
+<Base titulo="Tienda" descripcion="Tienda COPOL en Casa Central: joyería, calzado, indumentaria, perfumería importada y óptica. Abierto a todo público, de lunes a domingo.">
+  <EncabezadoPagina
+    titulo="Nuestra Tienda"
+    antetitulo="Hipermercado · Abierto a todo público"
+    bajada="Joyería, calzado, indumentaria, perfumería importada y óptica: todo pensado para vos y tu familia. No necesitás ser socio para comprar."
+    migas={[{ texto: 'Hipermercado', href: '/hipermercado/' }, { texto: 'Tienda' }]}
+    imagen={foto('tienda-interior')}
+    altImagen="Interior de la tienda de COPOL, con indumentaria y calzado en exhibición bajo un techo de lona"
+  >
+    <Button href={whatsapp(CONTACTO.whatsappGeneral.numero, 'Hola, quiero consultar por la Tienda')}><Icono nombre="whatsapp" tamano={18} /> Consultá por WhatsApp</Button>
+    <Button href={CONTACTO.casaCentral.mapa} variant="outline"><Icono nombre="ubicacion" tamano={18} /> Cómo llegar</Button>
+  </EncabezadoPagina>
+
+  <section class="contenedor seccion" aria-labelledby="rubros-titulo">
+    <div class="encabezado-seccion">
+      <div>
+        <span class="eyebrow">Nuestras secciones</span>
+        <h2 id="rubros-titulo">Lo que podés encontrar</h2>
+        <p class="lead">Recorré cada piso con acceso fácil y cómodo por escaleras mecánicas.</p>
+      </div>
+    </div>
+    <ol class="rubros escalonar">
+      {rubros.map((r, i) => (
+        <li class="card">
+          <span class="rubros__numero">{String(i + 1).padStart(2, '0')}</span>
+          <h3>{r.nombre}</h3>
+          <p>{r.detalle}</p>
+        </li>
+      ))}
+    </ol>
+  </section>
+
+  <section class="seccion seccion--suave" aria-labelledby="horarios-titulo">
+    <div class="contenedor info escalonar">
+      <div class="card info__bloque">
+        <h2 id="horarios-titulo">Horarios</h2>
+        <dl>
+          <dt>Tienda</dt>
+          {HORARIOS.casaCentral.map((h) => <dd>{h.dias}: <strong>{h.horas}</strong></dd>)}
+          <dt>Técnico óptico</dt>
+          {HORARIOS.tecnicoOptico.map((h) => <dd>{h.dias}: <strong>{h.horas}</strong></dd>)}
+        </dl>
+      </div>
+      <div class="card info__bloque">
+        <h2>Visitanos</h2>
+        <p><strong>{CONTACTO.casaCentral.direccion}, {CONTACTO.casaCentral.ciudad}.</strong> {CONTACTO.casaCentral.accesoAlternativo}</p>
+        <p>Acceso fácil con escaleras mecánicas y estacionamiento disponible.</p>
+        <Badge variant="accent">Abierto a todo público</Badge>
+      </div>
+      <div class="card info__bloque">
+        <h2>Recorré el local</h2>
+        <p>Mirá nuestra tienda y las novedades en Instagram.</p>
+        <Button href={REDES.instagram} variant="outline"><Icono nombre="instagram" tamano={18} /> Ver en Instagram</Button>
+      </div>
+    </div>
+  </section>
+
+  <section class="contenedor seccion" aria-labelledby="bazar-cta">
+    <div class="cta-bazar grupo-hover aparecer">
+      <Media src={foto('motos-bazar')} alt="" widths={[400, 640, 840]} sizes="(min-width: 900px) 420px, 100vw" />
+      <div>
+        <span class="eyebrow">Bazar</span>
+        <h2 id="bazar-cta">¿Buscás tecnología o artículos para el hogar?</h2>
+        <p class="lead">Explorá el catálogo del Bazar y consultá stock por WhatsApp.</p>
+        <Button href="/hipermercado/bazar/">Ver el Bazar <Icono nombre="flecha" tamano={18} /></Button>
+      </div>
+    </div>
+  </section>
+</Base>
+
+<style>
+  .rubros { list-style: none; margin: 0; padding: 0; display: grid; gap: 16px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr)); }
+  .rubros li { gap: 6px; padding: 24px; }
+  .rubros__numero { font-weight: 800; font-size: 0.875rem; color: var(--verde-oscuro); font-variant-numeric: tabular-nums; }
+
+  .info { display: grid; gap: 18px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); }
+  .info__bloque { gap: 12px; align-items: flex-start; padding: 26px; border-radius: var(--radio-xl); }
+  .info__bloque h2 { font-size: 1.5rem; }
+  .info__bloque dl { margin: 0; display: grid; gap: 4px; }
+  .info__bloque dt { font-weight: 700; color: var(--verde-oscuro); margin-top: 8px; }
+  .info__bloque dd { margin: 0; color: var(--tinta-suave); }
+  .info__bloque dd strong { color: var(--tinta); }
+
+  .cta-bazar { display: grid; gap: clamp(16px, 4vw, 48px); align-items: center; padding: 8px; border-radius: 32px; background: var(--card); box-shadow: var(--anillo), var(--sombra-suave); }
+  @media (min-width: 900px) { .cta-bazar { grid-template-columns: 440px 1fr; } }
+  .cta-bazar > div { display: grid; gap: 14px; justify-items: start; padding: clamp(16px, 3vw, 32px); }
+</style>

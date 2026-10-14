@@ -1,0 +1,164 @@
+---
+// Carrusel de ofertas del supermercado (piezas 4:5 con precio).
+// - Avanza solo, una pieza a la vez, con un leve desplazamiento y desenfoque de movimiento.
+// - Se detiene con el puntero encima y continúa al retirarlo; se detiene con el foco del teclado
+//   y continúa al salir. Con prefers-reduced-motion no avanza solo ni desenfoca.
+// - Controles discretos: barra de progreso por páginas (botones accesibles), contador "N de M",
+//   flechas ←/→ con el carrusel enfocado y deslizamiento táctil (scroll nativo con imán).
+// - Sin JS: es una fila desplazable con todas las piezas.
+import { Image } from 'astro:assets';
+import type { ImageMetadata } from 'astro';
+import type { Oferta } from '../data/confirmado/ofertas-supermercado';
+
+interface Props {
+  ofertas: Oferta[];
+  titulo: string;
+}
+const { ofertas, titulo } = Astro.props;
+const imagenes = import.meta.glob<{ default: ImageMetadata }>('../assets/ofertas/*.webp', { eager: true });
+const imagen = (n: string) => imagenes[`../assets/ofertas/${n}.webp`].default;
+---
+<div class="ofertas" data-ofertas role="region" aria-roledescription="carrusel" aria-label={titulo}>
+  <ul class="ofertas__pista" data-pista tabindex="0" aria-label="Ofertas: usá las flechas izquierda y derecha para recorrerlas">
+
+    {ofertas.map((o, i) => (
+      <li class="oferta" aria-roledescription="diapositiva" aria-label={`${i + 1} de ${ofertas.length}`}>
+        <Image
+          src={imagen(o.imagen)}
+          alt={`Oferta de octubre: ${o.producto}, a ${o.precio}.`}
+          widths={[280, 400, 560]}
+          sizes="(min-width: 1200px) 280px, (min-width: 900px) 24vw, (min-width: 600px) 36vw, 72vw"
+          loading={i < 4 ? 'eager' : 'lazy'}
+          decoding="async"
+          class="oferta__img"
+        />
+      </li>
+    ))}
+  </ul>
+  <div class="ofertas__pie">
+    <div class="ofertas__puntos" data-puntos role="group" aria-label="Elegir grupo de ofertas"></div>
+    <p class="ofertas__contador" aria-live="polite" data-contador>{ofertas.length} ofertas</p>
+  </div>
+</div>
+
+<script>
+  document.querySelectorAll<HTMLElement>('[data-ofertas]').forEach((raiz) => {
+    const pista = raiz.querySelector<HTMLElement>('[data-pista]')!;
+    const items = [...pista.children] as HTMLElement[];
+    const puntos = raiz.querySelector<HTMLElement>('[data-puntos]')!;
+    const contador = raiz.querySelector<HTMLElement>('[data-contador]')!;
+    const reducido = matchMedia('(prefers-reduced-motion: reduce)');
+    const INTERVALO = 3200;
+    let porVista = 1;
+    let paginas = 1;
+    let temporizador: number | undefined;
+    let pausaPuntero = false;
+    let pausaFoco = false;
+
+    const paso = () => items[1] ? items[1].offsetLeft - items[0].offsetLeft : pista.clientWidth;
+    const indice = () => Math.round(pista.scrollLeft / paso());
+    const ultimo = () => Math.max(0, items.length - porVista);
+
+    function medir() {
+      porVista = Math.max(1, Math.round(pista.clientWidth / paso()));
+      paginas = Math.ceil(items.length / porVista);
+      puntos.replaceChildren();
+      // En pantallas angostas (una pieza por vista) se muestra solo el contador.
+      if (porVista > 1) {
+        for (let p = 0; p < paginas; p++) {
+          const b = document.createElement('button');
+          b.type = 'button';
+          b.className = 'ofertas__punto';
+          b.setAttribute('aria-label', `Ver ofertas ${p * porVista + 1} a ${Math.min(items.length, (p + 1) * porVista)}`);
+          b.innerHTML = '<span></span>';
+          b.addEventListener('click', () => ir(p * porVista));
+          puntos.append(b);
+        }
+      }
+      actualizar();
+    }
+
+    function actualizar() {
+      const i = indice();
+      const pagina = Math.min(paginas - 1, Math.floor((i + porVista - 1) / porVista));
+      [...puntos.children].forEach((b, p) => b.setAttribute('aria-current', String(p === pagina)));
+      const hasta = Math.min(items.length, i + porVista);
+      contador.textContent = porVista > 1 ? `Ofertas ${i + 1} a ${hasta} de ${items.length}` : `Oferta ${i + 1} de ${items.length}`;
+    }
+
+    function ir(i: number) {
+      const destino = Math.max(0, Math.min(ultimo(), i));
+      if (!reducido.matches) {
+        raiz.classList.add('ofertas--moviendo');
+        window.setTimeout(() => raiz.classList.remove('ofertas--moviendo'), 520);
+      }
+      pista.scrollTo({ left: destino * paso(), behavior: reducido.matches ? 'auto' : 'smooth' });
+    }
+
+    const pausado = () => pausaPuntero || pausaFoco || reducido.matches || document.hidden;
+    function programar() {
+      window.clearTimeout(temporizador);
+      if (pausado()) return;
+      temporizador = window.setTimeout(() => {
+        if (!pausado()) ir(indice() >= ultimo() ? 0 : indice() + 1);
+        programar();
+      }, INTERVALO);
+    }
+
+    raiz.addEventListener('pointerenter', (e) => { if (e.pointerType === 'mouse') { pausaPuntero = true; programar(); } });
+    raiz.addEventListener('pointerleave', (e) => { if (e.pointerType === 'mouse') { pausaPuntero = false; programar(); } });
+    raiz.addEventListener('focusin', () => { pausaFoco = true; programar(); });
+    raiz.addEventListener('focusout', (e) => { if (!raiz.contains(e.relatedTarget as Node)) { pausaFoco = false; programar(); } });
+    // Al tocar o deslizar, se reinicia la espera para no "pelear" con el gesto.
+    pista.addEventListener('touchstart', () => programar(), { passive: true });
+    raiz.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowRight') { e.preventDefault(); ir(indice() + 1); }
+      if (e.key === 'ArrowLeft') { e.preventDefault(); ir(indice() - 1); }
+    });
+    let espera: number | undefined;
+    pista.addEventListener('scroll', () => { window.clearTimeout(espera); espera = window.setTimeout(actualizar, 60); }, { passive: true });
+    document.addEventListener('visibilitychange', programar);
+    reducido.addEventListener('change', programar);
+    new ResizeObserver(() => medir()).observe(pista);
+    raiz.classList.add('ofertas--js');
+    medir();
+    programar();
+  });
+</script>
+
+<style>
+  .ofertas { position: relative; display: grid; gap: 14px; border-radius: var(--radio-xl); outline-offset: 6px; }
+  .ofertas__pista:focus-visible { outline: 3px solid var(--ring); outline-offset: 4px; border-radius: var(--radio-lg); }
+  .ofertas__pista {
+    list-style: none; margin: 0; padding: 4px 2px 10px; display: grid; grid-auto-flow: column;
+    grid-auto-columns: calc((100% - 3 * 16px) / 4); gap: 16px;
+    overflow-x: auto; scroll-snap-type: x mandatory; overscroll-behavior-x: contain; scrollbar-width: none;
+  }
+  .ofertas__pista::-webkit-scrollbar { display: none; }
+  @media (max-width: 1099px) { .ofertas__pista { grid-auto-columns: calc((100% - 2 * 14px) / 3); gap: 14px; } }
+  @media (max-width: 759px) { .ofertas__pista { grid-auto-columns: calc((100% - 14px) / 2); } }
+  @media (max-width: 479px) { .ofertas__pista { grid-auto-columns: 78%; } }
+  .oferta { scroll-snap-align: start; min-width: 0; }
+  .oferta :global(.oferta__img) {
+    display: block; width: 100%; height: auto; aspect-ratio: 4 / 5; object-fit: cover;
+    border-radius: var(--radio-lg); box-shadow: var(--anillo), var(--sombra-suave); background: #f3c3dc;
+    transition: filter 420ms var(--ease-out-quart), transform 420ms var(--ease-out-quart);
+  }
+  /* Desenfoque de movimiento moderado mientras avanza. */
+  .ofertas--moviendo .oferta :global(.oferta__img) { filter: blur(2px) saturate(1.05); transform: translateX(-6px) scale(0.985); }
+  @media (prefers-reduced-motion: reduce) {
+    .ofertas__pista { scroll-behavior: auto; }
+    .oferta :global(.oferta__img) { transition: none; }
+    .ofertas--moviendo .oferta :global(.oferta__img) { filter: none; transform: none; }
+  }
+  .ofertas__pie { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  .ofertas__puntos { display: flex; gap: 2px; flex-wrap: wrap; }
+  .ofertas__puntos :global(.ofertas__punto) {
+    width: 28px; height: 24px; padding: 0; border: 0; background: none; cursor: pointer; display: grid; place-items: center; border-radius: 6px;
+  }
+  .ofertas__puntos :global(.ofertas__punto span) { width: 20px; height: 4px; border-radius: 999px; background: var(--borde-fuerte); transition: background var(--transicion), width 300ms var(--resorte); }
+  .ofertas__puntos :global(.ofertas__punto[aria-current='true'] span) { background: var(--verde-oscuro); width: 26px; }
+  .ofertas__puntos :global(.ofertas__punto:focus-visible) { outline: 2px solid var(--ring); }
+  .ofertas__contador { font-size: 0.875rem; font-weight: 600; color: var(--muted-foreground); }
+  .ofertas:not(.ofertas--js) .ofertas__contador { display: none; }
+</style>

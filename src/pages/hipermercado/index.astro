@@ -1,0 +1,122 @@
+---
+import Base from '../../layouts/Base.astro';
+import EncabezadoPagina from '../../components/EncabezadoPagina.astro';
+import EstanteBazar from '../../components/EstanteBazar.astro';
+import Icono from '../../components/Icono.astro';
+import Button from '../../components/ui/Button.astro';
+import Alert from '../../components/ui/Alert.astro';
+import Badge from '../../components/ui/Badge.astro';
+import Media from '../../components/ui/Media.astro';
+import bazarJson from '../../data/catalogo/bazar.json';
+import { foto } from '../../lib/imagenes';
+import { HORARIOS } from '../../data/confirmado/sitio';
+import demo from '../../data/demo/hipermercado.json';
+
+// Fotos con recorte 3:2; las piezas gráficas (con texto) se muestran enteras sobre su color de borde.
+const secciones = [
+  { titulo: 'Tienda', texto: 'Joyería, calzado, indumentaria, perfumería importada y óptica en Casa Central.', enlace: 'Ver rubros y horarios', href: '/hipermercado/tienda/', img: foto('tienda-interior') },
+  { titulo: 'Bazar', texto: `Más de ${Math.floor(bazarJson.totales.productos / 100) * 100} productos de tecnología, hogar, audio, bicicletas y más. Consultá stock por WhatsApp.`, enlace: 'Ver catálogo', href: '/hipermercado/bazar/', img: foto('banner-motos-1'), fondo: '#c42f24' },
+  { titulo: 'Promociones', texto: 'Campañas y ofertas vigentes de la cooperativa.', enlace: 'Ver promociones', href: '/hipermercado/promociones/', img: foto('oferta-1-movil'), fondo: '#f1bbd6' },
+];
+---
+<Base titulo="Hipermercado" descripcion="Hipermercado COPOL: Tienda con joyería, calzado, indumentaria, perfumería y óptica; Bazar con tecnología y hogar; y promociones. Abierto a todo público.">
+  <EncabezadoPagina
+    titulo="Hipermercado COPOL"
+    antetitulo="Abierto a todo público"
+    bajada="En Hipermercado Copol encontrás todo en un solo lugar, pensado para acompañarte en tu día a día con variedad, comodidad y beneficios exclusivos."
+    migas={[{ texto: 'Hipermercado' }]}
+    imagen={foto('tienda-interior')}
+    altImagen="Interior de la tienda de COPOL, con indumentaria y calzado en exhibición"
+  >
+    <Button href="/hipermercado/bazar/">Ver el Bazar <Icono nombre="flecha" tamano={18} /></Button>
+    <Button href="/hipermercado/tienda/" variant="outline">Conocé la Tienda</Button>
+  </EncabezadoPagina>
+
+  <section class="contenedor seccion" aria-labelledby="secciones-titulo">
+    <h2 id="secciones-titulo" class="visualmente-oculto">Secciones del Hipermercado</h2>
+    <ul class="grilla grilla--ajustada secciones escalonar" style="--min: 280px">
+      {secciones.map((s) => (
+        <li>
+          <a href={s.href} class="seccion-hiper">
+            <Media src={s.img} alt="" ratio="3/2" contener={Boolean(s.fondo)} fondo={s.fondo} widths={[400, 640, 800]} sizes="(min-width: 1000px) 400px, 100vw" />
+            <h3>{s.titulo}</h3>
+            <p>{s.texto}</p>
+            <span class="enlace-flecha">{s.enlace} <Icono nombre="flecha" tamano={18} /></span>
+          </a>
+        </li>
+      ))}
+    </ul>
+  </section>
+
+  <section class="seccion seccion--suave" aria-labelledby="horarios-titulo">
+    <div class="contenedor horarios">
+      <div>
+        <span class="eyebrow">Casa Central</span>
+        <h2 id="horarios-titulo">Horarios del Hipermercado</h2>
+      </div>
+      <dl class="horarios__lista">
+        {HORARIOS.casaCentral.map((h) => (<div class="card"><dt>{h.dias}</dt><dd>{h.horas}</dd></div>))}
+      </dl>
+      <Button href="/sobre-nosotros/locales/" variant="outline"><Icono nombre="ubicacion" tamano={18} /> Cómo llegar</Button>
+    </div>
+  </section>
+
+  <section class="contenedor seccion" aria-labelledby="catalogo-hiper-titulo">
+    <div class="encabezado-seccion">
+      <div>
+        <span class="eyebrow">Supermercado</span>
+        <h2 id="catalogo-hiper-titulo">Productos del Hipermercado</h2>
+      </div>
+    </div>
+    <Alert variant="demo" titulo="Contenido de demostración — reemplazar por catálogo oficial" class="demo-aviso">
+      Los productos del Hipermercado se publicarán cuando la cooperativa envíe el catálogo oficial. No se publican precios.
+    </Alert>
+    <ul class="grilla escalonar" style="--min: 240px">
+      {demo.rubros.map((r) => (
+        <li class="card card--dashed demo">
+          <div class="demo__imagen" aria-hidden="true"><Icono nombre="carrito" tamano={28} /><span>Imagen oficial de {r.nombre.toLowerCase()}</span></div>
+          <Badge variant="outline">{r.nombre}</Badge>
+          <ul>{r.productos.map((p) => <li>{p}</li>)}</ul>
+          <p class="demo__nota">Sin precios publicados.</p>
+        </li>
+      ))}
+    </ul>
+  </section>
+
+  <section class="contenedor" aria-labelledby="bazar-hiper-titulo">
+    <div class="encabezado-seccion">
+      <div>
+        <span class="eyebrow">Bazar</span>
+        <h2 id="bazar-hiper-titulo"><span class="mascara"><span>Destacados del Bazar</span></span></h2>
+      </div>
+      <a href="/hipermercado/bazar/" class="enlace-flecha">Ver todo el catálogo <Icono nombre="flecha" tamano={18} /></a>
+    </div>
+    <!-- Stock vigente desde la base del panel (se genera en cada visita) -->
+    <EstanteBazar server:defer cantidad={5} completo={false}>
+      <div slot="fallback" class="estante-esqueleto" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
+    </EstanteBazar>
+  </section>
+</Base>
+
+<style>
+  .secciones { list-style: none; margin: 0; padding: 0; }
+  .seccion-hiper { display: grid; gap: 10px; align-content: start; text-decoration: none; color: var(--foreground); }
+  .seccion-hiper h3 { margin-top: 8px; font-size: 1.375rem; transition: color var(--transicion); }
+  .seccion-hiper p { color: var(--muted-foreground); }
+  .seccion-hiper .enlace-flecha { color: var(--verde-oscuro); }
+  .seccion-hiper:hover { color: var(--foreground); }
+  .seccion-hiper:hover .enlace-flecha :global(svg) { transform: translateX(4px); }
+
+  .horarios { display: flex; flex-wrap: wrap; gap: 20px 40px; align-items: center; justify-content: space-between; }
+  .horarios__lista { display: flex; flex-wrap: wrap; gap: 14px; margin: 0; }
+  .horarios__lista .card { gap: 2px; padding: 14px 22px; }
+  .horarios__lista dt { font-size: 0.875rem; color: var(--muted-foreground); }
+  .horarios__lista dd { margin: 0; font-weight: 800; font-size: 1.25rem; color: var(--verde-oscuro); }
+
+  .encabezado-seccion + :global(.demo-aviso) { margin-bottom: 20px; }
+  .grilla { list-style: none; margin: 0; padding: 0; }
+  .demo { gap: 10px; padding: 16px; }
+  .demo__imagen { aspect-ratio: 4 / 3; border-radius: var(--radio-md); background: var(--muted); display: flex; flex-direction: column; gap: 8px; align-items: center; justify-content: center; text-align: center; padding: 12px; color: var(--muted-foreground); font-weight: 600; font-size: 0.9375rem; }
+  .demo ul { margin: 0; padding-left: 18px; color: var(--muted-foreground); }
+  .demo__nota { font-size: 0.8125rem; }
+</style>

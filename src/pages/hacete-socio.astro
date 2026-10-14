@@ -1,0 +1,132 @@
+---
+import Base from '../layouts/Base.astro';
+import EncabezadoPagina from '../components/EncabezadoPagina.astro';
+import AperturasCredito from '../components/AperturasCredito.astro';
+import Icono from '../components/Icono.astro';
+import { LOCALES } from '../lib/datos';
+import { CONTACTO, whatsapp } from '../data/confirmado/sitio';
+import { BENEFICIOS_SOCIO } from '../data/confirmado/beneficios-socio';
+import Button from '../components/ui/Button.astro';
+import Badge from '../components/ui/Badge.astro';
+import Card from '../components/ui/Card.astro';
+import Accordion from '../components/ui/Accordion.astro';
+
+// Contenido: página "Cómo hacerte socio" del sitio anterior (revisada el 12/10/2026).
+const ws = (m: string) => whatsapp(CONTACTO.whatsappSocios.numero, m);
+
+const beneficios = BENEFICIOS_SOCIO.map((b) => (b.icono === 'ubicacion' ? { ...b, titulo: `${LOCALES.length} locales` } : b));
+
+const preguntas = [
+  { p: '¿Cuánto cuesta asociarse?', r: 'La cuota social es accesible. Escribinos por WhatsApp para conocer el valor actual y las formas de pago disponibles.' },
+  { p: '¿Necesito ser policía para asociarme?', r: 'No. Si bien nacimos como Cantinas Policiales en 1917, hoy COPOL está abierta a todo público. Solo necesitás tener convenio desde tu empresa o institución, o crearlo con 6 o más personas.' },
+  { p: '¿Cuánto tarda el alta?', r: 'El proceso es rápido. Una vez verificada tu situación, el alta se gestiona en pocos días hábiles.' },
+  { p: '¿Qué documentos necesito?', r: 'Cédula de identidad y comprobante de ingresos o constancia laboral. Si venís por convenio grupal, te guiamos paso a paso.' },
+];
+
+const faqLd = {
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: preguntas.map((q) => ({ '@type': 'Question', name: q.p, acceptedAnswer: { '@type': 'Answer', text: q.r } })),
+};
+---
+<Base titulo="Hacete socio" descripcion="Cómo hacerte socio de COPOL: con el convenio de tu empresa o creando uno con 6 o más personas. Requisitos, preguntas frecuentes y contacto por WhatsApp.">
+  <EncabezadoPagina
+    titulo="Te asociás y ya sos parte"
+    antetitulo="Hacete socio"
+    bajada="Ser socio de COPOL es más fácil de lo que pensás. Accedé a créditos, servicios sociales, convenios y mucho más."
+    migas={[{ texto: 'Hacete socio' }]}
+  >
+    <Button href={ws('Hola, quiero info para asociarme')}><Icono nombre="whatsapp" tamano={18} /> Quiero asociarme</Button>
+    <Button href="#como-funciona" variant="outline">Cómo funciona</Button>
+  </EncabezadoPagina>
+
+  <section class="contenedor seccion" aria-labelledby="beneficios-titulo">
+    <h2 id="beneficios-titulo"><span class="mascara"><span>Qué ganás como socio</span></span></h2>
+    <ul class="ventajas escalonar">
+      {beneficios.map((b) => (
+        <li>
+          <Card href={b.href} class="ventaja">
+            <span class="card__icono card__icono--accent"><Icono nombre={b.icono} tamano={26} /></span>
+            <h3>{b.titulo}</h3>
+            <p>{b.texto}</p>
+          </Card>
+        </li>
+      ))}
+    </ul>
+  </section>
+
+  <section class="seccion seccion--suave" id="como-funciona" aria-labelledby="caminos-titulo">
+    <div class="contenedor">
+      <div class="encabezado-seccion">
+        <div>
+          <span class="eyebrow">¿Cómo funciona?</span>
+          <h2 id="caminos-titulo">Dos caminos para asociarte</h2>
+          <p class="lead">Sea cual sea tu situación, hay un camino para que formes parte de COPOL.</p>
+        </div>
+      </div>
+      <div class="caminos escalonar">
+        <Card as="article" class="camino">
+          <span class="camino__numero" aria-hidden="true">1</span>
+          <Badge variant="default">¿Tenés convenio? Sí</Badge>
+          <h3>Te asociás directamente</h3>
+          <p>Tu institución o empresa ya tiene convenio con COPOL. Comunicate con nosotros, verificamos tu situación y te damos de alta.</p>
+          <Button href={ws('Hola, quiero info para asociarme (tengo convenio)')}>Asociate ahora <Icono nombre="flecha" tamano={18} /></Button>
+        </Card>
+        <Card as="article" class="camino">
+          <span class="camino__numero" aria-hidden="true">2</span>
+          <Badge variant="accent">¿Tenés convenio? No</Badge>
+          <h3>Creá el convenio</h3>
+          <p>Si tu institución no tiene convenio con COPOL, pueden crearlo: reúnan 6 o más personas de la misma empresa o institución y nosotros nos encargamos del resto.</p>
+          <Button href={ws('Hola, quiero info para crear un convenio')} variant="outline">Creá tu convenio <Icono nombre="flecha" tamano={18} /></Button>
+        </Card>
+      </div>
+    </div>
+  </section>
+
+  <section class="contenedor seccion faq" aria-labelledby="faq-titulo">
+    <div>
+      <span class="eyebrow">Preguntas frecuentes</span>
+      <h2 id="faq-titulo">Resolvé tus dudas</h2>
+      <p class="lead">¿Otra consulta? Escribinos al <a href={ws('Hola, tengo una consulta para asociarme')} rel="noopener">{CONTACTO.whatsappSocios.texto}</a>.</p>
+    </div>
+    <Accordion items={preguntas.map((q) => ({ titulo: q.p, contenido: q.r }))} />
+  </section>
+
+  <AperturasCredito />
+
+  <section class="contenedor seccion" aria-labelledby="final-titulo">
+    <div class="final sobre-verde">
+      <h2 id="final-titulo">Más de 35.000 socios ya disfrutan de COPOL</h2>
+      <p>No te quedes afuera: hacete socio hoy y empezá a disfrutar de todos los beneficios.</p>
+      <div class="final__acciones">
+        <Button href={ws('Hola, quiero info para asociarme')} variant="accent"><Icono nombre="whatsapp" tamano={18} /> Escribinos al {CONTACTO.whatsappSocios.texto}</Button>
+        <Button href={`tel:+${CONTACTO.whatsappSocios.numero}`} variant="inverse"><Icono nombre="telefono" tamano={18} /> Llamar</Button>
+      </div>
+    </div>
+  </section>
+  <script type="application/ld+json" set:html={JSON.stringify(faqLd)} />
+</Base>
+
+<style>
+  .ventajas { list-style: none; margin: 24px 0 0; padding: 0; display: grid; gap: 16px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr)); }
+  .ventajas > li { display: flex; }
+  .ventajas :global(.ventaja) { flex: 1; gap: 8px; }
+
+  .caminos { display: grid; gap: 20px; }
+  @media (min-width: 860px) { .caminos { grid-template-columns: 1fr 1fr; } }
+  .caminos :global(.camino) { align-items: flex-start; padding: clamp(24px, 3vw, 36px); border-radius: var(--radio-xl); overflow: hidden; }
+  .camino__numero {
+    position: absolute; right: 20px; top: -10px;
+    font-size: 7rem; font-weight: 900; line-height: 1; letter-spacing: -0.05em;
+    color: var(--muted); pointer-events: none; user-select: none;
+  }
+  .caminos :global(.camino > :not(.camino__numero)) { position: relative; }
+
+  .faq { display: grid; gap: 28px; }
+  @media (min-width: 900px) { .faq { grid-template-columns: 1fr 1.4fr; align-items: start; } }
+  .faq > div:first-child { display: grid; gap: 12px; }
+
+  .final { display: grid; gap: 14px; justify-items: center; text-align: center; padding: clamp(32px, 5vw, 64px); border-radius: var(--radio-xl); background: var(--verde-oscuro); color: var(--sobre-verde); }
+  .final h2 { color: var(--blanco); }
+  .final__acciones { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; margin-top: 8px; }
+</style>

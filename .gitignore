@@ -1,0 +1,30 @@
+# Dependencias y compilaciones (Vercel las genera en cada despliegue)
+node_modules/
+dist/
+dist-qa/
+.astro/
+.vercel/
+
+# Variables de entorno y secretos: NUNCA al repositorio (usar el panel de Vercel)
+.env
+.env.*
+!.env.example
+
+# Datos del panel: base local (usuarios con hash, stock), imágenes subidas y respaldos
+panel/datos/
+panel/datos-*/
+
+# Archivos generados en cada build (scripts/variantes-catalogo.mjs y scripts/copiar-recursos.mjs)
+public/catalogo/
+public/panel-recursos/zxing-browser.min.js
+
+# Herramientas locales del editor/asistente
+.claude/
+.agents/
+
+# Sistema y temporales
+*.tmp.mjs
+*.log
+.DS_Store
+Thumbs.db
+desktop.ini

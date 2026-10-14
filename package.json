@@ -1,0 +1,49 @@
+{
+  "name": "copol-sitio",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "description": "Sitio institucional y comercial de la Cooperativa Policial (COPOL) con panel de stock del Bazar. Astro + Vercel.",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "preparar": "node scripts/variantes-catalogo.mjs && node scripts/copiar-recursos.mjs",
+    "predev": "npm run preparar",
+    "dev": "node --env-file-if-exists=.env node_modules/astro/bin/astro.mjs dev",
+    "prebuild": "npm run preparar",
+    "build": "astro build",
+    "check": "astro check",
+    "test": "node scripts/check-site.mjs",
+    "verificar": "astro check && npm run build && node scripts/check-site.mjs && npm run panel:test",
+    "qa": "node scripts/qa-interacciones.mjs",
+    "qa:panel": "node --env-file-if-exists=.env scripts/qa-panel-sitio.mjs",
+    "assets:fetch": "node scripts/fetch-assets.mjs",
+    "assets:optimize": "node scripts/optimize-assets.mjs",
+    "assets:iconos": "node scripts/generate-icons.mjs",
+    "datos:extraer": "node scripts/extract-data.mjs",
+    "catalogo:importar": "node scripts/importar-catalogo.mjs",
+    "panel:sembrar": "node --env-file-if-exists=.env panel/scripts/sembrar.ts",
+    "panel:admin": "node --env-file-if-exists=.env panel/scripts/crear-admin.ts",
+    "panel:respaldo": "node --env-file-if-exists=.env panel/scripts/respaldo.ts",
+    "panel:restaurar": "node --env-file-if-exists=.env panel/scripts/restaurar.ts",
+    "panel:test": "node --test --test-concurrency=1 \"panel/test/**/*.test.ts\""
+  },
+  "dependencies": {
+    "@astrojs/sitemap": "^3.7.4",
+    "@astrojs/vercel": "^11.0.14",
+    "@fontsource-variable/figtree": "^5.3.0",
+    "@libsql/client": "^0.18.0",
+    "@vercel/blob": "^2.8.1",
+    "@zxing/browser": "^0.2.1",
+    "astro": "^7.3.8",
+    "hono": "^4.13.13",
+    "sharp": "^0.35.5"
+  },
+  "devDependencies": {
+    "@astrojs/check": "^0.9.10",
+    "linkedom": "^0.18.13",
+    "playwright-core": "^1.64.0",
+    "typescript": "^6.0.3"
+  }
+}

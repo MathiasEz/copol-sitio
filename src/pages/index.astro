@@ -1,0 +1,220 @@
+---
+// Inicio con ritmo de tienda online: accesos rápidos y créditos arriba; luego bloques "banner + contenido"
+// de cada sección (Bazar, Servicios sociales, Pinecoop), novedades y cierre con Hacete socio.
+// Los banners son piezas entregadas por la cooperativa (docs/registro-de-activos.md § Banners de Inicio).
+import Base from '../layouts/Base.astro';
+import CarruselInicio from '../components/CarruselInicio.astro';
+import AperturasCredito from '../components/AperturasCredito.astro';
+import EstanteBazar from '../components/EstanteBazar.astro';
+import NovedadesInicio from '../components/NovedadesInicio.astro';
+import BannerSeccion from '../components/BannerSeccion.astro';
+import Icono from '../components/Icono.astro';
+import Button from '../components/ui/Button.astro';
+import Badge from '../components/ui/Badge.astro';
+import Card from '../components/ui/Card.astro';
+import Media from '../components/ui/Media.astro';
+import { LOCALES } from '../lib/datos';
+import { foto } from '../lib/imagenes';
+import { SERVICIOS } from '../data/confirmado/servicios';
+import { BENEFICIOS_SOCIO } from '../data/confirmado/beneficios-socio';
+import { CONTACTO, whatsapp } from '../data/confirmado/sitio';
+import bannerBazar from '../assets/banners/bazar.webp';
+import bannerServicios from '../assets/banners/servicios-sociales.webp';
+import bannerPinecoop from '../assets/banners/pinecoop.webp';
+import bannerSocio from '../assets/banners/hacete-socio.webp';
+
+const pinecoop = SERVICIOS.find((s) => s.slug === 'pinecoop')!;
+const otrosServicios = SERVICIOS.filter((s) => s.slug !== 'pinecoop');
+const beneficios = BENEFICIOS_SOCIO.map((b) => (b.icono === 'ubicacion' ? { ...b, titulo: `${LOCALES.length} locales` } : b));
+
+const accesos = [
+  { texto: 'Acceso web', detalle: 'Tu cuenta de socio', href: '/acceso-web/', icono: 'candado' },
+  { texto: 'Bazar', detalle: 'Tecnología y hogar', href: '/hipermercado/bazar/', icono: 'celular' },
+  { texto: 'Tienda', detalle: 'Rubros y horarios', href: '/hipermercado/tienda/', icono: 'tienda' },
+  { texto: 'Servicios sociales', detalle: 'Salud, turismo y más', href: '/beneficios/servicios-sociales/', icono: 'corazon' },
+  { texto: 'Convenios', detalle: 'Comercios adheridos', href: '/beneficios/convenios/', icono: 'convenio' },
+  { texto: 'Locales', detalle: `${LOCALES.length} en todo el país`, href: '/sobre-nosotros/locales/', icono: 'ubicacion' },
+] as const;
+
+---
+<Base titulo="Inicio">
+  <CarruselInicio />
+
+  <section class="contenedor accesos" aria-labelledby="accesos-titulo">
+    <h2 id="accesos-titulo" class="accesos__titulo"><span class="mascara"><span>¿Qué necesitás hoy?</span></span></h2>
+    <ul class="accesos__lista escalonar">
+      {accesos.map((a) => (
+        <li>
+          <Card href={a.href} class="acceso">
+            <span class="card__icono"><Icono nombre={a.icono} tamano={24} /></span>
+            <span class="acceso__texto">{a.texto}</span>
+            <span class="acceso__detalle">{a.detalle}</span>
+            <Icono nombre="flecha" tamano={18} clase="acceso__flecha" />
+          </Card>
+        </li>
+      ))}
+    </ul>
+  </section>
+
+  <AperturasCredito />
+
+  <!-- ── Bazar: banner + estante de productos ── -->
+  <section class="contenedor bloque" aria-labelledby="bazar-titulo">
+    <BannerSeccion src={bannerBazar} href="/hipermercado/bazar/" alt="Bazar: todo para ti y tu hogar. Hasta 15 cuotas sin recargo. Ver el catálogo del Bazar." />
+    <div class="bloque__cabecera">
+      <div>
+        <span class="eyebrow">Hipermercado · Bazar</span>
+        <h2 id="bazar-titulo"><span class="mascara"><span>Lo más buscado del Bazar</span></span></h2>
+      </div>
+    </div>
+    <!-- Stock vigente: se genera en cada visita a partir de la base del panel -->
+    <EstanteBazar server:defer cantidad={10}>
+      <div slot="fallback" class="estante-esqueleto" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span></div>
+    </EstanteBazar>
+  </section>
+
+  <!-- ── Servicios sociales: banner + servicios ── -->
+  <section class="bloque bloque--suave" aria-labelledby="servicios-titulo">
+    <div class="contenedor bloque__interior">
+      <BannerSeccion src={bannerServicios} href="/beneficios/servicios-sociales/" alt="COPOL Servicios sociales. Ver todos los servicios sociales." />
+      <div class="bloque__cabecera">
+        <div>
+          <span class="eyebrow">Beneficios</span>
+          <h2 id="servicios-titulo"><span class="mascara"><span>Servicios sociales para vos y tu familia</span></span></h2>
+        </div>
+        <Button href="/beneficios/servicios-sociales/" variant="outline">Ver todos los servicios <Icono nombre="flecha" tamano={18} /></Button>
+      </div>
+      <ul class="servicios-lista escalonar">
+        {otrosServicios.map((s) => (
+          <li>
+            <Card href={`/beneficios/servicios-sociales/${s.slug}/`} class="servicio-mini">
+              <span class="card__icono"><Icono nombre={s.icono} tamano={22} /></span>
+              <span class="servicio-mini__texto"><strong>{s.titulo}</strong><span>{s.resumen}</span></span>
+              <Icono nombre="chevron-der" tamano={18} clase="servicio-mini__flecha" />
+            </Card>
+          </li>
+        ))}
+      </ul>
+    </div>
+  </section>
+
+  <!-- ── Pinecoop: banner + detalle ── -->
+  <section class="contenedor bloque" aria-labelledby="pinecoop-titulo">
+    <BannerSeccion src={bannerPinecoop} href="/beneficios/servicios-sociales/pinecoop/" alt="Pinecoop: piscina, reposeras y sombrillas del Parque Vacacional. Ver más sobre Pinecoop." />
+    <div class="pinecoop">
+      <div class="pinecoop__texto">
+        <span class="eyebrow">Servicios sociales · Turismo</span>
+        <h2 id="pinecoop-titulo"><span class="mascara"><span>{pinecoop.titulo}</span></span></h2>
+        <p class="lead">{pinecoop.descripcion}</p>
+        <div class="pinecoop__acciones">
+          <Button href="/beneficios/servicios-sociales/pinecoop/" size="lg">Conocé Pinecoop <Icono nombre="flecha" tamano={18} /></Button>
+          <Button href={pinecoop.cta.href} variant="outline" size="lg"><Icono nombre="whatsapp" tamano={18} /> Consultá disponibilidad</Button>
+        </div>
+      </div>
+      <ul class="lista-check pinecoop__lista escalonar">
+        {pinecoop.puntos.map((p) => <li><Icono nombre="check" tamano={18} />{p}</li>)}
+      </ul>
+      <a href="/beneficios/servicios-sociales/pinecoop/" class="pinecoop__chuy grupo-hover">
+        <Media src={foto('pinecoop-chuy')} alt="Pinecoop Chuy" widths={[320, 480, 640]} sizes="(min-width: 900px) 300px, 100vw" />
+        <span><Badge variant="accent">Próximamente</Badge> <strong>Pinecoop Chuy</strong></span>
+      </a>
+    </div>
+  </section>
+
+  <!-- ── Novedades: las publicadas en el panel, en su orden ── -->
+  <NovedadesInicio server:defer>
+    <div slot="fallback" class="contenedor bloque" aria-hidden="true"><div class="novedades-esqueleto"></div></div>
+  </NovedadesInicio>
+
+  <!-- ── Hacete socio: banner + beneficios ── -->
+  <section class="bloque bloque--suave bloque--final" aria-labelledby="socio-titulo">
+    <div class="contenedor bloque__interior">
+      <BannerSeccion src={bannerSocio} href="/hacete-socio/" alt="Hacete socio de COPOL. Ver cómo hacerte socio." />
+      <div class="bloque__cabecera">
+        <div>
+          <span class="eyebrow">Hacete socio</span>
+          <h2 id="socio-titulo"><span class="mascara"><span>Sumate a COPOL</span></span></h2>
+          <p class="bloque__bajada">Asociate con el convenio de tu empresa o institución, o crealo junto a 6 o más personas del mismo lugar de trabajo.</p>
+        </div>
+        <div class="bloque__acciones">
+          <Button href="/hacete-socio/">Cómo hacerte socio <Icono nombre="flecha" tamano={18} /></Button>
+          <Button href={whatsapp(CONTACTO.whatsappSocios.numero, 'Hola, quiero info para asociarme')} variant="outline"><Icono nombre="whatsapp" tamano={18} /> {CONTACTO.whatsappSocios.texto}</Button>
+        </div>
+      </div>
+      <ul class="beneficios escalonar">
+        {beneficios.map((b) => (
+          <li>
+            <Card href={b.href} class="beneficio">
+              <span class="card__icono card__icono--accent"><Icono nombre={b.icono} tamano={24} /></span>
+              <strong>{b.titulo}</strong>
+              <span>{b.texto}</span>
+            </Card>
+          </li>
+        ))}
+      </ul>
+    </div>
+  </section>
+</Base>
+
+<style>
+  .accesos { padding-top: clamp(40px, 5vw, 64px); }
+  .accesos__titulo { font-size: clamp(1.5rem, 2.4vw, 1.875rem); margin-bottom: 20px; }
+  .accesos__lista {
+    list-style: none; margin: 0; padding: 0;
+    display: grid; gap: 14px;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 160px), 1fr));
+  }
+  .accesos__lista > li { display: flex; }
+  .accesos :global(.acceso) { flex: 1; gap: 4px; padding: 20px 18px; }
+  .accesos :global(.acceso .card__icono) { margin-bottom: 10px; }
+  .acceso__texto { font-weight: 700; font-size: 1.0625rem; }
+  .acceso__detalle { font-size: 0.875rem; color: var(--muted-foreground); }
+  .accesos :global(.acceso__flecha) {
+    position: absolute; top: 22px; right: 18px; color: var(--verde-oscuro);
+    opacity: 0; transform: translateX(-6px); transition: opacity var(--transicion), transform 400ms var(--resorte);
+  }
+  .accesos :global(.acceso:hover .acceso__flecha) { opacity: 1; transform: none; }
+  @media (max-width: 479px) {
+    .accesos__lista { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+    .accesos :global(.acceso) { padding: 16px 14px; }
+  }
+
+  /* Bloque de sección: banner → cabecera con llamado a la acción → contenido */
+
+  /* Servicios */
+  .servicios-lista {
+    list-style: none; margin: 0; padding: 0; display: grid; gap: 14px;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr));
+  }
+  .servicios-lista > li { display: flex; }
+  .servicios-lista :global(.servicio-mini) { flex: 1; flex-direction: row; align-items: center; gap: 14px; padding: 16px 18px; }
+  .servicio-mini__texto { display: grid; flex: 1; }
+  .servicio-mini__texto strong { color: var(--verde-oscuro); }
+  .servicio-mini__texto span { font-size: 0.875rem; color: var(--muted-foreground); }
+  .servicios-lista :global(.servicio-mini__flecha) { color: var(--verde-oscuro); flex: none; transition: transform 300ms var(--resorte); }
+  .servicios-lista :global(.servicio-mini:hover .servicio-mini__flecha) { transform: translateX(3px); }
+
+  /* Pinecoop */
+  .pinecoop { display: grid; gap: clamp(20px, 3vw, 40px); align-items: start; }
+  @media (min-width: 1000px) { .pinecoop { grid-template-columns: 1.2fr 1fr 300px; } }
+  @media (min-width: 700px) and (max-width: 999px) { .pinecoop { grid-template-columns: 1fr 1fr; } .pinecoop__texto { grid-column: 1 / -1; } }
+  .pinecoop__texto { display: grid; gap: 14px; justify-items: start; }
+  .pinecoop__acciones { display: flex; flex-wrap: wrap; gap: 10px; }
+  .lista-check { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+  .lista-check li { display: flex; gap: 10px; align-items: flex-start; }
+  .lista-check :global(svg) { color: var(--verde-copol); margin-top: 3px; flex: none; }
+  .pinecoop__lista { padding: 20px; border-radius: var(--radio-lg); background: var(--card); box-shadow: var(--anillo); }
+  .pinecoop__chuy { display: grid; gap: 10px; text-decoration: none; color: var(--foreground); }
+  .pinecoop__chuy span { display: flex; align-items: center; gap: 8px; }
+
+  /* Beneficios de socio */
+  .beneficios { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); }
+  .beneficios > li { display: flex; }
+  .beneficios :global(.beneficio) { flex: 1; gap: 6px; padding: 20px; }
+  .beneficios :global(.beneficio strong) { font-size: 1.0625rem; color: var(--verde-oscuro); margin-top: 6px; }
+  .beneficios :global(.beneficio span:last-child) { color: var(--muted-foreground); font-size: 0.9375rem; }
+  @media (max-width: 479px) {
+    .beneficios { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+    .beneficios :global(.beneficio) { padding: 16px 14px; }
+  }
+</style>

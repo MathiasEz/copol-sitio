@@ -1,0 +1,95 @@
+---
+import { NAVEGACION } from '../data/navegacion';
+import { CONTACTO, HORARIOS, MANUAL, REDES, SITIO, whatsapp } from '../data/confirmado/sitio';
+import logo from '../assets/brand/logo-copol.svg';
+import Icono from './Icono.astro';
+import Button from './ui/Button.astro';
+
+const anio = new Date().getFullYear();
+const secciones = NAVEGACION.filter((n) => n.hijos);
+---
+<footer class="pie sobre-verde">
+  <div class="contenedor pie__grilla">
+    <div class="pie__marca">
+      <a href="/" class="pie__logo" aria-label="COPOL — Inicio"><img src={logo.src} width="150" height="69" alt="" /></a>
+      <p class="pie__lema">{SITIO.lema}</p>
+      <p class="pie__texto">{MANUAL.mision[1]}</p>
+      <div class="pie__redes">
+        <a href={REDES.facebook} rel="noopener" aria-label="Facebook de COPOL"><Icono nombre="facebook" /></a>
+        <a href={REDES.instagram} rel="noopener" aria-label="Instagram de COPOL"><Icono nombre="instagram" /></a>
+        <a href={whatsapp(CONTACTO.whatsappGeneral.numero)} rel="noopener" aria-label="WhatsApp de COPOL"><Icono nombre="whatsapp" /></a>
+      </div>
+    </div>
+
+    {secciones.map((s) => (
+      <nav class="pie__columna" aria-label={s.texto}>
+        <h2 class="pie__titulo"><a href={s.href}>{s.texto}</a></h2>
+        <ul>
+          {s.hijos!.map((h) => <li><a href={h.href}>{h.texto}</a></li>)}
+        </ul>
+      </nav>
+    ))}
+
+    <div class="pie__columna">
+      <h2 class="pie__titulo">Contacto</h2>
+      <ul>
+        <li><a href={CONTACTO.telefono.href}>{CONTACTO.telefono.texto}</a></li>
+        <li><a href={`mailto:${CONTACTO.email}`}>{CONTACTO.email}</a></li>
+        <li><a href={CONTACTO.casaCentral.mapa} rel="noopener">{CONTACTO.casaCentral.direccion}, {CONTACTO.casaCentral.ciudad}</a></li>
+        {HORARIOS.casaCentral.map((h) => <li class="pie__horario">{h.dias}: {h.horas}</li>)}
+      </ul>
+      <div class="pie__acciones">
+        <Button href="/hacete-socio/" variant="accent">Hacete socio</Button>
+        <Button href="/acceso-web/" variant="inverse"><Icono nombre="candado" tamano={18} /> Acceso web</Button>
+      </div>
+    </div>
+  </div>
+  <div class="contenedor pie__legal">
+    <p>© {anio} {SITIO.nombreCompleto} ({SITIO.nombre}). Todos los derechos reservados.</p>
+    <p><a href="/contacto/">Contacto</a> · <a href="/sobre-nosotros/locales/">Locales</a></p>
+  </div>
+</footer>
+
+<style>
+  .pie {
+    background: var(--verde-oscuro);
+    color: var(--sobre-verde);
+    margin-top: var(--seccion);
+  }
+  .pie :global(a:not(.btn)) { color: var(--blanco); text-decoration: none; }
+  .pie :global(a:not(.btn):hover) { color: var(--amarillo-copol); text-decoration: underline; }
+  .pie__grilla {
+    display: grid;
+    gap: 40px 32px;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr));
+    padding-block: clamp(48px, 6vw, 72px);
+  }
+  .pie__marca { grid-column: 1 / -1; display: grid; gap: 14px; max-width: 520px; }
+  @media (min-width: 1000px) {
+    .pie__grilla { grid-template-columns: 1.6fr 1fr 1fr 1fr 1.4fr; }
+    .pie__marca { grid-column: auto; }
+  }
+  .pie__logo { justify-self: start; background: var(--blanco); padding: 10px 14px; border-radius: 18px; }
+  .pie__logo img { height: 40px; width: auto; }
+  .pie__lema { color: var(--amarillo-copol); font-weight: 700; }
+  .pie__texto { font-size: 0.9375rem; }
+  .pie__redes { display: flex; gap: 8px; }
+  .pie__redes a {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 44px; height: 44px; border-radius: var(--radio-pill);
+    background: rgb(255 255 255 / 0.1);
+  }
+  .pie__redes a:hover { background: rgb(255 255 255 / 0.2); text-decoration: none; }
+  .pie__titulo { font-size: 1rem; color: var(--amarillo-copol); margin-bottom: 12px; letter-spacing: 0; }
+  .pie__titulo a { color: var(--amarillo-copol); }
+  .pie__columna ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; font-size: 0.9375rem; }
+  .pie__columna li a { display: inline-block; padding-block: 5px; }
+  .pie__legal a { display: inline-block; padding-block: 6px; }
+  .pie__horario { color: var(--sobre-verde); }
+  .pie__acciones { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 20px; }
+  .pie__acciones :global(.btn) { min-height: 44px; padding: 10px 18px; text-decoration: none !important; }
+  .pie__legal {
+    display: flex; flex-wrap: wrap; gap: 8px 24px; justify-content: space-between;
+    padding-block: 20px; border-top: 1px solid rgb(255 255 255 / 0.15); font-size: 0.875rem;
+  }
+</style>

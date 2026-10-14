@@ -1,0 +1,49 @@
+---
+interface Miga {
+  texto: string;
+  href?: string;
+}
+interface Props {
+  items: Miga[];
+}
+const { items } = Astro.props;
+const todas: Miga[] = [{ texto: 'Inicio', href: '/' }, ...items];
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'BreadcrumbList',
+  itemListElement: todas.map((m, i) => ({
+    '@type': 'ListItem',
+    position: i + 1,
+    name: m.texto,
+    ...(m.href ? { item: new URL(m.href, Astro.site).toString() } : {}),
+  })),
+};
+---
+<nav class="migas" aria-label="Ruta de navegación">
+  <ol>
+    {todas.map((m, i) => (
+      <li>
+        {m.href && i < todas.length - 1 ? <a href={m.href}>{m.texto}</a> : <span aria-current="page">{m.texto}</span>}
+      </li>
+    ))}
+  </ol>
+</nav>
+<script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />
+
+<style>
+  .migas ol {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    font-size: 0.875rem;
+    color: var(--tinta-suave);
+  }
+  .migas li { display: inline-flex; align-items: center; gap: 4px; }
+  .migas li + li::before { content: '/'; color: var(--borde-fuerte); padding-inline: 4px; }
+  .migas a { color: var(--tinta-suave); text-decoration: none; padding-block: 8px; }
+  .migas a:hover { color: var(--verde-oscuro); text-decoration: underline; }
+  .migas [aria-current] { color: var(--verde-oscuro); font-weight: 600; }
+</style>

@@ -1,0 +1,757 @@
+{
+  "fuente": "https://sites.google.com/view/catalogo-copol/inicio",
+  "importado": "2026-10-13",
+  "totales": {
+    "paginas": 69,
+    "apariciones": 818,
+    "productos": 806,
+    "conStock": 501,
+    "sinStock": 299,
+    "sinDato": 6,
+    "conImagen": 806,
+    "duplicadosOmitidos": 12,
+    "revisarPrecio": 0
+  },
+  "paginas": [
+    {
+      "pagina": "celulares",
+      "titulo": "📱 Celulares",
+      "productos": 69,
+      "conStock": 23,
+      "sinStock": 46,
+      "sinDato": 0
+    },
+    {
+      "pagina": "informática",
+      "titulo": "💻 Informática",
+      "productos": 0,
+      "conStock": 0,
+      "sinStock": 0,
+      "sinDato": 0
+    },
+    {
+      "pagina": "informática/mini-pc",
+      "titulo": "Mini Pc",
+      "productos": 2,
+      "conStock": 1,
+      "sinStock": 1,
+      "sinDato": 0
+    },
+    {
+      "pagina": "informática/camaras",
+      "titulo": "Camaras",
+      "productos": 2,
+      "conStock": 2,
+      "sinStock": 0,
+      "sinDato": 0
+    },
+    {
+      "pagina": "informática/notebooks",
+      "titulo": "Notebooks",
+      "productos": 19,
+      "conStock": 9,
+      "sinStock": 10,
+      "sinDato": 0
+    },
+    {
+      "pagina": "informática/impresoras",
+      "titulo": "Impresoras",
+      "productos": 2,
+      "conStock": 2,
+      "sinStock": 0,
+      "sinDato": 0
+    },
+    {
+      "pagina": "informática/auriculares",
+      "titulo": "Auriculares",
+      "productos": 36,
+      "conStock": 21,
+      "sinStock": 15,
+      "sinDato": 0
+    },
+    {
+      "pagina": "informática/tablet",
+      "titulo": "Tablet",
+      "productos": 15,
+      "conStock": 8,
+      "sinStock": 7,
+      "sinDato": 0
+    },
+    {
+      "pagina": "informática/radio-para-auto-parlantes",
+      "titulo": "Radio para auto & parlantes",
+      "productos": 21,
+      "conStock": 17,
+      "sinStock": 4,
+      "sinDato": 0
+    },
+    {
+      "pagina": "informática/tv-box",
+      "titulo": "Tv Box",
+      "productos": 2,
+      "conStock": 0,
+      "sinStock": 0,
+      "sinDato": 2
+    },
+    {
+      "pagina": "gaming",
+      "titulo": "🕹️ Gaming",
+      "productos": 28,
+      "conStock": 21,
+      "sinStock": 7,
+      "sinDato": 0
+    },
+    {
+      "pagina": "gaming/monitores",
+      "titulo": "Monitores",
+      "productos": 10,
+      "conStock": 3,
+      "sinStock": 6,
+      "sinDato": 1
+    },
+    {
+      "pagina": "gaming/sillas-gamer",
+      "titulo": "Sillas Gamer",
+      "productos": 3,
+      "conStock": 2,
+      "sinStock": 1,
+      "sinDato": 0
+    },
+    {
+      "pagina": "audio",
+      "titulo": "🔊 Audio",
+      "productos": 45,
+      "conStock": 31,
+      "sinStock": 13,
+      "sinDato": 1
+    },
+    {
+      "pagina": "heladeras",
+      "titulo": "❄️ Heladeras",
+      "productos": 34,
+      "conStock": 18,
+      "sinStock": 15,
+      "sinDato": 1
+    },
+    {
+      "pagina": "televisores",
+      "titulo": "📺 Televisores",
+      "productos": 26,
+      "conStock": 13,
+      "sinStock": 13,
+      "sinDato": 0
+    },
+    {
+      "pagina": "televisores/proyectores",
+      "titulo": "Proyectores",
+      "productos": 5,
+      "conStock": 5,
+      "sinStock": 0,
+      "sinDato": 0
+    },
+    {
+      "pagina": "lavado",
+      "titulo": "💦 Lavado",
+      "productos": 26,
+      "conStock": 7,
+      "sinStock": 19,
+      "sinDato": 0
+    },
+    {
+      "pagina": "bicicletas",
+      "titulo": "🚲 Bicicletas",
+      "productos": 41,
+      "conStock": 17,
+      "sinStock": 24,
+      "sinDato": 0
+    },
+    {
+      "pagina": "fitness",
+      "titulo": "🏋️ Fitness",
+      "productos": 8,
+      "conStock": 8,
+      "sinStock": 0,
+      "sinDato": 0
+    },
+    {
+      "pagina": "jardín",
+      "titulo": "🪴Jardín",
+      "productos": 0,
+      "conStock": 0,
+      "sinStock": 0,
+      "sinDato": 0
+    },
+    {
+      "pagina": "jardín/alpha-pro",
+      "titulo": "Alpha Pro",
+      "productos": 6,
+      "conStock": 5,
+      "sinStock": 1,
+      "sinDato": 0
+    },
+    {
+      "pagina": "jardín/black-decker",
+      "titulo": "Black & Decker",
+      "productos": 2,
+      "conStock": 2,
+      "sinStock": 0,
+      "sinDato": 0
+    },
+    {
+      "pagina": "jardín/forest-garden",
+      "titulo": "Forest & Garden",
+      "productos": 5,
+      "conStock": 4,
+      "sinStock": 1,
+      "sinDato": 0
+    },
+    {
+      "pagina": "jardín/tramontina",
+      "titulo": "Tramontina",
+      "productos": 1,
+      "conStock": 1,
+      "sinStock": 0,
+      "sinDato": 0
+    },
+    {
+      "pagina": "seguridad",
+      "titulo": "🔒 Seguridad",
+      "productos": 14,
+      "conStock": 10,
+      "sinStock": 4,
+      "sinDato": 0
+    },
+    {
+      "pagina": "hogar",
+      "titulo": "🏠 Hogar",
+      "productos": 0,
+      "conStock": 0,
+      "sinStock": 0,
+      "sinDato": 0
+    },
+    {
+      "pagina": "hogar/aires-acondicionados",
+      "titulo": "Aires Acondicionados",
+      "productos": 26,
+      "conStock": 17,
+      "sinStock": 9,
+      "sinDato": 0
+    },
+    {
+      "pagina": "hogar/aires-acondicionados/deshumificador",
+      "titulo": "Deshumificador",
+      "productos": 4,
+      "conStock": 4,
+      "sinStock": 0,
+      "sinDato": 0
+    },
+    {
+      "pagina": "hogar/anafe-campanas-horrnos-de-empotrar",
+      "titulo": "Anafe, Campanas & Horrnos de empotrar",
+      "productos": 20,
+      "conStock": 10,
+      "sinStock": 10,
+      "sinDato": 0
+    },
+    {
+      "pagina": "hogar/aspiradoras",
+      "titulo": "Aspiradoras",
+      "productos": 0,
+      "conStock": 0,
+      "sinStock": 0,
+      "sinDato": 0
+    },
+    {
+      "pagina": "hogar/aspiradoras/portátil",
+      "titulo": "Portátil",
+      "productos": 4,
+      "conStock": 4,
+      "sinStock": 0,
+      "sinDato": 0
+    },
+    {
+      "pagina": "hogar/aspiradoras/con-bolsasin-bolsa",
+      "titulo": "Con bolsa/Sin bolsa",
+      "productos": 4,
+      "conStock": 1,
+      "sinStock": 3,
+      "sinDato": 0
+    },
+    {
+      "pagina": "hogar/aspiradoras/robot",
+      "titulo": "Robot",
+      "productos": 2,
+      "conStock": 1,
+      "sinStock": 1,
+      "sinDato": 0
+    },
+    {
+      "pagina": "hogar/aspiradoras/industriales",
+      "titulo": "Industriales",
+      "productos": 2,
+      "conStock": 1,
+      "sinStock": 1,
+      "sinDato": 0
+    },
+    {
+      "pagina": "hogar/calefacción",
+      "titulo": "Calefacción",
+      "productos": 11,
+      "conStock": 11,
+      "sinStock": 0,
+      "sinDato": 0
+    },
+    {
+      "pagina": "hogar/cocinas",
+      "titulo": "Cocinas",
+      "productos": 22,
+      "conStock": 9,
+      "sinStock": 13,
+      "sinDato": 0
+    },
+    {
+      "pagina": "hogar/hornos-microondas",
+      "titulo": "Hornos & Microondas",
+      "productos": 37,
+      "conStock": 17,
+      "sinStock": 20,
+      "sinDato": 0
+    },
+    {
+      "pagina": "hogar/termotanques",
+      "titulo": "Termotanques",
+      "productos": 23,
+      "conStock": 6,
+      "sinStock": 17,
+      "sinDato": 0
+    },
+    {
+      "pagina": "hogar/ventiladores",
+      "titulo": "Ventiladores",
+      "productos": 16,
+      "conStock": 13,
+      "sinStock": 3,
+      "sinDato": 0
+    },
+    {
+      "pagina": "cuidado-personal",
+      "titulo": "🪒 Cuidado personal",
+      "productos": 0,
+      "conStock": 0,
+      "sinStock": 0,
+      "sinDato": 0
+    },
+    {
+      "pagina": "cuidado-personal/femenino",
+      "titulo": "Femenino",
+      "productos": 57,
+      "conStock": 54,
+      "sinStock": 3,
+      "sinDato": 0
+    },
+    {
+      "pagina": "cuidado-personal/masculino",
+      "titulo": "Masculino",
+      "productos": 42,
+      "conStock": 33,
+      "sinStock": 8,
+      "sinDato": 1
+    },
+    {
+      "pagina": "pequeños-electrodomésticos",
+      "titulo": "☎️ Pequeños electrodomésticos",
+      "productos": 0,
+      "conStock": 0,
+      "sinStock": 0,
+      "sinDato": 0
+    },
+    {
+      "pagina": "pequeños-electrodomésticos/balanzas-de-cocina",
+      "titulo": "Balanzas de cocina",
+      "productos": 2,
+      "conStock": 2,
+      "sinStock": 0,
+      "sinDato": 0
+    },
+    {
+      "pagina": "pequeños-electrodomésticos/batidoras",
+      "titulo": "Batidoras",
+      "productos": 0,
+      "conStock": 0,
+      "sinStock": 0,
+      "sinDato": 0
+    },
+    {
+      "pagina": "pequeños-electrodomésticos/batidoras/batidora-planetaria",
+      "titulo": "Batidora Planetaria",
+      "productos": 4,
+      "conStock": 2,
+      "sinStock": 2,
+      "sinDato": 0
+    },
+    {
+      "pagina": "pequeños-electrodomésticos/batidoras/batidora-de-mano",
+      "titulo": "Batidora de mano",
+      "productos": 8,
+      "conStock": 8,
+      "sinStock": 0,
+      "sinDato": 0
+    },
+    {
+      "pagina": "pequeños-electrodomésticos/cafeteras",
+      "titulo": "Cafeteras",
+      "productos": 0,
+      "conStock": 0,
+      "sinStock": 0,
+      "sinDato": 0
+    },
+    {
+      "pagina": "pequeños-electrodomésticos/cafeteras/cafetera-de-goteo",
+      "titulo": "Cafetera de goteo",
+      "productos": 5,
+      "conStock": 3,
+      "sinStock": 2,
+      "sinDato": 0
+    },
+    {
+      "pagina": "pequeños-electrodomésticos/cafeteras/cafetera-de-capsula",
+      "titulo": "Cafetera de Capsula",
+      "productos": 3,
+      "conStock": 1,
+      "sinStock": 2,
+      "sinDato": 0
+    },
+    {
+      "pagina": "pequeños-electrodomésticos/cafeteras/espresso",
+      "titulo": "Espresso",
+      "productos": 4,
+      "conStock": 2,
+      "sinStock": 2,
+      "sinDato": 0
+    },
+    {
+      "pagina": "pequeños-electrodomésticos/freidoras-sin-aceite",
+      "titulo": "Freidoras sin Aceite",
+      "productos": 0,
+      "conStock": 0,
+      "sinStock": 0,
+      "sinDato": 0
+    },
+    {
+      "pagina": "pequeños-electrodomésticos/freidoras-sin-aceite/punktal",
+      "titulo": "Punktal",
+      "productos": 4,
+      "conStock": 2,
+      "sinStock": 2,
+      "sinDato": 0
+    },
+    {
+      "pagina": "pequeños-electrodomésticos/freidoras-sin-aceite/xion",
+      "titulo": "Xion",
+      "productos": 5,
+      "conStock": 5,
+      "sinStock": 0,
+      "sinDato": 0
+    },
+    {
+      "pagina": "pequeños-electrodomésticos/freidoras-sin-aceite/smartlife",
+      "titulo": "Smartlife",
+      "productos": 2,
+      "conStock": 1,
+      "sinStock": 1,
+      "sinDato": 0
+    },
+    {
+      "pagina": "pequeños-electrodomésticos/freidoras-sin-aceite/philips",
+      "titulo": "Philips",
+      "productos": 1,
+      "conStock": 1,
+      "sinStock": 0,
+      "sinDato": 0
+    },
+    {
+      "pagina": "pequeños-electrodomésticos/multiprocesadoras",
+      "titulo": "Multiprocesadoras",
+      "productos": 0,
+      "conStock": 0,
+      "sinStock": 0,
+      "sinDato": 0
+    },
+    {
+      "pagina": "pequeños-electrodomésticos/multiprocesadoras/multiprocesadora",
+      "titulo": "Multiprocesadora",
+      "productos": 8,
+      "conStock": 6,
+      "sinStock": 2,
+      "sinDato": 0
+    },
+    {
+      "pagina": "pequeños-electrodomésticos/multiprocesadoras/mixer",
+      "titulo": "Mixer",
+      "productos": 5,
+      "conStock": 4,
+      "sinStock": 1,
+      "sinDato": 0
+    },
+    {
+      "pagina": "pequeños-electrodomésticos/jarras-eléctricas",
+      "titulo": "Jarras eléctricas",
+      "productos": 14,
+      "conStock": 12,
+      "sinStock": 2,
+      "sinDato": 0
+    },
+    {
+      "pagina": "pequeños-electrodomésticos/licuadoras",
+      "titulo": "Licuadoras",
+      "productos": 8,
+      "conStock": 6,
+      "sinStock": 2,
+      "sinDato": 0
+    },
+    {
+      "pagina": "pequeños-electrodomésticos/soperas",
+      "titulo": "Soperas",
+      "productos": 3,
+      "conStock": 2,
+      "sinStock": 1,
+      "sinDato": 0
+    },
+    {
+      "pagina": "pequeños-electrodomésticos/sandwicheras",
+      "titulo": "Sandwicheras",
+      "productos": 6,
+      "conStock": 4,
+      "sinStock": 2,
+      "sinDato": 0
+    },
+    {
+      "pagina": "pequeños-electrodomésticos/maquina-de-coser",
+      "titulo": "Maquina de Coser",
+      "productos": 2,
+      "conStock": 1,
+      "sinStock": 1,
+      "sinDato": 0
+    },
+    {
+      "pagina": "pequeños-electrodomésticos/tostadoras",
+      "titulo": "Tostadoras",
+      "productos": 14,
+      "conStock": 13,
+      "sinStock": 1,
+      "sinDato": 0
+    },
+    {
+      "pagina": "pequeños-electrodomésticos/jugueras",
+      "titulo": "Jugueras",
+      "productos": 7,
+      "conStock": 6,
+      "sinStock": 1,
+      "sinDato": 0
+    },
+    {
+      "pagina": "pequeños-electrodomésticos/planchas",
+      "titulo": "Planchas",
+      "productos": 5,
+      "conStock": 5,
+      "sinStock": 0,
+      "sinDato": 0
+    }
+  ],
+  "duplicados": [
+    {
+      "codigo": "471399",
+      "nombre": "CELULAR APPLE IPHONE 17E 8GB/256GB 5G BLANCO",
+      "pagina": "celulares",
+      "primeraAparicion": "celulares"
+    },
+    {
+      "codigo": "447081",
+      "nombre": "RADIO DE AUTO PIONEER 200W 50WX4 BT 5 BANDAS DESMO",
+      "pagina": "informática/radio-para-auto-parlantes",
+      "primeraAparicion": "informática/radio-para-auto-parlantes"
+    },
+    {
+      "codigo": "457855",
+      "nombre": "XIOAMI MI TV STICK",
+      "pagina": "informática/tv-box",
+      "primeraAparicion": "informática/mini-pc"
+    },
+    {
+      "codigo": "453009",
+      "nombre": "PARLANTE JBL GO4 INALAM BLUETOOTH 4,2W ROJO",
+      "pagina": "audio",
+      "primeraAparicion": "audio"
+    },
+    {
+      "codigo": "437033",
+      "nombre": "REFRIGERADOR PUNKTAL PK-271FSD FRIO SECO 248L.",
+      "pagina": "heladeras",
+      "primeraAparicion": "heladeras"
+    },
+    {
+      "codigo": "467310",
+      "nombre": "REFRIGERADOR PK-442IINV FRIO SECO SIDEBYSIDE 430LTS I",
+      "pagina": "heladeras",
+      "primeraAparicion": "heladeras"
+    },
+    {
+      "codigo": "436001",
+      "nombre": "FREEZER HORIZONTAL XION CAP 200 LTS",
+      "pagina": "heladeras",
+      "primeraAparicion": "heladeras"
+    },
+    {
+      "codigo": "389797",
+      "nombre": "BICICLETA S-PRO ZERO3 MAN MOUNTAIN BI 21V R27.5",
+      "pagina": "bicicletas",
+      "primeraAparicion": "bicicletas"
+    },
+    {
+      "codigo": "357590",
+      "nombre": "PLANCHA GAMA TOURMALINE PELO IHT STARLIGHT",
+      "pagina": "cuidado-personal/femenino",
+      "primeraAparicion": "cuidado-personal/femenino"
+    },
+    {
+      "codigo": "434759",
+      "nombre": "PLA GA.MA STARLIGHT WL DIG 3D BLUE TIT 220V",
+      "pagina": "cuidado-personal/femenino",
+      "primeraAparicion": "cuidado-personal/femenino"
+    },
+    {
+      "codigo": "437048",
+      "nombre": "MAQUINA ORAIMO CORTADORA MULTIFUNCION INALAMBRICA",
+      "pagina": "cuidado-personal/masculino",
+      "primeraAparicion": "cuidado-personal/masculino"
+    },
+    {
+      "codigo": "403424",
+      "nombre": "JARRA PUNKTAL ELECTRICA INOX 1.70 LT",
+      "pagina": "pequeños-electrodomésticos/jarras-eléctricas",
+      "primeraAparicion": "pequeños-electrodomésticos/jarras-eléctricas"
+    }
+  ],
+  "sinImagen": [],
+  "erroresImagen": [],
+  "sinEtiquetaStock": [
+    {
+      "codigo": "454165",
+      "nombre": "TV BOX XIAOMI S 4K 2GB/32GB",
+      "pagina": "informática/tv-box"
+    },
+    {
+      "codigo": "445500",
+      "nombre": "tv box xion 4k",
+      "pagina": "informática/tv-box"
+    },
+    {
+      "codigo": "457853",
+      "nombre": "MONITOR GAMER ASUS 27\" PLANO 1080P 1MS",
+      "pagina": "gaming/monitores"
+    },
+    {
+      "codigo": "460626",
+      "nombre": "PARLANTE ACTICO AIWA 8\"X2 BT 800W/PMPO",
+      "pagina": "audio"
+    },
+    {
+      "codigo": "434542",
+      "nombre": "REFRIGERADOR SMARTLIFE FRÍO SECO 342 L | INOX | C/",
+      "pagina": "heladeras"
+    },
+    {
+      "codigo": "444314",
+      "nombre": "AFEITADORA INALAMBRICA PHILIPS",
+      "pagina": "cuidado-personal/masculino"
+    }
+  ],
+  "sinCodigo": [
+    {
+      "id": "tostadora-punktal-pk-858-pequenos-electrodomesticos-tostadoras-10",
+      "nombre": "TOSTADORA PUNKTAL PK-858",
+      "pagina": "pequeños-electrodomésticos/tostadoras"
+    },
+    {
+      "id": "tostadora-philips-2-pequenos-electrodomesticos-tostadoras-12",
+      "nombre": "TOSTADORA PHILIPS 2",
+      "pagina": "pequeños-electrodomésticos/tostadoras"
+    }
+  ],
+  "imagenesCompartidas": [
+    [
+      "470089 BICILETA PATAGONIA | 29\" | 21 VEL |ROJO - NEGRO | S",
+      "470090 BICILETA PATAGONIA | 29\" | 21 VEL |ROJO - NEGRO | M"
+    ],
+    [
+      "470257 MONOPATIN XIAOMI 120KG",
+      "470258 MONOPATIN XIAOMI 100KG"
+    ]
+  ],
+  "bloquesNoIdentificables": [
+    {
+      "pagina": "informática/auriculares",
+      "encabezado": "XIAOMI",
+      "grupoAnterior": "XION",
+      "posicion": 8,
+      "conImagen": true
+    }
+  ],
+  "textosHuerfanos": 22,
+  "imagenesDescartadas": 73,
+  "imagenesReutilizadas": 802,
+  "imagenesDescargadas": 0,
+  "portada": [
+    {
+      "codigo": "473503",
+      "nombre": "MOTO 49CC NIÑO",
+      "enCategorias": false
+    },
+    {
+      "codigo": "466006",
+      "nombre": "TABLET CUBOT",
+      "enCategorias": true
+    },
+    {
+      "codigo": "460461",
+      "nombre": "APPLE IPHONE 17",
+      "enCategorias": true
+    },
+    {
+      "codigo": "468994",
+      "nombre": "JOESTICK PS5",
+      "enCategorias": true
+    },
+    {
+      "codigo": "454166",
+      "nombre": "PS5 C7LEC",
+      "enCategorias": true
+    },
+    {
+      "codigo": "389797",
+      "nombre": "BICICLETA S-PRO ZERO3 MAN R 27.5",
+      "enCategorias": true
+    },
+    {
+      "codigo": "470257",
+      "nombre": "MONOPATIN XIAOMI 120KG",
+      "enCategorias": false
+    },
+    {
+      "codigo": "470258",
+      "nombre": "MONOPATIN XIAOMI 100KG",
+      "enCategorias": false
+    },
+    {
+      "codigo": "464813",
+      "nombre": "MONOPATIN ELECTRICO NIÑO",
+      "enCategorias": false
+    }
+  ],
+  "descargasConReintento": 0,
+  "noImportados": [
+    {
+      "motivo": "Bloque de la portada con dos imágenes y botón \"Consultar Stock\" (https://walink.co/089a64) pero sin título ni código: no se puede identificar el producto sin inventar datos."
+    }
+  ]
+}

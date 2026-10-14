@@ -1,0 +1,51 @@
+{
+  "nota": "Productos que en Google Sites aparecen SOLO en la portada (sección \"¡Nuestros productos destacados!\") y no en ninguna categoría. La portada usa imágenes de fondo y columnas, por lo que su asociación imagen↔producto no se puede extraer de forma fiable: se verificó a mano en el navegador el 13/10/2026 y las imágenes originales se guardaron en assets-source/catalogo-portada/. scripts/importar-catalogo.mjs los agrega a la categoría \"destacados\" si su código no aparece en ninguna categoría.",
+  "fuente": "https://sites.google.com/view/catalogo-copol/inicio",
+  "verificado": "2026-10-13",
+  "categoria": { "id": "destacados", "nombre": "Destacados" },
+  "productos": [
+    {
+      "codigo": "473503",
+      "nombre": "MOTO 49CC NIÑO",
+      "descripcion": "Características principales - Producto: Mini Moto Cross / Dirt Bike - Motor: 49 cc - Tipo de motor: 2 tiempos - Combustible: Nafta con aceite 2T - Proporción de mezcla: 25:1 - Arranque: Manual mediante tirador - Transmisión: Por cadena - Velocidad máxima declarada: hasta 60 km/h - Capacidad del tanque: 1,8 litros - Frenos: Disco delantero y trasero - Suspensión: Sistema con resorte amortiguador - Capacidad máxima de carga: 100 kg - Diámetro de rueda: 25,4 cm aproximadamente - Rodado: 10 pulgadas - Altura del asiento: 52 cm - Medidas aproximadas del producto: 118 x 68 cm - Medidas aproximadas del embalaje: 102 x 56 x 29 cm - Peso neto: 20 kg - Peso bruto embalado: 22 kg - Materiales: hierro, goma, ABS y asiento revestido en PU - Neumáticos: goma con dibujo todoterreno - Puños: antideslizantes - Apoyapiés: antideslizantes y plegables - Protector de cadena: sí - Guardabarros: sí - Interruptor de apagado del motor: sí - Colores disponibles: verde, blanco, naranja, amarillo, azul y rojo - Requiere armado: sí - Se entrega desarmada - Uso recomendado: superficies privadas y habilitadas para este tipo de vehículo - Equipamiento de protección recomendado: casco y protecciones adecuadas .",
+      "etiquetaStock": "Consultar Stock",
+      "consultaOrigen": "https://wa.link/g8th1w",
+      "imagen": "473503.webp",
+      "imagenPublicable": false,
+      "observacion": "La imagen parece un fotomontaje o una imagen generada (moto sobre paisaje con texto \"Rodado 14\"\"), y contradice la descripción (\"Rodado: 10 pulgadas\"). No se publica hasta que la cooperativa la confirme o envíe una foto del producto."
+    },
+    {
+      "codigo": "470257",
+      "nombre": "MONOPATIN XIAOMI 120KG",
+      "descripcion": "Velocidad Máxima: 25 km/h APROX.Luz indicador de dirección. Luz trasera de frenado.3 Modos de Velocidad: Caminar 6 km/h / Estándar de 20 km/h. / Deportivo de 25 km/h. Potencia Nominal: 350 W (700 W max).Dimensiones Abierto: 1275 x 1142 x 566 mm APROX. Dimensiones Plegado: 1142 x 566 x 566 mm APROX., Batería: LITIO 477 Wh.Autonomía Batería: Hasta 60 km. Tiempo de Carga Batería: 9 h APROX.\nGarantía: 1 año. Contra Defecto de Fabricación.",
+      "etiquetaStock": "Consultar Stock",
+      "consultaOrigen": "https://wa.link/tnoksm",
+      "imagen": "470257-470258.webp",
+      "imagenPublicable": true,
+      "observacion": "En el origen comparte bloque, descripción, imagen y enlace de consulta con 470258."
+    },
+    {
+      "codigo": "470258",
+      "nombre": "MONOPATIN XIAOMI 100KG",
+      "descripcion": "Velocidad Máxima: 25 km/h APROX.Luz indicador de dirección. Luz trasera de frenado.3 Modos de Velocidad: Caminar 6 km/h / Estándar de 20 km/h. / Deportivo de 25 km/h. Potencia Nominal: 350 W (700 W max).Dimensiones Abierto: 1275 x 1142 x 566 mm APROX. Dimensiones Plegado: 1142 x 566 x 566 mm APROX., Batería: LITIO 477 Wh.Autonomía Batería: Hasta 60 km. Tiempo de Carga Batería: 9 h APROX.\nGarantía: 1 año. Contra Defecto de Fabricación.",
+      "etiquetaStock": "Consultar Stock",
+      "consultaOrigen": "https://wa.link/tnoksm",
+      "imagen": "470257-470258.webp",
+      "imagenPublicable": true,
+      "observacion": "En el origen comparte bloque, descripción, imagen y enlace de consulta con 470257."
+    },
+    {
+      "codigo": "464813",
+      "nombre": "MONOPATIN ELECTRICO NIÑO",
+      "descripcion": "Tamaño de las ruedas: neumáticos sólidos de 6,5\"\nPotencia del motor: 150 W\nAutonomía: 9 km (peso 50 kg)\nVelocidad máxima: 19 km/h (12 mph)\nCarga máxima: 50 kg\nSistema de frenos: freno eléctrico + freno de trasero\nPantalla LED con 4 modos de velocidad\nLuces de colores en la potencia y la base\nDimensiones desplegada: 809 x 346 x 965 mm",
+      "etiquetaStock": "Consultar Stock",
+      "consultaOrigen": "https://wa.link/rnz7ec",
+      "imagen": "464813.webp",
+      "imagenPublicable": true,
+      "observacion": null
+    }
+  ],
+  "noImportados": [
+    { "motivo": "Bloque de la portada con dos imágenes y botón \"Consultar Stock\" (https://walink.co/089a64) pero sin título ni código: no se puede identificar el producto sin inventar datos." }
+  ]
+}

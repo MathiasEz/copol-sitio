@@ -1,0 +1,51 @@
+﻿---
+import Base from '../../layouts/Base.astro';
+import EncabezadoPagina from '../../components/EncabezadoPagina.astro';
+import AperturasCredito from '../../components/AperturasCredito.astro';
+import BandaSocio from '../../components/BandaSocio.astro';
+import Icono from '../../components/Icono.astro';
+import { CONVENIOS } from '../../lib/datos';
+import { foto } from '../../lib/imagenes';
+import { SERVICIOS } from '../../data/confirmado/servicios';
+import Button from '../../components/ui/Button.astro';
+import Card from '../../components/ui/Card.astro';
+
+const departamentos = new Set(CONVENIOS.map((c) => c.departamento)).size;
+---
+<Base titulo="Beneficios" descripcion="Beneficios para socios de COPOL: servicios sociales, Parque Vacacional Pinecoop, aperturas de crédito y convenios con comercios en todo el país.">
+  <EncabezadoPagina
+    titulo="Beneficios para socios"
+    antetitulo="Beneficios"
+    bajada="Servicios sociales, turismo, créditos y comercios adheridos en todo el país, pensados para vos y tu familia."
+    migas={[{ texto: 'Beneficios' }]}
+    imagen={foto('pinecoop-salinas')}
+    altImagen="Piscina y cabañas del Parque Vacacional Pinecoop"
+  >
+    <Button href="/hacete-socio/">Hacete socio <Icono nombre="flecha" tamano={18} /></Button>
+  </EncabezadoPagina>
+
+  <section class="contenedor seccion" aria-labelledby="areas-titulo">
+    <h2 id="areas-titulo" class="visualmente-oculto">Áreas de beneficios</h2>
+    <div class="grilla grilla--ajustada escalonar" style="--min: 340px">
+      <Card href="/beneficios/servicios-sociales/" class="area">
+        <span class="card__icono card__icono--accent"><Icono nombre="corazon" tamano={26} /></span>
+        <h3>Servicios sociales</h3>
+        <p>{SERVICIOS.length} servicios: {SERVICIOS.map((s) => s.titulo).join(', ')}.</p>
+        <span class="enlace-flecha">Ver servicios sociales <Icono nombre="flecha" tamano={18} /></span>
+      </Card>
+      <Card href="/beneficios/convenios/" class="area">
+        <span class="card__icono card__icono--accent"><Icono nombre="convenio" tamano={26} /></span>
+        <h3>Convenios</h3>
+        <p>{CONVENIOS.length} comercios adheridos en {departamentos} departamentos: farmacias, ópticas, supermercados, zapaterías y más.</p>
+        <span class="enlace-flecha">Buscar convenios <Icono nombre="flecha" tamano={18} /></span>
+      </Card>
+    </div>
+  </section>
+
+  <AperturasCredito />
+  <BandaSocio />
+</Base>
+
+<style>
+  .grilla :global(.area) { padding: clamp(24px, 3vw, 36px); border-radius: var(--radio-xl); }
+</style>

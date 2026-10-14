@@ -1,0 +1,327 @@
+---
+// Encabezado: barra superior con lema y accesos, logo y navegación principal.
+// - Escritorio: menú tipo NavigationMenu (shadcn/ui) con submenús y un resaltado que se desliza
+//   entre ítems al pasar el puntero (idea "liquid tab indicator" de prompt-motion.com).
+// - Móvil: panel lateral tipo Sheet (shadcn/ui) con fondo atenuado, foco atrapado y Escape.
+import { NAVEGACION } from '../data/navegacion';
+import { CONTACTO, SITIO, whatsapp } from '../data/confirmado/sitio';
+import logo from '../assets/brand/logo-copol.svg';
+import Icono from './Icono.astro';
+import Button from './ui/Button.astro';
+import SelectorFondo from './SelectorFondo.astro';
+
+const ruta = Astro.url.pathname.replace(/\/?$/, '/');
+const activo = (href: string) => (href === '/' ? ruta === '/' : ruta.startsWith(href));
+const actual = (href: string) => ruta === href;
+---
+<section class="barra-superior sobre-verde" aria-label="Lema y accesos rápidos">
+  <div class="contenedor barra-superior__fila">
+    <p class="barra-superior__lema">{SITIO.lema}</p>
+    <div class="barra-superior__acciones">
+      <SelectorFondo />
+      <a href={whatsapp(CONTACTO.whatsappGeneral.numero)} class="barra-superior__enlace" rel="noopener">
+        <Icono nombre="whatsapp" tamano={16} />
+        <span><span class="visualmente-oculto">WhatsApp </span>{CONTACTO.whatsappGeneral.texto}</span>
+      </a>
+      <a href="/acceso-web/" class="barra-superior__acceso" aria-current={actual('/acceso-web/') ? 'page' : undefined}>
+        <Icono nombre="candado" tamano={16} />
+        Acceso web
+      </a>
+    </div>
+  </div>
+</section>
+
+<header class="encabezado" data-encabezado>
+  <div class="contenedor encabezado__fila">
+    <a href="/" class="encabezado__logo" aria-label="COPOL Cooperativa Policial — Inicio">
+      <img src={logo.src} width="150" height="69" alt="" />
+    </a>
+
+    <button class="encabezado__menu" type="button" aria-expanded="false" aria-controls="navegacion-principal" data-menu-boton>
+      <Icono nombre="menu" tamano={22} />
+      <span>Menú</span>
+    </button>
+
+    <div class="nav-fondo" data-nav-fondo hidden></div>
+
+    <nav class="nav" id="navegacion-principal" aria-label="Principal" data-nav>
+      <div class="nav__cabecera-movil">
+        <img src={logo.src} width="110" height="51" alt="" />
+        <button type="button" class="btn btn--secondary btn--icon" data-menu-cerrar aria-label="Cerrar menú">
+          <Icono nombre="cerrar" tamano={22} />
+        </button>
+      </div>
+      <div class="nav__pista" data-nav-lista>
+      <span class="nav__resalte" aria-hidden="true" data-resalte></span>
+      <ul class="nav__lista">
+        {NAVEGACION.map((item) => (
+          <li class:list={['nav__item', { 'nav__item--sub': item.hijos, 'nav__item--cta': item.href === '/hacete-socio/' }]}>
+            {item.hijos ? (
+              <>
+                <div class="nav__fila">
+                  <a href={item.href} class:list={['nav__enlace', { activo: activo(item.href) }]} aria-current={actual(item.href) ? 'page' : undefined}>
+                    {item.texto}
+                  </a>
+                  <button type="button" class="nav__desplegar" aria-expanded="false" aria-controls={`sub-${item.href.replace(/\//g, '')}`} data-submenu-boton>
+                    <span class="visualmente-oculto">Ver opciones de {item.texto}</span>
+                    <Icono nombre="chevron-abajo" tamano={16} />
+                  </button>
+                </div>
+                <ul class="nav__sub" id={`sub-${item.href.replace(/\//g, '')}`}>
+                  {item.hijos.map((hijo) => (
+                    <li>
+                      <a href={hijo.href} class="nav__sub-enlace" aria-current={actual(hijo.href) ? 'page' : undefined}>
+                        <strong>{hijo.texto}</strong>
+                        {hijo.descripcion && <span>{hijo.descripcion}</span>}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            ) : (
+              <a href={item.href} class:list={['nav__enlace', { activo: activo(item.href) }]} aria-current={actual(item.href) ? 'page' : undefined}>
+                {item.texto}
+              </a>
+            )}
+          </li>
+        ))}
+      </ul>
+      </div>
+      <Button href="/acceso-web/" variant="accent" size="lg" class="nav__acceso-movil">
+        <Icono nombre="candado" tamano={18} /> Acceso web
+      </Button>
+    </nav>
+  </div>
+</header>
+
+<script>
+  const encabezado = document.querySelector<HTMLElement>('[data-encabezado]')!;
+  const botonMenu = document.querySelector<HTMLButtonElement>('[data-menu-boton]')!;
+  const botonCerrar = document.querySelector<HTMLButtonElement>('[data-menu-cerrar]')!;
+  const nav = document.querySelector<HTMLElement>('[data-nav]')!;
+  const fondo = document.querySelector<HTMLElement>('[data-nav-fondo]')!;
+  const botonesSub = [...document.querySelectorAll<HTMLButtonElement>('[data-submenu-boton]')];
+  const escritorio = window.matchMedia('(min-width: 1100px)');
+
+  const cerrarSubmenus = (excepto?: HTMLButtonElement) => {
+    botonesSub.forEach((b) => b !== excepto && b.setAttribute('aria-expanded', 'false'));
+  };
+  botonesSub.forEach((boton) => {
+    boton.addEventListener('click', () => {
+      const abierto = boton.getAttribute('aria-expanded') === 'true';
+      cerrarSubmenus(boton);
+      boton.setAttribute('aria-expanded', String(!abierto));
+    });
+  });
+
+  // ── Sheet móvil ──
+  const enfocables = () => [...nav.querySelectorAll<HTMLElement>('a[href], button:not([disabled])')].filter((el) => el.offsetParent !== null);
+  const abrirSheet = (abrir: boolean) => {
+    botonMenu.setAttribute('aria-expanded', String(abrir));
+    nav.classList.toggle('nav--abierta', abrir);
+    fondo.hidden = !abrir;
+    document.documentElement.classList.toggle('sin-scroll', abrir);
+    if (abrir) requestAnimationFrame(() => botonCerrar.focus());
+    else {
+      cerrarSubmenus();
+      botonMenu.focus();
+    }
+  };
+  botonMenu.addEventListener('click', () => abrirSheet(true));
+  botonCerrar.addEventListener('click', () => abrirSheet(false));
+  fondo.addEventListener('click', () => abrirSheet(false));
+  nav.addEventListener('keydown', (e) => {
+    if (e.key !== 'Tab' || !nav.classList.contains('nav--abierta')) return;
+    const lista = enfocables();
+    const primero = lista[0], ultimo = lista[lista.length - 1];
+    if (e.shiftKey && document.activeElement === primero) { e.preventDefault(); ultimo.focus(); }
+    else if (!e.shiftKey && document.activeElement === ultimo) { e.preventDefault(); primero.focus(); }
+  });
+  escritorio.addEventListener('change', () => nav.classList.contains('nav--abierta') && abrirSheet(false));
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return;
+    const abierto = botonesSub.find((b) => b.getAttribute('aria-expanded') === 'true');
+    if (abierto && escritorio.matches) {
+      abierto.setAttribute('aria-expanded', 'false');
+      abierto.focus();
+    } else if (nav.classList.contains('nav--abierta')) abrirSheet(false);
+  });
+  document.addEventListener('click', (e) => {
+    if (escritorio.matches && !encabezado.contains(e.target as Node)) cerrarSubmenus();
+  });
+  document.querySelectorAll<HTMLElement>('.nav__item--sub').forEach((item) => {
+    item.addEventListener('focusout', (e) => {
+      if (escritorio.matches && !item.contains(e.relatedTarget as Node | null)) {
+        item.querySelector('[data-submenu-boton]')?.setAttribute('aria-expanded', 'false');
+      }
+    });
+  });
+
+  // ── Resalte que se desliza entre ítems (solo escritorio con puntero) ──
+  const lista = document.querySelector<HTMLElement>('[data-nav-lista]')!;
+  const resalte = document.querySelector<HTMLElement>('[data-resalte]')!;
+  const enlaces = [...lista.querySelectorAll<HTMLElement>('.nav__lista > .nav__item:not(.nav__item--cta) > .nav__enlace, .nav__lista > .nav__item > .nav__fila > .nav__enlace')];
+  const moverA = (el: HTMLElement | null) => {
+    if (!el || !escritorio.matches) { resalte.style.opacity = '0'; return; }
+    const base = lista.getBoundingClientRect();
+    const r = (el.closest('.nav__fila') ?? el).getBoundingClientRect();
+    resalte.style.setProperty('--x', `${r.left - base.left}px`);
+    resalte.style.setProperty('--w', `${r.width}px`);
+    resalte.style.opacity = '1';
+  };
+  const activoActual = () => enlaces.find((a) => a.classList.contains('activo')) ?? null;
+  enlaces.forEach((a) => (a.closest('.nav__fila') ?? a).addEventListener('pointerenter', () => moverA(a)));
+  lista.addEventListener('pointerleave', () => moverA(activoActual()));
+  requestAnimationFrame(() => {
+    resalte.classList.add('sin-transicion');
+    moverA(activoActual());
+    requestAnimationFrame(() => resalte.classList.remove('sin-transicion'));
+  });
+  window.addEventListener('resize', () => moverA(activoActual()));
+</script>
+
+<style>
+  .barra-superior { background: var(--verde-oscuro); color: var(--blanco); font-size: 0.875rem; }
+  .barra-superior__fila {
+    display: flex; flex-wrap: wrap; gap: 4px 16px; align-items: center; justify-content: space-between;
+    min-height: 44px; padding-block: 4px;
+  }
+  .barra-superior__lema { font-weight: 700; letter-spacing: 0.02em; }
+  .barra-superior__acciones { display: flex; gap: 8px 18px; align-items: center; flex-wrap: wrap; }
+  .barra-superior__enlace,
+  .barra-superior__acceso { display: inline-flex; align-items: center; gap: 8px; min-height: 36px; text-decoration: none; font-weight: 600; }
+  .barra-superior__enlace { color: var(--blanco); }
+  .barra-superior__enlace:hover { color: var(--amarillo-copol); }
+  .barra-superior__acceso { background: var(--amarillo-copol); color: var(--tinta); padding: 4px 14px; border-radius: var(--radio-pill); font-weight: 700; transition: transform 300ms var(--resorte); }
+  .barra-superior__acceso:hover { color: var(--tinta); background: #ece032; transform: translateY(-1px); }
+
+  .encabezado {
+    position: sticky; top: 0; z-index: 50;
+    box-shadow: 0 1px 0 var(--border);
+  }
+  /* El desenfoque va en un pseudo-elemento: backdrop-filter en el propio header convertiría al header
+     en el contenedor del panel lateral (position: fixed) y lo desplazaría fuera de la pantalla. */
+  .encabezado::before {
+    content: ''; position: absolute; inset: 0; z-index: -1;
+    background: color-mix(in srgb, var(--fondo-pagina) 92%, transparent);
+    backdrop-filter: saturate(1.6) blur(14px);
+  }
+  .encabezado__fila { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 76px; }
+  .encabezado__logo { display: flex; flex: none; padding: 4px; border-radius: 12px; }
+  .encabezado__logo img { width: auto; height: 50px; }
+
+  .encabezado__menu {
+    display: inline-flex; align-items: center; gap: 8px; min-height: 48px; padding: 8px 18px;
+    border-radius: var(--radio-pill); border: 1px solid var(--border); background: var(--background);
+    color: var(--verde-oscuro); font-weight: 700; cursor: pointer;
+  }
+  .encabezado__menu:hover { background: var(--muted); }
+
+  .nav__pista { position: relative; }
+  .nav__lista { list-style: none; margin: 0; padding: 0; position: relative; }
+  .nav__enlace {
+    position: relative; z-index: 1;
+    display: inline-flex; align-items: center; min-height: 44px; padding: 8px 12px;
+    border-radius: var(--radio-pill); color: var(--foreground); text-decoration: none; font-weight: 600; white-space: nowrap;
+    transition: color var(--transicion);
+  }
+  .nav__enlace:hover,
+  .nav__enlace.activo { color: var(--verde-oscuro); }
+  .nav__fila { display: flex; align-items: center; position: relative; z-index: 1; }
+  .nav__desplegar {
+    display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 44px; margin-left: -8px;
+    border: 0; background: none; color: var(--foreground); border-radius: var(--radio-md); cursor: pointer;
+  }
+  .nav__desplegar :global(svg) { transition: transform 350ms var(--resorte); }
+  .nav__desplegar[aria-expanded='true'] :global(svg) { transform: rotate(180deg); }
+  .nav__sub { list-style: none; margin: 0; padding: 0; }
+  .nav__sub-enlace { display: grid; gap: 2px; padding: 12px 14px; border-radius: var(--radio-md); text-decoration: none; color: var(--foreground); transition: background-color var(--transicion); }
+  .nav__sub-enlace strong { color: var(--verde-oscuro); }
+  .nav__sub-enlace span { font-size: 0.875rem; color: var(--muted-foreground); }
+  .nav__sub-enlace:hover,
+  .nav__sub-enlace[aria-current='page'] { background: var(--muted); }
+  .nav__item--cta .nav__enlace { background: var(--primary); color: var(--primary-foreground); padding-inline: 20px; transition: background-color var(--transicion), transform 300ms var(--resorte); }
+  .nav__item--cta .nav__enlace:hover,
+  .nav__item--cta .nav__enlace.activo { background: var(--verde-hover); color: var(--primary-foreground); }
+  .nav__item--cta .nav__enlace:active { transform: scale(0.97); }
+  .nav__resalte { display: none; }
+  .nav__cabecera-movil { display: none; }
+  .nav-fondo { display: none; }
+
+  /* Móvil y tablet: Sheet lateral */
+  @media (max-width: 1099px) {
+    .nav-fondo {
+      display: block; position: fixed; inset: 0; z-index: 60;
+      background: rgb(0 30 15 / 0.45); backdrop-filter: blur(2px);
+      animation: fondo-entrar 300ms var(--ease-out-quart);
+    }
+    .nav {
+      position: fixed; z-index: 61; top: 0; right: 0; bottom: 0;
+      width: min(88vw, 400px);
+      display: flex; flex-direction: column; gap: 8px;
+      overflow-y: auto; overscroll-behavior: contain;
+      background: var(--background);
+      box-shadow: -24px 0 60px -20px rgb(0 0 0 / 0.35);
+      padding: 16px 20px 28px;
+      transform: translateX(105%);
+      visibility: hidden;
+      transition: transform 500ms var(--ease-out-quart), visibility 0s linear 500ms;
+    }
+    .nav--abierta { transform: none; visibility: visible; transition: transform 550ms var(--resorte), visibility 0s; }
+    .nav__cabecera-movil { display: flex; align-items: center; justify-content: space-between; padding-bottom: 8px; }
+    .nav__cabecera-movil img { height: 40px; width: auto; }
+    .nav__lista { display: grid; }
+    .nav__item { border-bottom: 1px solid var(--border); }
+    .nav--abierta .nav__item { animation: item-entrar 600ms var(--ease-out-quart) both; }
+    .nav--abierta .nav__item:nth-child(3) { animation-delay: 40ms; }
+    .nav--abierta .nav__item:nth-child(4) { animation-delay: 80ms; }
+    .nav--abierta .nav__item:nth-child(5) { animation-delay: 120ms; }
+    .nav--abierta .nav__item:nth-child(6) { animation-delay: 160ms; }
+    .nav--abierta .nav__item:nth-child(7) { animation-delay: 200ms; }
+    .nav__item--cta { border: 0; padding-block: 14px 4px; }
+    .nav__item--cta .nav__enlace { width: 100%; justify-content: center; min-height: 54px; }
+    .nav__enlace { width: 100%; font-size: 1.125rem; padding-inline: 4px; border-radius: 0; min-height: 56px; }
+    .nav__fila { justify-content: space-between; }
+    .nav__desplegar { width: 44px; height: 44px; margin: 0; background: var(--muted); color: var(--verde-oscuro); border-radius: var(--radio-pill); }
+    .nav__sub { display: none; padding: 0 0 12px 4px; }
+    .nav__fila:has(.nav__desplegar[aria-expanded='true']) + .nav__sub { display: grid; animation: entrar-suave 300ms var(--ease-out-quart); }
+    :global(.nav__acceso-movil) { width: 100%; margin-top: 8px; }
+  }
+  @keyframes fondo-entrar { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes item-entrar { from { opacity: 0; transform: translateX(24px); } to { opacity: 1; transform: none; } }
+
+  /* Escritorio: NavigationMenu */
+  @media (min-width: 1100px) {
+    .encabezado__menu { display: none; }
+    .nav__lista { display: flex; align-items: center; gap: 2px; }
+    .nav__resalte {
+      display: block; position: absolute; z-index: 0; top: 50%; left: 0; height: 44px;
+      width: var(--w, 0); translate: var(--x, 0) -50%;
+      border-radius: var(--radio-pill); background: var(--muted);
+      opacity: 0;
+      transition: translate 450ms var(--resorte), width 450ms var(--resorte), opacity 200ms var(--ease-out-quart);
+      pointer-events: none;
+    }
+    .nav__resalte.sin-transicion { transition: none; }
+    .nav__item--sub { position: relative; }
+    .nav__sub {
+      position: absolute; top: calc(100% + 8px); left: 0; z-index: 5;
+      min-width: 300px; padding: 8px;
+      background: var(--background); border-radius: 20px;
+      box-shadow: var(--anillo), var(--sombra);
+      opacity: 0; visibility: hidden;
+      transform: translateY(-6px) scale(0.97); transform-origin: top left;
+      transition: opacity 200ms var(--ease-out-quart), transform 350ms var(--resorte), visibility 0s linear 200ms;
+    }
+    .nav__sub::before { content: ''; position: absolute; inset: -12px 0 auto; height: 12px; }
+    .nav__fila:has(.nav__desplegar[aria-expanded='true']) + .nav__sub,
+    .nav__item--sub:hover .nav__sub {
+      opacity: 1; visibility: visible; transform: none;
+      transition: opacity 200ms var(--ease-out-quart), transform 350ms var(--resorte), visibility 0s;
+    }
+    .nav__item--cta { margin-left: 10px; }
+    :global(.nav__acceso-movil) { display: none !important; }
+  }
+  :global(html.sin-scroll) { overflow: hidden; }
+</style>

@@ -1,0 +1,63 @@
+---
+// Novedades publicadas desde el panel, en el orden elegido allí (server island: se genera en cada
+// visita). Plantillas: imagen a la izquierda y texto a la derecha, imagen completa, o título y texto.
+import Icono from './Icono.astro';
+import { obtenerNovedades, type Novedad } from '../lib/inventario';
+
+Astro.response.headers.set('Cache-Control', 'no-store, max-age=0');
+const novedades = await obtenerNovedades();
+const variante = (url: string, ancho: number) => url.replace(/-\d+\.webp$/, `-${ancho}.webp`);
+const img = (n: Novedad) => (n.imagen ? { src: variante(n.imagen, 800), srcset: `${variante(n.imagen, 800)} 800w, ${variante(n.imagen, 1600)} 1600w` } : null);
+const externo = (url: string | null) => Boolean(url && /^https?:/.test(url));
+---
+{novedades.length > 0 && (
+  <section class="contenedor bloque" aria-labelledby="novedades-titulo">
+    <div class="bloque__cabecera">
+      <div>
+        <span class="eyebrow">Últimas novedades</span>
+        <h2 id="novedades-titulo">Novedades COPOL</h2>
+      </div>
+      <a href="/hipermercado/promociones/" class="enlace-flecha">Ver promociones <Icono nombre="flecha" tamano={18} /></a>
+    </div>
+    <div class="novedades-lista">
+      {novedades.map((n) => {
+        const i = img(n);
+        return (
+          <article class={`nov nov--${n.plantilla}`}>
+            {i && n.plantilla !== 'texto' && (
+              <div class="nov__media">
+                <img src={i.src} srcset={i.srcset} sizes={n.plantilla === 'imagen-completa' ? '(min-width: 1344px) 1280px, 100vw' : '(min-width: 900px) 560px, 100vw'} alt={n.imagen_alt ?? ''} loading="lazy" decoding="async" />
+              </div>
+            )}
+            <div class="nov__cuerpo">
+              <h3>{n.titulo}</h3>
+              {n.texto && <p>{n.texto}</p>}
+              {n.enlace_url && n.enlace_texto && (
+                <a href={n.enlace_url} class="btn btn--sm" rel={externo(n.enlace_url) ? 'noopener' : undefined}>{n.enlace_texto} <Icono nombre="flecha" tamano={16} /></a>
+              )}
+            </div>
+          </article>
+        );
+      })}
+    </div>
+  </section>
+)}
+
+<style is:global>
+  .novedades-lista { display: grid; gap: clamp(16px, 2.4vw, 28px); }
+  @media (min-width: 900px) { .novedades-lista { grid-template-columns: repeat(2, minmax(0, 1fr)); } .nov--imagen-completa, .nov--imagen-izquierda { grid-column: 1 / -1; } }
+  .nov { display: grid; gap: 16px; border-radius: var(--radio-xl); background: var(--card); box-shadow: var(--anillo); overflow: hidden; }
+  .nov__media { background: var(--muted); }
+  .nov__media img { display: block; width: 100%; height: auto; }
+  .nov__cuerpo { display: grid; gap: 10px; justify-items: start; padding: 4px clamp(18px, 3vw, 32px) clamp(18px, 3vw, 28px); }
+  .nov__cuerpo h3 { font-size: clamp(1.25rem, 2vw, 1.5rem); }
+  .nov__cuerpo p { color: var(--muted-foreground); max-width: 62ch; }
+  @media (min-width: 760px) {
+    .nov--imagen-izquierda { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: center; gap: 0; }
+    .nov--imagen-izquierda .nov__media { height: 100%; display: grid; place-items: center; }
+    .nov--imagen-izquierda .nov__cuerpo { padding: clamp(20px, 3vw, 40px); }
+  }
+  .nov--texto { border-top: 4px solid var(--verde-copol); }
+  .nov--texto .nov__cuerpo { padding: clamp(20px, 3vw, 32px); }
+  .novedades-esqueleto { height: 280px; border-radius: var(--radio-xl); background: var(--muted); }
+</style>

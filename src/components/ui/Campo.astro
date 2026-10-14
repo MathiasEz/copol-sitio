@@ -1,0 +1,47 @@
+---
+// Field = Label + Input | Select | Textarea (anatomía shadcn/ui), con ayuda y mensaje de error.
+// Para `select`, las <option> van en el slot.
+import type { HTMLAttributes } from 'astro/types';
+import Icono from '../Icono.astro';
+
+interface Props extends Omit<HTMLAttributes<'input'>, 'class'> {
+  etiqueta: string;
+  name: string;
+  control?: 'input' | 'select' | 'textarea';
+  obligatorio?: boolean;
+  ayuda?: string;
+  error?: string;
+  icono?: 'buscar';
+  class?: string;
+  rows?: number;
+}
+const { etiqueta, name, control = 'input', obligatorio = false, ayuda, error, icono, class: clase, rows = 5, ...resto } = Astro.props;
+const id = `campo-${name}`;
+// El error se asocia (aria-describedby) solo cuando está visible: lo agrega el script del formulario.
+const describe = ayuda ? `${id}-ayuda` : undefined;
+---
+<div class:list={['campo', clase]}>
+  <label class="label" for={id}>{etiqueta}{obligatorio && <abbr title="obligatorio" class="campo__req"> *</abbr>}</label>
+  {control === 'input' && (
+    icono ? (
+      <div class="input-icono">
+        <Icono nombre={icono} tamano={18} />
+        <input id={id} name={name} class="input" required={obligatorio} aria-describedby={describe} {...resto} />
+      </div>
+    ) : (
+      <input id={id} name={name} class="input" required={obligatorio} aria-describedby={describe} {...resto} />
+    )
+  )}
+  {control === 'select' && (
+    <select id={id} name={name} class="select" required={obligatorio} aria-describedby={describe}><slot /></select>
+  )}
+  {control === 'textarea' && (
+    <textarea id={id} name={name} class="textarea" rows={rows} required={obligatorio} aria-describedby={describe}></textarea>
+  )}
+  {ayuda && <span class="campo__ayuda" id={`${id}-ayuda`}>{ayuda}</span>}
+  {error && <span class="campo__error" id={`${id}-error`} data-error hidden>{error}</span>}
+</div>
+
+<style>
+  .campo__req { text-decoration: none; color: var(--destructive); }
+</style>

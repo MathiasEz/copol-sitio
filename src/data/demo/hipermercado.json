@@ -1,0 +1,9 @@
+{
+  "_aviso": "CONTENIDO DE DEMOSTRACIÓN — reemplazar por catálogo oficial. Ver docs/reemplazo-de-datos.md. Los rubros provienen de las promociones del sitio anterior; los productos son marcadores genéricos, sin precios.",
+  "rubros": [
+    { "id": "almacen", "nombre": "Almacén", "productos": ["[Producto de almacén 1]", "[Producto de almacén 2]"] },
+    { "id": "bebidas", "nombre": "Bebidas", "productos": ["[Bebida 1]", "[Bebida 2]"] },
+    { "id": "limpieza", "nombre": "Limpieza", "productos": ["[Producto de limpieza 1]", "[Producto de limpieza 2]"] },
+    { "id": "comida", "nombre": "Comida", "productos": ["[Producto de comida 1]", "[Producto de comida 2]"] }
+  ]
+}

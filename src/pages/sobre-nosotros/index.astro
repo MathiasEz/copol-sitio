@@ -1,0 +1,99 @@
+﻿---
+import Base from '../../layouts/Base.astro';
+import EncabezadoPagina from '../../components/EncabezadoPagina.astro';
+import BandaSocio from '../../components/BandaSocio.astro';
+import Icono from '../../components/Icono.astro';
+import Card from '../../components/ui/Card.astro';
+import Media from '../../components/ui/Media.astro';
+import { LOCALES } from '../../lib/datos';
+import { foto } from '../../lib/imagenes';
+import { MANUAL, SITIO } from '../../data/confirmado/sitio';
+
+const sucursales = LOCALES.filter((l) => l.tipo === 'sucursal').length;
+const agencias = LOCALES.filter((l) => l.tipo === 'agencia').length;
+---
+<Base titulo="Sobre nosotros" descripcion="Conocé COPOL, la Cooperativa Policial: nuestra historia desde 1917, misión, visión y los 19 locales en todo el país.">
+  <EncabezadoPagina
+    titulo="Sobre nosotros"
+    antetitulo={`Cooperativa Policial · Desde ${SITIO.fundacion}`}
+    bajada={MANUAL.origen}
+    migas={[{ texto: 'Sobre nosotros' }]}
+    imagen={foto('casa-central')}
+    altImagen="Fachada de la Casa Central de COPOL, con el cartel de Supermercado"
+  />
+
+  <section class="contenedor seccion" aria-labelledby="cifras-titulo">
+    <h2 id="cifras-titulo" class="visualmente-oculto">COPOL en cifras</h2>
+    <ul class="cifras escalonar">
+      <li><strong>{SITIO.fundacion}</strong><span>Año de fundación</span></li>
+      <li><strong>{LOCALES.length}</strong><span>Locales en el país</span></li>
+      <li><strong>{sucursales} + {agencias}</strong><span>Sucursales y agencias, además de Casa Central</span></li>
+      <li><strong>+35.000</strong><span>Socios activos</span></li>
+    </ul>
+  </section>
+
+  <section class="contenedor" aria-labelledby="secciones-titulo">
+    <h2 id="secciones-titulo" class="visualmente-oculto">Secciones</h2>
+    <div class="grilla grilla--ajustada escalonar" style="--min: 320px">
+      <Card href="/sobre-nosotros/locales/">
+        <span class="card__icono card__icono--accent"><Icono nombre="ubicacion" tamano={26} /></span>
+        <h3>Locales</h3>
+        <p>Casa Central en Montevideo, {sucursales} sucursales y {agencias} agencias en todo el país. Direcciones, teléfonos y cómo llegar.</p>
+        <span class="enlace-flecha">Ver locales <Icono nombre="flecha" tamano={18} /></span>
+      </Card>
+      <Card href="/sobre-nosotros/nuestra-historia/">
+        <span class="card__icono card__icono--accent"><Icono nombre="libro" tamano={26} /></span>
+        <h3>Nuestra historia</h3>
+        <p>De las Cantinas Policiales de 1917 a la Cooperativa Policial de hoy. Misión, visión y estatutos.</p>
+        <span class="enlace-flecha">Conocé nuestra historia <Icono nombre="flecha" tamano={18} /></span>
+      </Card>
+    </div>
+  </section>
+
+  <section class="contenedor seccion mision escalonar" aria-labelledby="mision-titulo">
+    <Card variant="muted" class="mision__bloque">
+      <span class="eyebrow">Misión</span>
+      <h2 id="mision-titulo">Para qué existimos</h2>
+      {MANUAL.mision.map((p) => <p>{p}</p>)}
+    </Card>
+    <Card variant="primary" class="mision__bloque sobre-verde">
+      <span class="eyebrow">Visión</span>
+      <h2>Hacia dónde vamos</h2>
+      {MANUAL.vision.map((p) => <p>{p}</p>)}
+    </Card>
+  </section>
+
+  <section class="contenedor" aria-labelledby="historia-foto">
+    <figure class="foto-historica aparecer">
+      <Media src={foto('cantinas-policiales')} alt="Fotografía histórica en blanco y negro: socios con carritos recorriendo las Cantinas Policiales" widths={[480, 720, 960, 1200]} sizes="(min-width: 900px) 640px, 100vw" />
+      <figcaption>
+        <span class="eyebrow">Desde 1917</span>
+        <strong id="historia-foto">Cantinas Policiales, los primeros pasos de la cooperativa.</strong>
+        <a href="/sobre-nosotros/nuestra-historia/" class="enlace-flecha">Leer la historia completa <Icono nombre="flecha" tamano={18} /></a>
+      </figcaption>
+    </figure>
+  </section>
+
+  <BandaSocio />
+</Base>
+
+<style>
+  .cifras {
+    list-style: none; margin: 0; padding: 0; display: grid; gap: 16px;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr));
+  }
+  .cifras li { display: grid; gap: 6px; padding: 24px; border-radius: var(--radio-lg); background: var(--card); box-shadow: var(--anillo); }
+  .cifras strong { font-size: clamp(2rem, 4vw, 2.75rem); font-weight: 800; color: var(--verde-oscuro); line-height: 1; letter-spacing: -0.03em; }
+  .cifras span { color: var(--muted-foreground); }
+
+  .mision { display: grid; gap: 20px; }
+  @media (min-width: 900px) { .mision { grid-template-columns: 1fr 1fr; } }
+  .mision :global(.mision__bloque) { padding: clamp(24px, 4vw, 44px); border-radius: var(--radio-xl); }
+  .mision :global(.card--primary .eyebrow) { color: var(--amarillo-copol); }
+  .mision :global(.card--muted p) { color: var(--foreground); }
+
+  .foto-historica { margin: 0; display: grid; gap: 20px 40px; align-items: end; }
+  @media (min-width: 900px) { .foto-historica { grid-template-columns: 1.4fr 1fr; } }
+  .foto-historica figcaption { display: grid; gap: 10px; justify-items: start; padding-bottom: 8px; }
+  .foto-historica figcaption strong { font-size: clamp(1.25rem, 2vw, 1.5rem); color: var(--verde-oscuro); line-height: 1.25; }
+</style>

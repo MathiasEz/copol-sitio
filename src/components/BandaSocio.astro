@@ -1,0 +1,96 @@
+---
+// Llamado a asociarse. Tarjeta con fotos en abanico que se separan al pasar el puntero
+// (patrón tomado de la tarjeta de suscripción de prompt-motion.com, adaptado a la marca).
+import { Image } from 'astro:assets';
+import { CONTACTO, whatsapp } from '../data/confirmado/sitio';
+import { foto } from '../lib/imagenes';
+import Icono from './Icono.astro';
+import Button from './ui/Button.astro';
+
+interface Props {
+  titulo?: string;
+  texto?: string;
+}
+const {
+  titulo = 'Sumate a COPOL',
+  texto = 'Asociate con el convenio de tu empresa o institución, o crealo junto a 6 o más personas del mismo lugar de trabajo. Te acompañamos en cada paso.',
+} = Astro.props;
+
+const abanico = [
+  { img: foto('tienda-interior'), pos: '50% 50%' },
+  { img: foto('fiestas-eventos'), pos: '50% 50%' },
+  { img: foto('motos-bazar'), pos: '50% 50%' },
+  { img: foto('pinecoop-salinas'), pos: '50% 60%' },
+];
+---
+<section class="contenedor banda" aria-labelledby="banda-socio-titulo">
+  <div class="banda__caja aparecer">
+    <div class="banda__texto">
+      <span class="eyebrow">Hacete socio</span>
+      <h2 id="banda-socio-titulo">{titulo}</h2>
+      <p>{texto}</p>
+      <div class="banda__acciones">
+        <Button href="/hacete-socio/" size="lg">Cómo hacerte socio <Icono nombre="flecha" tamano={18} /></Button>
+        <Button href={whatsapp(CONTACTO.whatsappSocios.numero, 'Hola, quiero info para asociarme')} variant="outline" size="lg">
+          <Icono nombre="whatsapp" tamano={18} /> {CONTACTO.whatsappSocios.texto}
+        </Button>
+      </div>
+    </div>
+    <div class="banda__abanico" aria-hidden="true">
+      {abanico.map((a, i) => (
+        <div class="banda__foto" style={`--k: ${i}; --pos: ${a.pos}`}>
+          <Image src={a.img} alt="" widths={[320, 480]} sizes="240px" />
+        </div>
+      ))}
+    </div>
+  </div>
+</section>
+
+<style>
+  .banda { padding-top: var(--seccion); }
+  .banda__caja {
+    display: grid;
+    gap: 8px;
+    padding: 8px;
+    border-radius: 32px;
+    background: var(--card);
+    box-shadow: var(--anillo), 0 30px 60px -30px rgb(0 51 26 / 0.25);
+    --spread: 0px;
+  }
+  @media (min-width: 900px) {
+    .banda__caja { grid-template-columns: 1.15fr 1fr; align-items: stretch; }
+  }
+  .banda__texto { display: grid; gap: 14px; align-content: center; justify-items: start; padding: clamp(20px, 4vw, 44px); }
+  .banda__texto p { color: var(--muted-foreground); font-size: 1.0625rem; max-width: 56ch; }
+  .banda__acciones { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 6px; }
+
+  .banda__abanico {
+    position: relative;
+    min-height: 240px;
+    border-radius: 26px;
+    background: var(--accent);
+    overflow: hidden;
+  }
+  .banda__foto {
+    --ancho: clamp(150px, 42%, 230px);
+    position: absolute;
+    top: 50%;
+    left: calc((100% - var(--ancho)) * (0.12 + var(--k) * 0.25));
+    width: var(--ancho);
+    aspect-ratio: 4 / 3;
+    border-radius: 18px;
+    overflow: hidden;
+    background: var(--muted);
+    box-shadow: 0 0 0 4px var(--blanco), 0 18px 30px -14px rgb(0 0 0 / 0.45);
+    z-index: calc(1 + var(--k));
+    translate: calc((var(--k) - 1.5) * var(--spread)) calc(-50% + (var(--k) - 1.5) * 10px);
+    rotate: calc((var(--k) - 1.5) * 5deg);
+    scale: calc(0.86 + var(--k) * 0.04);
+    transition: translate 700ms var(--resorte), rotate 700ms var(--resorte), scale 700ms var(--resorte);
+  }
+  .banda__foto :global(img) { width: 100%; height: 100%; object-fit: cover; object-position: var(--pos); }
+  @media (hover: hover) and (pointer: fine) {
+    .banda__caja:hover { --spread: 22px; }
+    .banda__caja:hover .banda__foto { rotate: calc((var(--k) - 1.5) * 8deg); }
+  }
+</style>

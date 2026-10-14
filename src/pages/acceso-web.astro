@@ -1,0 +1,116 @@
+---
+import Base from '../layouts/Base.astro';
+import EncabezadoPagina from '../components/EncabezadoPagina.astro';
+import AperturasCredito from '../components/AperturasCredito.astro';
+import Icono from '../components/Icono.astro';
+import { ACCESO, CONTACTO, whatsapp } from '../data/confirmado/sitio';
+import Button from '../components/ui/Button.astro';
+import Badge from '../components/ui/Badge.astro';
+---
+<Base titulo="Acceso web" descripcion="Acceso web de COPOL: ingresá a tu cuenta de socio, consultá recibos de funcionarios y la app para Android.">
+  <EncabezadoPagina
+    titulo="Acceso web"
+    antetitulo="Autogestión"
+    bajada="Accedé de forma segura a tu cuenta de socio y a tus recibos. Los enlaces abren los portales oficiales de COPOL."
+    migas={[{ texto: 'Acceso web' }]}
+  />
+
+  <section class="contenedor seccion" aria-labelledby="accesos-titulo">
+    <h2 id="accesos-titulo"><span class="mascara"><span>Elegí tu acceso</span></span></h2>
+    <ul class="accesos escalonar">
+      <li>
+        <a href={ACCESO.socios} class="acceso acceso--socios sobre-verde" rel="noopener">
+          <span class="acceso__badge">Para socios</span>
+          <span class="acceso__icono"><Icono nombre="usuario" tamano={28} /></span>
+          <h3>Mi cuenta de socio</h3>
+          <ul class="acceso__lista">
+            <li>Saldo disponible de tu crédito</li>
+            <li>Estados de cuenta en PDF</li>
+            <li>Cambio de clave y datos</li>
+          </ul>
+          <span class="acceso__cta">Ingresar <Icono nombre="externo" tamano={18} /><span class="visualmente-oculto"> (portal externo de COPOL)</span></span>
+        </a>
+      </li>
+      <li>
+        <a href={ACCESO.funcionarios} class="acceso" rel="noopener">
+          <span class="acceso__badge acceso__badge--claro">Para funcionarios</span>
+          <span class="acceso__icono"><Icono nombre="documento" tamano={28} /></span>
+          <h3>Mis recibos</h3>
+          <ul class="acceso__lista">
+            <li>Recibos de sueldo mensuales</li>
+            <li>Detalle de retenciones</li>
+            <li>Datos personales actualizados</li>
+          </ul>
+          <span class="acceso__cta">Ingresar <Icono nombre="externo" tamano={18} /><span class="visualmente-oculto"> (portal externo de COPOL)</span></span>
+        </a>
+      </li>
+      <li>
+        {ACCESO.appAndroid ? (
+          <a href={ACCESO.appAndroid} class="acceso" rel="noopener">
+            <span class="acceso__badge acceso__badge--claro">App</span>
+            <span class="acceso__icono"><Icono nombre="celular" tamano={28} /></span>
+            <h3>App COPOL para Android</h3>
+            <p>Consultá tu crédito y descargá estados de cuenta desde el celular.</p>
+            <span class="acceso__cta">Descargar <Icono nombre="descarga" tamano={18} /></span>
+          </a>
+        ) : (
+          <div class="acceso acceso--pendiente">
+            <Badge variant="accent">Pendiente de confirmación</Badge>
+            <span class="acceso__icono"><Icono nombre="celular" tamano={28} /></span>
+            <h3>App COPOL para Android</h3>
+            <p>El enlace de descarga se publicará cuando la cooperativa confirme la versión vigente de la aplicación.</p>
+          </div>
+        )}
+      </li>
+    </ul>
+  </section>
+
+  <section class="contenedor" aria-labelledby="ayuda-titulo">
+    <div class="card ayuda">
+      <span class="card__icono"><Icono nombre="info" tamano={26} /></span>
+      <div>
+        <h2 id="ayuda-titulo">¿No podés ingresar?</h2>
+        <p>Si olvidaste tu clave o es la primera vez que usás el portal, escribinos por WhatsApp y te ayudamos. También podés acercarte a cualquier local de COPOL.</p>
+      </div>
+      <div class="ayuda__acciones">
+        <Button href={whatsapp(CONTACTO.whatsappGeneral.numero, 'Hola, necesito ayuda para ingresar a Acceso web')}><Icono nombre="whatsapp" tamano={18} /> Pedir ayuda</Button>
+        <Button href="/sobre-nosotros/locales/" variant="outline">Ver locales</Button>
+      </div>
+    </div>
+  </section>
+
+  <AperturasCredito />
+</Base>
+
+<style>
+  .accesos { list-style: none; margin: 24px 0 0; padding: 0; display: grid; gap: 18px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); }
+  .accesos > li { display: flex; }
+  .acceso {
+    flex: 1; display: flex; flex-direction: column; gap: 12px; align-items: flex-start;
+    padding: clamp(24px, 3vw, 32px); border-radius: var(--radio-xl); background: var(--card); box-shadow: var(--anillo), var(--sombra-suave);
+    color: var(--foreground); text-decoration: none; box-shadow: var(--anillo);
+    transition: box-shadow 250ms var(--ease-out-quart), transform 450ms var(--resorte);
+  }
+  a.acceso:hover { box-shadow: inset 0 0 0 2px var(--verde-oscuro), var(--sombra); color: var(--foreground); }
+  @media (prefers-reduced-motion: no-preference) { a.acceso:hover { transform: translateY(-4px); } }
+  .acceso--socios { background: var(--verde-oscuro); color: var(--sobre-verde); }
+  .acceso--socios h3 { color: var(--blanco); }
+  a.acceso--socios:hover { color: var(--sobre-verde); box-shadow: inset 0 0 0 2px var(--amarillo-copol), var(--sombra); }
+  .acceso__cta :global(svg) { transition: transform 400ms var(--resorte); }
+  a.acceso:hover .acceso__cta :global(svg) { transform: translate(3px, -3px); }
+  .acceso--pendiente { background: var(--background); box-shadow: none; border: 2px dashed var(--borde-fuerte); }
+  .acceso--pendiente p { color: var(--tinta-suave); }
+  .acceso__badge { font-size: 0.75rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: var(--tinta); background: var(--amarillo-copol); padding: 4px 10px; border-radius: var(--radio-pill); }
+  .acceso__badge--claro { background: var(--blanco); color: var(--verde-oscuro); }
+  .acceso__icono { width: 56px; height: 56px; border-radius: var(--radio-md); display: inline-flex; align-items: center; justify-content: center; background: rgb(255 255 255 / 0.9); color: var(--verde-oscuro); }
+  .acceso h3 { font-size: 1.5rem; }
+  .acceso__lista { margin: 0; padding-left: 20px; display: grid; gap: 4px; }
+  .acceso__cta { margin-top: auto; display: inline-flex; align-items: center; gap: 8px; font-weight: 800; padding-top: 8px; }
+  .acceso--socios .acceso__cta { color: var(--amarillo-copol); }
+  .acceso:not(.acceso--socios) .acceso__cta { color: var(--verde-oscuro); }
+
+  .ayuda { flex-direction: row; flex-wrap: wrap; gap: 20px; align-items: center; padding: clamp(22px, 3vw, 32px); border-radius: var(--radio-xl); margin-top: clamp(32px, 4vw, 48px); }
+  .ayuda > div:nth-child(2) { flex: 1 1 360px; display: grid; gap: 6px; }
+  .ayuda h2 { font-size: 1.5rem; }
+  .ayuda__acciones { display: flex; flex-wrap: wrap; gap: 10px; }
+</style>

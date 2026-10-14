@@ -1,0 +1,233 @@
+[
+  {
+    "file": "logo-copol.svg",
+    "src": "/web/image/website/1/logo",
+    "page": "Encabezado (todas)",
+    "use": "Logotipo principal",
+    "url": "https://cooperativapolicial.com.uy/web/image/website/1/logo",
+    "contentType": "image/svg+xml; charset=utf-8",
+    "bytes": 12371,
+    "downloadedAt": "2026-10-13T01:42:58.081Z",
+    "ok": true
+  },
+  {
+    "file": "logo-copol-alt.png",
+    "src": "/web/image/1293-378582dd",
+    "page": "/acceso-web",
+    "use": "Logotipo raster de respaldo",
+    "url": "https://cooperativapolicial.com.uy/web/image/1293-378582dd",
+    "contentType": "image/png",
+    "bytes": 8414,
+    "downloadedAt": "2026-10-13T01:42:58.157Z",
+    "ok": true
+  },
+  {
+    "file": "favicon.ico",
+    "src": "/web/image/website/1/favicon",
+    "page": "Todas",
+    "use": "Favicon actual (referencia)",
+    "url": "https://cooperativapolicial.com.uy/web/image/website/1/favicon",
+    "contentType": "image/x-icon",
+    "bytes": 10529,
+    "downloadedAt": "2026-10-13T01:42:58.216Z",
+    "ok": true
+  },
+  {
+    "file": "banner-garantia-alquiler.png",
+    "src": "/web/image/1417-0352dd92",
+    "page": "/ (hero)",
+    "use": "Banner convenio Porto Seguro — Garantía de alquiler",
+    "url": "https://cooperativapolicial.com.uy/web/image/1417-0352dd92",
+    "contentType": "image/png",
+    "bytes": 149383,
+    "downloadedAt": "2026-10-13T01:42:58.265Z",
+    "ok": true
+  },
+  {
+    "file": "banner-motos-1.png",
+    "src": "/web/image/1416-a92ede73",
+    "page": "/ (hero) y /bazar",
+    "use": "Banner motos 0 km",
+    "url": "https://cooperativapolicial.com.uy/web/image/1416-a92ede73",
+    "contentType": "image/png",
+    "bytes": 161411,
+    "downloadedAt": "2026-10-13T01:42:58.573Z",
+    "ok": true
+  },
+  {
+    "file": "banner-motos-2.png",
+    "src": "/web/image/1415-b062a373",
+    "page": "/",
+    "use": "Banner motos 0 km (Sapucai)",
+    "url": "https://cooperativapolicial.com.uy/web/image/1415-b062a373",
+    "contentType": "image/png",
+    "bytes": 154408,
+    "downloadedAt": "2026-10-13T01:42:58.661Z",
+    "ok": true
+  },
+  {
+    "file": "motos-bazar.jpeg",
+    "src": "/web/image/1295-81de326c",
+    "page": "/bazar",
+    "use": "Destacado motos en Bazar",
+    "url": "https://cooperativapolicial.com.uy/web/image/1295-81de326c",
+    "contentType": "image/jpeg",
+    "bytes": 214324,
+    "downloadedAt": "2026-10-13T01:42:58.733Z",
+    "ok": true
+  },
+  {
+    "file": "pinecoop-salinas.png",
+    "src": "/web/image/764-77fecb4a",
+    "page": "/ y /beneficios",
+    "use": "Parque Vacacional Pinecoop (Salinas)",
+    "url": "https://cooperativapolicial.com.uy/web/image/764-77fecb4a",
+    "contentType": "image/png",
+    "bytes": 3141132,
+    "downloadedAt": "2026-10-13T01:42:59.143Z",
+    "ok": true
+  },
+  {
+    "file": "pinecoop-chuy.jpeg",
+    "src": "/web/image/1404-797758e3",
+    "page": "/beneficios/pinecoop",
+    "use": "Pinecoop Chuy — Próximamente",
+    "url": "https://cooperativapolicial.com.uy/web/image/1404-797758e3",
+    "contentType": "image/jpeg",
+    "bytes": 526507,
+    "downloadedAt": "2026-10-13T01:42:59.250Z",
+    "ok": true
+  },
+  {
+    "file": "tienda-interior.jpg",
+    "src": "/web/image/702-d64ae6b2",
+    "page": "/tienda",
+    "use": "Interior de la tienda",
+    "url": "https://cooperativapolicial.com.uy/web/image/702-d64ae6b2",
+    "contentType": "image/jpeg",
+    "bytes": 320232,
+    "downloadedAt": "2026-10-13T01:42:59.358Z",
+    "ok": true
+  },
+  {
+    "file": "casa-central.png",
+    "src": "/web/image/552-8b639a4b",
+    "page": "/nuestra-historia",
+    "use": "Casa central",
+    "url": "https://cooperativapolicial.com.uy/web/image/552-8b639a4b",
+    "contentType": "image/png",
+    "bytes": 1171648,
+    "downloadedAt": "2026-10-13T01:42:59.537Z",
+    "ok": true
+  },
+  {
+    "file": "historia-captura.png",
+    "src": "/web/image/697-af928d8d",
+    "page": "/ (Nuestra historia)",
+    "use": "Historia (captura de pantalla)",
+    "url": "https://cooperativapolicial.com.uy/web/image/697-af928d8d",
+    "contentType": "image/png",
+    "bytes": 1459797,
+    "downloadedAt": "2026-10-13T01:42:59.708Z",
+    "ok": true
+  },
+  {
+    "file": "cantinas-policiales.png",
+    "src": "/web/image/673-10903171",
+    "page": "/nuestra-historia",
+    "use": "Cantinas Policiales — orígenes (captura)",
+    "url": "https://cooperativapolicial.com.uy/web/image/673-10903171",
+    "contentType": "image/png",
+    "bytes": 1463224,
+    "downloadedAt": "2026-10-13T01:42:59.904Z",
+    "ok": true
+  },
+  {
+    "file": "fiestas-eventos.png",
+    "src": "/web/image/693-4e993643",
+    "page": "/ (hero)",
+    "use": "Fiestas y cumpleaños de 15 (captura)",
+    "url": "https://cooperativapolicial.com.uy/web/image/693-4e993643",
+    "contentType": "image/png",
+    "bytes": 1892325,
+    "downloadedAt": "2026-10-13T01:43:00.198Z",
+    "ok": true
+  },
+  {
+    "file": "psicologo.jpeg",
+    "src": "/web/image/1287-907161ae",
+    "page": "/beneficios",
+    "use": "Tarjeta Psicólogo Copol",
+    "url": "https://cooperativapolicial.com.uy/web/image/1287-907161ae",
+    "contentType": "image/jpeg",
+    "bytes": 235618,
+    "downloadedAt": "2026-10-13T01:43:00.270Z",
+    "ok": true
+  },
+  {
+    "file": "oferta-1-ancho.png",
+    "src": "/web/image/1480-7406cb5d",
+    "page": "/",
+    "use": "Pieza \"Oferta COPOL 1\" (escritorio)",
+    "url": "https://cooperativapolicial.com.uy/web/image/1480-7406cb5d",
+    "contentType": "image/png",
+    "bytes": 25796,
+    "downloadedAt": "2026-10-13T01:43:00.331Z",
+    "ok": true
+  },
+  {
+    "file": "oferta-1-movil.png",
+    "src": "/web/image/1482-bea2aec2",
+    "page": "/",
+    "use": "Pieza \"Oferta COPOL 1\" (móvil)",
+    "url": "https://cooperativapolicial.com.uy/web/image/1482-bea2aec2",
+    "contentType": "image/png",
+    "bytes": 46990,
+    "downloadedAt": "2026-10-13T01:43:00.397Z",
+    "ok": true
+  },
+  {
+    "file": "oferta-2-ancho.png",
+    "src": "/web/image/1481-7855c0cb",
+    "page": "/",
+    "use": "Pieza \"Oferta COPOL 2\" (escritorio)",
+    "url": "https://cooperativapolicial.com.uy/web/image/1481-7855c0cb",
+    "contentType": "image/png",
+    "bytes": 131932,
+    "downloadedAt": "2026-10-13T01:43:00.462Z",
+    "ok": true
+  },
+  {
+    "file": "oferta-2-movil.png",
+    "src": "/web/image/1483-a5cb4f21",
+    "page": "/",
+    "use": "Pieza \"Oferta COPOL 2\" (móvil)",
+    "url": "https://cooperativapolicial.com.uy/web/image/1483-a5cb4f21",
+    "contentType": "image/png",
+    "bytes": 879581,
+    "downloadedAt": "2026-10-13T01:43:00.561Z",
+    "ok": true
+  },
+  {
+    "file": "banner-hacete-socio.png",
+    "src": "/web/image/1425-eb065b31",
+    "page": "/",
+    "use": "Pieza \"Hacete socio\"",
+    "url": "https://cooperativapolicial.com.uy/web/image/1425-eb065b31",
+    "contentType": "image/png",
+    "bytes": 157567,
+    "downloadedAt": "2026-10-13T01:43:00.621Z",
+    "ok": true
+  },
+  {
+    "file": "banner-servicios-sociales.png",
+    "src": "/web/image/1426-e823450c",
+    "page": "/",
+    "use": "Pieza \"Servicios sociales\"",
+    "url": "https://cooperativapolicial.com.uy/web/image/1426-e823450c",
+    "contentType": "image/png",
+    "bytes": 196005,
+    "downloadedAt": "2026-10-13T01:43:00.684Z",
+    "ok": true
+  }
+]

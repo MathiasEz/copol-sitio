@@ -1,0 +1,54 @@
+---
+// Media (patrón AspectRatio de shadcn/ui): reserva la proporción del contenedor para que la imagen
+// nunca se estire ni deforme. Por defecto usa la proporción propia de la imagen (sin recorte).
+// - ratio: "16/9", "4/3", 1.5… para forzar un encuadre (recorta con object-fit: cover).
+// - posicion: object-position del recorte (p. ej. "50% 70%").
+// - contener: muestra la imagen entera sobre fondo blanco (piezas gráficas, productos).
+import { Image } from 'astro:assets';
+import type { ImageMetadata } from 'astro';
+
+interface Props {
+  src: ImageMetadata;
+  alt: string;
+  ratio?: string | number;
+  posicion?: string;
+  contener?: boolean;
+  /** Color de fondo al usar `contener` (conviene el color de borde de la pieza para que no se noten bandas). */
+  fondo?: string;
+  radio?: string;
+  widths?: number[];
+  sizes?: string;
+  loading?: 'lazy' | 'eager';
+  prioridad?: boolean;
+  class?: string;
+}
+const {
+  src,
+  alt,
+  ratio,
+  posicion,
+  contener = false,
+  fondo,
+  radio,
+  widths = [480, 720, 960, 1280],
+  sizes = '100vw',
+  loading = 'lazy',
+  prioridad = false,
+  class: clase,
+} = Astro.props;
+const proporcion = ratio ?? `${src.width} / ${src.height}`;
+const estilo = [`aspect-ratio: ${proporcion}`, posicion && `--media-pos: ${posicion}`, radio && `--media-radio: ${radio}`, fondo && `--media-fondo: ${fondo}`].filter(Boolean).join('; ');
+const anchos = widths.filter((w) => w <= src.width).concat(widths.some((w) => w > src.width) ? [src.width] : []);
+---
+<div class:list={['media', { 'media--contain': contener }, clase]} style={estilo}>
+  <Image
+    src={src}
+    alt={alt}
+    widths={[...new Set(anchos)]}
+    sizes={sizes}
+    loading={prioridad ? 'eager' : loading}
+    fetchpriority={prioridad ? 'high' : undefined}
+    decoding="async"
+    data-media
+  />
+</div>

@@ -1,0 +1,154 @@
+---
+import Base from '../../layouts/Base.astro';
+import EncabezadoPagina from '../../components/EncabezadoPagina.astro';
+import Icono from '../../components/Icono.astro';
+import Button from '../../components/ui/Button.astro';
+import Badge from '../../components/ui/Badge.astro';
+import Campo from '../../components/ui/Campo.astro';
+import Toggle from '../../components/ui/Toggle.astro';
+import Media from '../../components/ui/Media.astro';
+import { LOCALES, TIPO_LOCAL, telHref, type TipoLocal } from '../../lib/datos';
+import { fotoLocal } from '../../lib/imagenes';
+import { CONTACTO, HORARIOS, whatsapp } from '../../data/confirmado/sitio';
+
+const departamentos = [...new Set(LOCALES.map((l) => l.departamento))].sort((a, b) => a.localeCompare(b, 'es'));
+const conteo = (t: TipoLocal) => LOCALES.filter((l) => l.tipo === t).length;
+const varianteTipo = { 'casa-central': 'default', sucursal: 'accent', agencia: 'secondary' } as const;
+---
+<Base titulo="Locales" descripcion={`Los ${LOCALES.length} locales de COPOL en todo el país: Casa Central, sucursales y agencias, con direcciones, teléfonos y cómo llegar.`}>
+  <EncabezadoPagina
+    titulo="Nuestros locales"
+    antetitulo="Sobre nosotros"
+    bajada={`Casa Central en Montevideo, ${conteo('sucursal')} sucursales y ${conteo('agencia')} agencias para atenderte en todo el país.`}
+    migas={[{ texto: 'Sobre nosotros', href: '/sobre-nosotros/' }, { texto: 'Locales' }]}
+  >
+    <Button href={CONTACTO.telefono.href}><Icono nombre="telefono" tamano={18} /> {CONTACTO.telefono.texto}</Button>
+    <Button href={whatsapp(CONTACTO.whatsappGeneral.numero)} variant="outline"><Icono nombre="whatsapp" tamano={18} /> {CONTACTO.whatsappGeneral.texto}</Button>
+  </EncabezadoPagina>
+
+  <section class="contenedor seccion" aria-labelledby="listado-titulo">
+    <div class="encabezado-seccion">
+      <div>
+        <h2 id="listado-titulo"><span class="mascara"><span>Encontrá tu local</span></span></h2>
+        <p class="lead">Filtrá por tipo de local o departamento.</p>
+      </div>
+    </div>
+
+    <form class="filtros" data-filtros-locales aria-label="Filtrar locales" onsubmit="return false">
+      <fieldset class="toggle-group">
+        <legend class="visualmente-oculto">Tipo de local</legend>
+        <Toggle name="tipo" value="" checked contador={LOCALES.length}>Todos</Toggle>
+        {(['casa-central', 'sucursal', 'agencia'] as TipoLocal[]).map((t) => (
+          <Toggle name="tipo" value={t} contador={conteo(t)}>{t === 'casa-central' ? 'Casa Central' : `${TIPO_LOCAL[t]}s`}</Toggle>
+        ))}
+      </fieldset>
+      <Campo etiqueta="Departamento" name="departamento" control="select" class="filtros__depto">
+        <option value="">Todos los departamentos</option>
+        {departamentos.map((d) => <option value={d}>{d}</option>)}
+      </Campo>
+    </form>
+    <p class="resultado" aria-live="polite" data-resultado>Mostrando {LOCALES.length} locales.</p>
+
+    <ul class="locales" data-locales>
+      {LOCALES.map((l, i) => {
+        const foto = fotoLocal(l.id);
+        const nombre = l.tipo === 'casa-central' ? 'Casa Central' : `${TIPO_LOCAL[l.tipo]} ${l.ciudad}`;
+        return (
+        <li class:list={['card', 'local', `local--${l.tipo}`]} data-tipo={l.tipo} data-departamento={l.departamento}>
+          {foto && (
+            <figure class="local__foto">
+              <Media
+                src={foto}
+                alt={`Letras con el nombre de ${l.ciudad}, ciudad donde está ${l.tipo === 'casa-central' ? 'la Casa Central' : `la ${TIPO_LOCAL[l.tipo].toLowerCase()}`} de COPOL`}
+                ratio="16/9"
+                widths={[400, 640, 800]}
+                sizes={l.tipo === 'casa-central' ? '(min-width: 720px) 640px, 100vw' : '(min-width: 1100px) 400px, (min-width: 720px) 50vw, 100vw'}
+                loading={i < 3 ? 'eager' : 'lazy'}
+                radio="var(--radio-md)"
+              />
+              {/* El nombre del local va justo debajo; sobre la foto solo se indica la localidad cuando difiere. */}
+              {l.tipo === 'casa-central' ? <figcaption class="local__etiqueta">{l.ciudad}</figcaption> : <figcaption class="visualmente-oculto">{nombre}</figcaption>}
+            </figure>
+          )}
+          <div class="local__cabecera">
+            <Badge variant={varianteTipo[l.tipo]}>{TIPO_LOCAL[l.tipo]}</Badge>
+            <h3>{l.tipo === 'casa-central' ? 'Casa Central' : l.ciudad}</h3>
+            <span class="local__depto">{l.departamento}</span>
+          </div>
+          <ul class="local__datos">
+            <li><Icono nombre="ubicacion" tamano={18} /><span>{l.direccion}, {l.ciudad}{l.accesoAlternativo && <small>{l.accesoAlternativo}</small>}</span></li>
+            {l.telefono && (
+              <li>
+                <Icono nombre="telefono" tamano={18} />
+                <span>
+                  <a href={telHref(l.telefono)}>{l.telefono}</a>
+                  {l.pendiente && <Badge variant="accent" class="local__pendiente">Teléfono pendiente de confirmación</Badge>}
+                </span>
+              </li>
+            )}
+            {l.celular && <li><Icono nombre="whatsapp" tamano={18} /><a href={telHref(l.celular)}>{l.celular}</a></li>}
+            {l.email && <li><Icono nombre="correo" tamano={18} /><a href={`mailto:${l.email}`} class="local__email">{l.email}</a></li>}
+            {l.tipo === 'casa-central' && <li><Icono nombre="reloj" tamano={18} /><span>{HORARIOS.casaCentral.map((h) => `${h.dias}: ${h.horas}`).join(' · ')}</span></li>}
+          </ul>
+          <Button href={l.comoLlegar} variant={l.tipo === 'casa-central' ? 'default' : 'secondary'} size="sm" class="local__mapa">
+            <Icono nombre="ubicacion" tamano={17} /> Cómo llegar<span class="visualmente-oculto"> a {l.tipo === 'casa-central' ? 'Casa Central' : `${TIPO_LOCAL[l.tipo]} ${l.ciudad}`}</span>
+          </Button>
+        </li>
+        );
+      })}
+    </ul>
+    <div class="card card--dashed vacio" data-vacio hidden>
+      <p>No hay locales con esos filtros. Probá con otro departamento o escribinos por WhatsApp.</p>
+    </div>
+  </section>
+</Base>
+
+<script>
+  const form = document.querySelector<HTMLFormElement>('[data-filtros-locales]')!;
+  const items = [...document.querySelectorAll<HTMLElement>('[data-locales] > li')];
+  const resultado = document.querySelector<HTMLElement>('[data-resultado]')!;
+  const vacio = document.querySelector<HTMLElement>('[data-vacio]')!;
+  form.addEventListener('change', () => {
+    const datos = new FormData(form);
+    const tipo = String(datos.get('tipo') ?? '');
+    const depto = String(datos.get('departamento') ?? '');
+    let visibles = 0;
+    items.forEach((li) => {
+      const ok = (!tipo || li.dataset.tipo === tipo) && (!depto || li.dataset.departamento === depto);
+      li.hidden = !ok;
+      if (ok) visibles++;
+    });
+    resultado.textContent = `Mostrando ${visibles} ${visibles === 1 ? 'local' : 'locales'}.`;
+    vacio.hidden = visibles > 0;
+  });
+</script>
+
+<style>
+  .filtros { display: flex; flex-wrap: wrap; gap: 16px 24px; align-items: flex-end; justify-content: space-between; }
+  .filtros :global(.filtros__depto) { min-width: min(100%, 280px); }
+  .resultado { margin: 20px 0 16px; color: var(--muted-foreground); font-weight: 600; }
+
+  .locales {
+    list-style: none; margin: 0; padding: 0; display: grid; gap: 16px;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr));
+  }
+  .local { gap: 16px; }
+  .local__foto { position: relative; margin: -8px -8px 0; }
+  .local__etiqueta {
+    position: absolute; left: 10px; bottom: 10px; padding: 4px 12px; border-radius: var(--radio-pill);
+    background: rgb(255 255 255 / 0.94); color: var(--verde-oscuro); font-weight: 700; font-size: 0.8125rem;
+    box-shadow: 0 1px 3px rgb(0 0 0 / 0.15);
+  }
+  @media (min-width: 720px) { .local--casa-central { grid-column: span 2; } }
+  .local--casa-central { box-shadow: inset 0 0 0 1.5px var(--verde-oscuro); }
+  .local__cabecera { display: grid; gap: 6px; justify-items: start; }
+  .local__depto { font-size: 0.875rem; color: var(--muted-foreground); }
+  .local__datos { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; font-size: 0.9375rem; }
+  .local__datos li { display: flex; gap: 10px; align-items: flex-start; }
+  .local__datos :global(svg) { color: var(--verde-copol); flex: none; margin-top: 2px; }
+  .local__datos small { display: block; color: var(--muted-foreground); }
+  .local__datos :global(.local__pendiente) { display: flex; margin-top: 6px; white-space: normal; }
+  .local__email { word-break: break-all; }
+  .local :global(.local__mapa) { margin-top: auto; align-self: flex-start; }
+  .vacio { margin-top: 16px; text-align: center; align-items: center; }
+</style>

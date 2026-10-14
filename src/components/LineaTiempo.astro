@@ -1,0 +1,164 @@
+---
+// Línea de tiempo de la historia de COPOL (datos en src/data/confirmado/historia.ts).
+// - Se recorre de forma progresiva: la línea central se llena según el avance del scroll y cada hito
+//   aparece al entrar en pantalla. Una barra de años permite saltar a cada hito y marca el actual.
+// - Escritorio: hitos alternados a izquierda y derecha. Móvil: una columna con la línea a la izquierda.
+// - Imágenes solo cuando el hito tiene una real (sin espacios vacíos ni imágenes ficticias).
+// - Con prefers-reduced-motion o sin JS: todo visible, sin animaciones.
+import Media from './ui/Media.astro';
+import { fotoHito, fotoLocal } from '../lib/imagenes';
+import type { Hito } from '../data/confirmado/historia';
+
+interface Props {
+  hitos: Hito[];
+  /** Texto adicional para el hito "Hoy" (p. ej. cantidad de locales). */
+  resumenHoy?: string;
+}
+const { hitos, resumenHoy } = Astro.props;
+const localesHoy = ['casa-central', 'salto', 'rocha'].map((id) => fotoLocal(id)).filter(Boolean);
+---
+<div class="tiempo" data-tiempo>
+  <nav class="tiempo__anios" aria-label="Ir a un año de la historia">
+    <ol>
+      {hitos.map((h) => <li><a href={`#hito-${h.id}`} data-anio-enlace={h.id}>{h.anio}</a></li>)}
+    </ol>
+  </nav>
+
+  <ol class="tiempo__lista" data-tiempo-lista style="--progreso: 1">
+    {hitos.map((h, i) => {
+      const img = h.imagen ? fotoHito(h.imagen) : undefined;
+      const hoy = h.id === 'hoy';
+      return (
+        <li id={`hito-${h.id}`} class:list={['hito', i % 2 ? 'hito--der' : 'hito--izq', { 'hito--con-media': img || h.cita || (hoy && localesHoy.length) }]} data-hito={h.id}>
+          <span class="hito__anio" aria-hidden="true">{h.anio}</span>
+          <article class="hito__tarjeta">
+            <header>
+              <p class="hito__fecha">{h.fecha ?? h.anio}</p>
+              <h3>{h.titulo}</h3>
+            </header>
+            <p>{h.texto}{hoy && resumenHoy ? ` ${resumenHoy}` : ''}</p>
+            {img && (
+              <figure class:list={['hito__figura', { 'hito__figura--ilustracion': h.imagen === 'ilustracion' }]}>
+                <Media src={img} alt={h.alt ?? ''} widths={[360, 560, 760]} sizes="(min-width: 900px) 460px, 92vw" radio="var(--radio-md)" contener={h.imagen === 'ilustracion'} fondo={h.imagen === 'ilustracion' ? '#289942' : undefined} />
+                {h.credito && <figcaption>{h.credito}</figcaption>}
+              </figure>
+            )}
+            {h.cita && (
+              <blockquote class="hito__cita">
+                <p>“{h.cita.texto}”</p>
+                <footer>{h.cita.autor}</footer>
+              </blockquote>
+            )}
+            {hoy && localesHoy.length > 0 && (
+              <div class="hito__mosaico">
+                {localesHoy.map((f) => <Media src={f!} alt="" ratio="16/9" widths={[240, 360]} sizes="(min-width: 900px) 150px, 30vw" radio="var(--radio-sm, 10px)" />)}
+              </div>
+            )}
+          </article>
+        </li>
+      );
+    })}
+  </ol>
+</div>
+
+<script>
+  document.querySelectorAll<HTMLElement>('[data-tiempo]').forEach((raiz) => {
+    const lista = raiz.querySelector<HTMLElement>('[data-tiempo-lista]')!;
+    const hitos = [...lista.querySelectorAll<HTMLElement>('[data-hito]')];
+    const enlaces = new Map([...raiz.querySelectorAll<HTMLAnchorElement>('[data-anio-enlace]')].map((a) => [a.dataset.anioEnlace!, a]));
+    const reducido = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    // Progreso de la línea según el scroll (también con movimiento reducido: no es una animación).
+    let pendiente = false;
+    const medir = () => {
+      pendiente = false;
+      const r = lista.getBoundingClientRect();
+      const ref = innerHeight * 0.55;
+      const p = Math.min(1, Math.max(0, (ref - r.top) / r.height));
+      lista.style.setProperty('--progreso', p.toFixed(3));
+      // Año actual: el último hito cuyo inicio pasó la referencia.
+      let actual = hitos[0];
+      for (const h of hitos) if (h.getBoundingClientRect().top < ref) actual = h;
+      enlaces.forEach((a, id) => a.toggleAttribute('aria-current', id === actual.dataset.hito));
+      if (actual) enlaces.get(actual.dataset.hito!)?.setAttribute('aria-current', 'true');
+    };
+    addEventListener('scroll', () => { if (!pendiente) { pendiente = true; requestAnimationFrame(medir); } }, { passive: true });
+    addEventListener('resize', medir);
+    medir();
+
+    if (reducido || !('IntersectionObserver' in window)) return;
+    raiz.classList.add('tiempo--animado');
+    const io = new IntersectionObserver((entradas) => entradas.forEach((e) => {
+      if (e.isIntersecting) { e.target.classList.add('hito--visible'); io.unobserve(e.target); }
+    }), { rootMargin: '0px 0px -12% 0px' });
+    hitos.forEach((h) => io.observe(h));
+  });
+</script>
+
+<style>
+  .tiempo { display: grid; gap: clamp(20px, 3vw, 32px); }
+  .tiempo__anios { position: sticky; top: 84px; z-index: 5; }
+  .tiempo__anios ol {
+    list-style: none; margin: 0; padding: 6px; display: flex; gap: 4px; width: fit-content; max-width: 100%;
+    overflow-x: auto; scrollbar-width: none; border-radius: var(--radio-pill);
+    background: color-mix(in srgb, var(--card) 92%, transparent); backdrop-filter: blur(10px);
+    box-shadow: var(--anillo), 0 6px 18px -12px rgb(0 51 26 / 0.35);
+  }
+  .tiempo__anios a {
+    display: inline-flex; align-items: center; min-height: 36px; padding: 4px 14px; border-radius: var(--radio-pill);
+    text-decoration: none; font-weight: 700; color: var(--tinta-suave); white-space: nowrap; transition: background var(--transicion), color var(--transicion);
+  }
+  .tiempo__anios a:hover { background: var(--muted); color: var(--verde-oscuro); }
+  .tiempo__anios a[aria-current] { background: var(--verde-oscuro); color: var(--blanco); }
+
+  .tiempo__lista { list-style: none; margin: 0; padding: 0; position: relative; display: grid; gap: clamp(28px, 4vw, 48px); --linea-x: 22px; }
+  /* Línea base y línea de progreso. */
+  .tiempo__lista::before,
+  .tiempo__lista::after { content: ''; position: absolute; left: calc(var(--linea-x) - 2px); top: 0; bottom: 0; width: 4px; border-radius: 4px; }
+  .tiempo__lista::before { background: var(--border); }
+  .tiempo__lista::after { background: linear-gradient(var(--verde-copol), var(--verde-oscuro)); transform-origin: top; transform: scaleY(var(--progreso)); }
+
+  .hito { position: relative; display: grid; grid-template-columns: calc(var(--linea-x) * 2 + 12px) minmax(0, 1fr); align-items: start; scroll-margin-top: 150px; }
+  .hito__anio {
+    grid-column: 1; justify-self: start; position: relative; z-index: 1; margin-top: 18px;
+    min-width: 46px; padding: 6px 10px; border-radius: var(--radio-pill); text-align: center;
+    background: var(--amarillo-copol); color: var(--verde-oscuro); font-weight: 800; font-size: 0.9375rem;
+    box-shadow: 0 0 0 4px var(--fondo-pagina);
+  }
+  .hito__tarjeta {
+    grid-column: 2; display: grid; gap: 12px; padding: clamp(18px, 2.4vw, 26px); border-radius: var(--radio-xl);
+    background: var(--card); box-shadow: var(--anillo), var(--sombra-suave);
+  }
+  .hito__fecha { font-size: 0.8125rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--verde-copol); }
+  .hito__tarjeta h3 { font-size: clamp(1.25rem, 2.2vw, 1.625rem); margin-top: 4px; }
+  .hito__tarjeta > p { color: var(--tinta-suave); max-width: 62ch; }
+  .hito__figura { margin: 4px 0 0; display: grid; gap: 8px; }
+  .hito__figura--ilustracion { width: min(100%, 260px); justify-self: center; }
+  .hito__figura figcaption { font-size: 0.8125rem; color: var(--muted-foreground); }
+  .hito__cita { margin: 4px 0 0; padding: 16px 20px; border-left: 4px solid var(--amarillo-copol); border-radius: 0 var(--radio-md) var(--radio-md) 0; background: var(--muted); display: grid; gap: 6px; }
+  .hito__cita p { font-size: 1.0625rem; font-weight: 600; color: var(--verde-oscuro); }
+  .hito__cita footer { font-size: 0.875rem; color: var(--tinta-suave); }
+  .hito__mosaico { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+
+  @media (min-width: 900px) {
+    /* Alternado: línea al centro, tarjetas a izquierda y derecha. */
+    .tiempo__lista { --linea-x: 50%; }
+    .hito { grid-template-columns: minmax(0, 1fr) 96px minmax(0, 1fr); }
+    .hito__anio { grid-column: 2; justify-self: center; font-size: 1.0625rem; padding: 8px 14px; min-width: 72px; }
+    .hito--izq .hito__tarjeta { grid-column: 1; grid-row: 1; }
+    .hito--der .hito__tarjeta { grid-column: 3; }
+  }
+
+  /* Aparición progresiva (solo con JS y sin movimiento reducido). */
+  .tiempo--animado .hito__tarjeta { opacity: 0; transform: translateY(24px) scale(0.98); transition: opacity 700ms var(--ease-out-quart), transform 800ms var(--ease-out-quart); }
+  .tiempo--animado .hito__anio { transform: scale(0.6); opacity: 0; transition: transform 600ms var(--resorte), opacity 400ms; }
+  @media (min-width: 900px) {
+    .tiempo--animado .hito--izq .hito__tarjeta { transform: translateX(-28px); }
+    .tiempo--animado .hito--der .hito__tarjeta { transform: translateX(28px); }
+  }
+  .tiempo--animado .hito--visible .hito__tarjeta,
+  .tiempo--animado .hito--visible .hito__anio { opacity: 1; transform: none; }
+  @media (prefers-reduced-motion: reduce) {
+    .tiempo__lista::after { transform: scaleY(1); }
+  }
+</style>

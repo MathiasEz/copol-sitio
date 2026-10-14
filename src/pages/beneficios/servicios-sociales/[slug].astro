@@ -1,0 +1,114 @@
+---
+import Base from '../../../layouts/Base.astro';
+import EncabezadoPagina from '../../../components/EncabezadoPagina.astro';
+import BandaSocio from '../../../components/BandaSocio.astro';
+import Icono from '../../../components/Icono.astro';
+import Button from '../../../components/ui/Button.astro';
+import Card from '../../../components/ui/Card.astro';
+import Alert from '../../../components/ui/Alert.astro';
+import Media from '../../../components/ui/Media.astro';
+import { foto } from '../../../lib/imagenes';
+import { SERVICIOS, type Servicio } from '../../../data/confirmado/servicios';
+
+export function getStaticPaths() {
+  return SERVICIOS.map((servicio) => ({ params: { slug: servicio.slug }, props: { servicio } }));
+}
+
+const { servicio } = Astro.props as { servicio: Servicio };
+const otros = SERVICIOS.filter((s) => s.slug !== servicio.slug);
+const esPinecoop = servicio.slug === 'pinecoop';
+const imagenCabecera = servicio.imagen === 'pinecoop-salinas' ? foto('pinecoop-salinas') : undefined;
+const altCabecera = 'Vista aérea del Parque Vacacional Pinecoop en Salinas, con piscina, reposeras y cabañas';
+---
+<Base titulo={servicio.titulo} descripcion={`${servicio.titulo} (${servicio.categoria}): ${servicio.resumen} Servicio social de COPOL para socios.`}>
+  <EncabezadoPagina
+    titulo={servicio.titulo}
+    antetitulo={servicio.categoria}
+    bajada={servicio.descripcion}
+    migas={[{ texto: 'Beneficios', href: '/beneficios/' }, { texto: 'Servicios sociales', href: '/beneficios/servicios-sociales/' }, { texto: servicio.titulo }]}
+    imagen={imagenCabecera}
+    altImagen={altCabecera}
+  >
+    <Button href={servicio.cta.href}>
+      <Icono nombre={servicio.cta.href.startsWith('tel:') ? 'telefono' : 'whatsapp'} tamano={18} /> {servicio.cta.texto}
+    </Button>
+    <Button href="/beneficios/servicios-sociales/" variant="outline"><Icono nombre="flecha-izq" tamano={18} /> Todos los servicios</Button>
+  </EncabezadoPagina>
+
+  <section class="contenedor seccion detalle">
+    <div class="detalle__principal">
+      <h2><span class="mascara"><span>{esPinecoop ? 'Qué ofrece el parque' : 'Qué incluye'}</span></span></h2>
+      <ul class="lista-check escalonar">
+        {servicio.puntos.map((p) => <li><Icono nombre="check" tamano={20} />{p}</li>)}
+      </ul>
+      {servicio.aviso && <Alert titulo={servicio.aviso} />}
+      {esPinecoop && (
+        <figure class="figura aparecer">
+          <Media src={foto('pinecoop-chuy')} alt="Cartel de madera “El rincón de mi viejo” entre eucaliptos en el predio de Pinecoop Chuy" widths={[480, 720, 960, 1280]} sizes="(min-width: 900px) 680px, 100vw" />
+          <figcaption><strong>Pinecoop Chuy — Próximamente.</strong> Una nueva experiencia de descanso junto al mar, llegando pronto a la costa de Chuy.</figcaption>
+        </figure>
+      )}
+      {servicio.imagen === 'psicologo' && (
+        <figure class="figura figura--pieza aparecer">
+          <Media src={foto('psicologo')} alt="Pieza gráfica “Cuidar tu mente es cuidar tu vida”: nuevo servicio Copol Salud Mental junto a Claramente, con la app en un celular" widths={[320, 480, 640]} sizes="(min-width: 900px) 320px, 80vw" />
+        </figure>
+      )}
+    </div>
+    <Card as="section" variant="muted" class="detalle__contacto" aria-labelledby="contacto-servicio">
+      <h2 id="contacto-servicio">Contacto</h2>
+      <ul>
+        {servicio.contactos.map((c) => (
+          <li>
+            <span class="detalle__etiqueta">{c.etiqueta}</span>
+            <a href={c.href} rel={c.href.startsWith('http') ? 'noopener' : undefined}>{c.texto}</a>
+          </li>
+        ))}
+      </ul>
+      <p class="detalle__nota">Condiciones, disponibilidad y costos: consultá directamente por estos canales.</p>
+    </Card>
+  </section>
+
+  <section class="contenedor" aria-labelledby="otros-titulo">
+    <h2 id="otros-titulo" class="otros__titulo">Otros servicios sociales</h2>
+    <ul class="otros escalonar">
+      {otros.map((s) => (
+        <li>
+          <Card href={`/beneficios/servicios-sociales/${s.slug}/`} class="otro">
+            <span class="card__icono"><Icono nombre={s.icono} tamano={22} /></span>
+            <span class="otro__texto"><strong>{s.titulo}</strong><span>{s.resumen}</span></span>
+          </Card>
+        </li>
+      ))}
+    </ul>
+  </section>
+
+  <BandaSocio />
+</Base>
+
+<style>
+  .detalle { display: grid; gap: clamp(28px, 4vw, 48px); align-items: start; }
+  @media (min-width: 900px) { .detalle { grid-template-columns: 1.6fr 1fr; } }
+  .detalle__principal { display: grid; gap: 20px; }
+  .lista-check { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; font-size: 1.0625rem; }
+  .lista-check li { display: flex; gap: 12px; align-items: flex-start; }
+  .lista-check :global(svg) { color: var(--verde-copol); margin-top: 3px; flex: none; }
+  .figura { margin: 8px 0 0; display: grid; gap: 10px; }
+  .figura figcaption { color: var(--muted-foreground); }
+  .figura--pieza { max-width: 340px; }
+
+  .detalle :global(.detalle__contacto) { position: sticky; top: 100px; gap: 16px; padding: 26px; border-radius: var(--radio-xl); }
+  .detalle :global(.detalle__contacto h2) { font-size: 1.5rem; }
+  .detalle :global(.detalle__contacto ul) { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; }
+  .detalle :global(.detalle__contacto li) { display: grid; gap: 2px; }
+  .detalle__etiqueta { font-size: 0.875rem; color: var(--muted-foreground); }
+  .detalle :global(.detalle__contacto a) { font-weight: 700; font-size: 1.125rem; }
+  .detalle__nota { font-size: 0.875rem; }
+
+  .otros__titulo { font-size: 1.5rem; margin-bottom: 18px; }
+  .otros { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr)); }
+  .otros > li { display: flex; }
+  .otros :global(.otro) { flex: 1; flex-direction: row; align-items: center; gap: 14px; padding: 14px 16px; }
+  .otro__texto { display: grid; }
+  .otro__texto strong { color: var(--verde-oscuro); }
+  .otro__texto span { font-size: 0.875rem; color: var(--muted-foreground); }
+</style>

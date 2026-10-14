@@ -1,0 +1,83 @@
+---
+import Base from '../../../layouts/Base.astro';
+import EncabezadoPagina from '../../../components/EncabezadoPagina.astro';
+import BandaSocio from '../../../components/BandaSocio.astro';
+import Icono from '../../../components/Icono.astro';
+import Button from '../../../components/ui/Button.astro';
+import Badge from '../../../components/ui/Badge.astro';
+import Card from '../../../components/ui/Card.astro';
+import Media from '../../../components/ui/Media.astro';
+import { foto } from '../../../lib/imagenes';
+import { SERVICIOS } from '../../../data/confirmado/servicios';
+import { CONTACTO, whatsapp } from '../../../data/confirmado/sitio';
+
+const pinecoop = SERVICIOS.find((s) => s.slug === 'pinecoop')!;
+const resto = SERVICIOS.filter((s) => s.slug !== 'pinecoop');
+---
+<Base titulo="Servicios sociales" descripcion="Servicios sociales de COPOL: Parque Vacacional Pinecoop, Psicólogo Copol, salud bucal, veterinaria, viajes, servicio fúnebre y estudio notarial.">
+  <EncabezadoPagina
+    titulo="Tu bienestar, nuestra prioridad"
+    antetitulo="Servicios sociales"
+    bajada="Una red de servicios pensada para acompañarte a vos y a tu familia en cada momento de la vida."
+    migas={[{ texto: 'Beneficios', href: '/beneficios/' }, { texto: 'Servicios sociales' }]}
+  >
+    <Button href={whatsapp(CONTACTO.whatsappGeneral.numero, 'Hola, quiero info sobre los servicios sociales')}><Icono nombre="whatsapp" tamano={18} /> Consultanos</Button>
+    <Button href={CONTACTO.telefono.href} variant="outline"><Icono nombre="telefono" tamano={18} /> {CONTACTO.telefono.texto}</Button>
+  </EncabezadoPagina>
+
+  <section class="contenedor seccion" aria-labelledby="pinecoop-titulo">
+    <article class="pinecoop grupo-hover aparecer">
+      <Media src={foto('pinecoop-salinas')} alt="Vista aérea de la piscina y las cabañas del Parque Vacacional Pinecoop" widths={[480, 720, 960, 1200]} sizes="(min-width: 900px) 640px, 100vw" radio="var(--radio-lg)" />
+      <div class="pinecoop__texto">
+        <span class="eyebrow">{pinecoop.categoria}</span>
+        <h2 id="pinecoop-titulo">{pinecoop.titulo}</h2>
+        <p class="lead">{pinecoop.descripcion}</p>
+        <div class="pinecoop__acciones">
+          <Button href={`/beneficios/servicios-sociales/${pinecoop.slug}/`} size="lg">Conocé Pinecoop <Icono nombre="flecha" tamano={18} /></Button>
+          <Badge variant="accent">Próximamente: Pinecoop Chuy</Badge>
+        </div>
+      </div>
+    </article>
+  </section>
+
+  <section class="contenedor" aria-labelledby="servicios-titulo">
+    <div class="encabezado-seccion">
+      <div>
+        <h2 id="servicios-titulo"><span class="mascara"><span>Nuestros servicios</span></span></h2>
+        <p class="lead">Desde salud hasta trámites, cada servicio está pensado para vos y los tuyos.</p>
+      </div>
+    </div>
+    <ul class="servicios escalonar">
+      {resto.map((s) => (
+        <li>
+          <Card href={`/beneficios/servicios-sociales/${s.slug}/`} class="servicio">
+            <span class="card__icono"><Icono nombre={s.icono} tamano={26} /></span>
+            <span class="eyebrow">{s.categoria}</span>
+            <h3>{s.titulo}</h3>
+            <p>{s.resumen}</p>
+            <span class="enlace-flecha">Ver más<span class="visualmente-oculto"> sobre {s.titulo}</span> <Icono nombre="flecha" tamano={18} /></span>
+          </Card>
+        </li>
+      ))}
+    </ul>
+  </section>
+
+  <BandaSocio titulo="¿Todavía no sos socio?" texto="Asociate y accedé a todos los servicios sociales, créditos y beneficios de la cooperativa." />
+</Base>
+
+<style>
+  .pinecoop {
+    display: grid; gap: 8px; padding: 8px; border-radius: 32px; background: var(--card); box-shadow: var(--anillo), var(--sombra-suave);
+  }
+  @media (min-width: 900px) { .pinecoop { grid-template-columns: 1.15fr 1fr; align-items: center; } }
+  .pinecoop__texto { display: grid; gap: 16px; justify-items: start; align-content: center; padding: clamp(20px, 4vw, 44px); }
+  .pinecoop__acciones { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+
+  .servicios {
+    list-style: none; margin: 0; padding: 0; display: grid; gap: 18px;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr));
+  }
+  .servicios > li { display: flex; }
+  .servicios :global(.servicio) { flex: 1; gap: 10px; }
+  .servicios :global(.servicio .card__icono) { margin-bottom: 6px; }
+</style>

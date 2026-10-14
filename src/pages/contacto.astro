@@ -1,0 +1,215 @@
+---
+import Base from '../layouts/Base.astro';
+import EncabezadoPagina from '../components/EncabezadoPagina.astro';
+import Icono from '../components/Icono.astro';
+import Button from '../components/ui/Button.astro';
+import Card from '../components/ui/Card.astro';
+import Alert from '../components/ui/Alert.astro';
+import Campo from '../components/ui/Campo.astro';
+import { CONTACTO, HORARIOS, whatsapp } from '../data/confirmado/sitio';
+
+// El envío requiere un endpoint configurado (PUBLIC_FORM_ENDPOINT). Sin él, el formulario funciona en
+// "modo demostración": valida los datos pero NO los envía, y lo dice claramente. Ver docs/produccion.md.
+const endpoint = import.meta.env.PUBLIC_FORM_ENDPOINT ?? '';
+const configurado = Boolean(endpoint);
+
+const canales = [
+  { icono: 'whatsapp', titulo: 'WhatsApp', dato: CONTACTO.whatsappGeneral.texto, detalle: 'Escribinos cuando quieras, te respondemos a la brevedad.', href: whatsapp(CONTACTO.whatsappGeneral.numero, 'Hola, quiero info de Copol'), accion: 'Escribinos' },
+  { icono: 'telefono', titulo: 'Teléfono', dato: CONTACTO.telefono.texto, detalle: `También: ${CONTACTO.whatsappSocios.texto} (socios).`, href: CONTACTO.telefono.href, accion: 'Llamar' },
+  { icono: 'correo', titulo: 'Correo electrónico', dato: CONTACTO.email, detalle: 'Escribinos tu consulta por correo.', href: `mailto:${CONTACTO.email}`, accion: 'Enviar correo' },
+  { icono: 'ubicacion', titulo: 'Casa Central', dato: CONTACTO.casaCentral.direccion, detalle: `${CONTACTO.casaCentral.ciudad}. ${CONTACTO.casaCentral.accesoAlternativo}`, href: CONTACTO.casaCentral.mapa, accion: 'Cómo llegar' },
+] as const;
+---
+<Base titulo="Contacto" descripcion="Contactá a COPOL por WhatsApp, teléfono 0800 1804, correo o en Casa Central (Av. Libertador 1856, Montevideo). Horarios de atención.">
+  <EncabezadoPagina
+    titulo="Estamos para vos"
+    antetitulo="Contacto"
+    bajada="Comunicate con COPOL por el canal que te quede más cómodo."
+    migas={[{ texto: 'Contacto' }]}
+  />
+
+  <section class="contenedor seccion" aria-labelledby="canales-titulo">
+    <h2 id="canales-titulo"><span class="mascara"><span>Elegí tu canal</span></span></h2>
+    <ul class="canales escalonar">
+      {canales.map((c) => (
+        <li class="card canal">
+          <span class="card__icono"><Icono nombre={c.icono} tamano={24} /></span>
+          <h3>{c.titulo}</h3>
+          <p class="canal__dato">{c.dato}</p>
+          <p class="canal__detalle">{c.detalle}</p>
+          <Button href={c.href} variant="secondary" size="sm" class="canal__accion">{c.accion}<span class="visualmente-oculto"> — {c.titulo}</span></Button>
+        </li>
+      ))}
+    </ul>
+  </section>
+
+  <section class="seccion seccion--suave" aria-labelledby="horarios-titulo">
+    <div class="contenedor horarios">
+      <h2 id="horarios-titulo">Horarios de atención</h2>
+      <Card class="horarios__grupo">
+        <h3>Casa Central</h3>
+        <dl>{HORARIOS.casaCentral.map((h) => <div><dt>{h.dias}</dt><dd>{h.horas}</dd></div>)}</dl>
+      </Card>
+      <Card class="horarios__grupo">
+        <h3>Atención telefónica</h3>
+        <dl>{HORARIOS.telefonica.map((h) => <div><dt>{h.dias}</dt><dd>{h.horas}</dd></div>)}</dl>
+      </Card>
+      <Button href="/sobre-nosotros/locales/" variant="outline">Ver los 19 locales <Icono nombre="flecha" tamano={18} /></Button>
+    </div>
+  </section>
+
+  <section class="contenedor seccion formulario-seccion" aria-labelledby="form-titulo">
+    <div class="formulario-intro">
+      <h2 id="form-titulo">Dejanos tu consulta</h2>
+      <p class="lead">Completá el formulario y te responderemos por correo o teléfono.</p>
+      {!configurado && (
+        <Alert variant="pendiente" titulo="Formulario en modo demostración" id="aviso-demo">
+          El envío todavía no está configurado y los datos no se envían. Mientras tanto, usá WhatsApp o correo.
+        </Alert>
+      )}
+    </div>
+
+    <form class="card formulario" method="post" action={configurado ? endpoint : undefined} data-formulario data-configurado={String(configurado)} novalidate aria-describedby={configurado ? undefined : 'aviso-demo'}>
+      <div class="formulario__fila">
+        <Campo etiqueta="Nombre y apellido" name="nombre" autocomplete="name" obligatorio error="Ingresá tu nombre." />
+        <Campo etiqueta="Teléfono" name="telefono" type="tel" autocomplete="tel" inputmode="tel" />
+      </div>
+      <Campo etiqueta="Correo electrónico" name="email" type="email" autocomplete="email" obligatorio error="Ingresá un correo válido, por ejemplo nombre@correo.com." />
+      <Campo etiqueta="Motivo" name="asunto" control="select" obligatorio error="Elegí el motivo de tu consulta.">
+        <option value="">Elegí una opción</option>
+        <option>Quiero hacerme socio</option>
+        <option>Créditos</option>
+        <option>Servicios sociales</option>
+        <option>Tienda o Bazar</option>
+        <option>Convenios</option>
+        <option>Otro</option>
+      </Campo>
+      <Campo etiqueta="Consulta" name="consulta" control="textarea" obligatorio error="Escribí tu consulta." />
+      <div class="formulario__trampa" aria-hidden="true">
+        <label>No completar este campo <input name="sitio_web" type="text" tabindex="-1" autocomplete="off" /></label>
+      </div>
+      <p class="campo__ayuda">Usaremos tus datos únicamente para responder esta consulta.</p>
+      <button type="submit" class="btn btn--default btn--lg envio" data-envio>
+        <span class="envio__texto">Enviar consulta</span>
+        <span class="envio__cargando" aria-hidden="true"></span>
+        <span class="envio__ok" aria-hidden="true"><Icono nombre="check" tamano={22} /></span>
+      </button>
+      <div class="formulario__estado" role="status" aria-live="polite" data-estado></div>
+    </form>
+  </section>
+</Base>
+
+<script>
+  const form = document.querySelector<HTMLFormElement>('[data-formulario]')!;
+  const estado = form.querySelector<HTMLElement>('[data-estado]')!;
+  const boton = form.querySelector<HTMLButtonElement>('[data-envio]')!;
+
+  const validar = (f: HTMLFormElement) => {
+    let primero: HTMLElement | null = null;
+    f.querySelectorAll<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>('[required]').forEach((campo) => {
+      const ok = campo.checkValidity() && campo.value.trim() !== '';
+      campo.setAttribute('aria-invalid', String(!ok));
+      const error = campo.closest('.campo')?.querySelector<HTMLElement>('[data-error]');
+      if (error) {
+        error.hidden = ok;
+        const ids = new Set((campo.getAttribute('aria-describedby') ?? '').split(' ').filter(Boolean));
+        ok ? ids.delete(error.id) : ids.add(error.id);
+        if (ids.size) campo.setAttribute('aria-describedby', [...ids].join(' '));
+        else campo.removeAttribute('aria-describedby');
+      }
+      if (!ok && !primero) primero = campo;
+    });
+    (primero as HTMLElement | null)?.focus();
+    return !primero;
+  };
+
+  // El botón se transforma: texto → indicador de carga → ✓ (y vuelve). Ver prompt-motion: "button → loader → check".
+  const fijarAncho = () => (boton.style.width = `${boton.offsetWidth}px`);
+  const ponerEstado = (e: 'enviando' | 'ok' | '') => {
+    if (e) fijarAncho();
+    boton.dataset.estado = e;
+    if (!e) boton.style.width = '';
+  };
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!validar(form)) return;
+    const datos = new FormData(form);
+    if (datos.get('sitio_web')) return; // trampa anti-spam
+
+    if (form.dataset.configurado !== 'true') {
+      estado.className = 'formulario__estado formulario__estado--aviso';
+      estado.textContent = 'Este formulario está en modo demostración y no envió tus datos. Escribinos por WhatsApp al 098 872 727 o a socios@copol.com.uy.';
+      return;
+    }
+
+    boton.disabled = true;
+    ponerEstado('enviando');
+    estado.className = 'formulario__estado visualmente-oculto';
+    estado.textContent = 'Enviando…';
+    try {
+      const res = await fetch(form.action, { method: 'POST', body: datos, headers: { Accept: 'application/json' } });
+      if (!res.ok) throw new Error(String(res.status));
+      form.reset();
+      ponerEstado('ok');
+      estado.className = 'formulario__estado formulario__estado--ok';
+      estado.textContent = '¡Gracias! Recibimos tu consulta y te responderemos a la brevedad.';
+      setTimeout(() => ponerEstado(''), 2400);
+    } catch {
+      ponerEstado('');
+      estado.className = 'formulario__estado formulario__estado--error';
+      estado.textContent = 'No pudimos enviar tu consulta. Probá de nuevo o escribinos por WhatsApp al 098 872 727.';
+    } finally {
+      boton.disabled = false;
+    }
+  });
+</script>
+
+<style>
+  .canales { list-style: none; margin: 24px 0 0; padding: 0; display: grid; gap: 16px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 250px), 1fr)); }
+  .canal { gap: 8px; align-items: flex-start; }
+  .canal__dato { font-weight: 800; font-size: 1.125rem; color: var(--verde-oscuro) !important; word-break: break-word; }
+  .canal__detalle { font-size: 0.9375rem; }
+  .canal :global(.canal__accion) { margin-top: auto; }
+
+  .horarios { display: grid; gap: 20px; align-items: start; }
+  @media (min-width: 900px) { .horarios { grid-template-columns: 1fr 1fr 1fr auto; align-items: end; } }
+  .horarios :global(.horarios__grupo) { gap: 8px; padding: 20px 24px; }
+  .horarios dl { margin: 0; display: grid; gap: 6px; }
+  .horarios dl div { display: flex; justify-content: space-between; gap: 16px; }
+  .horarios dt { color: var(--muted-foreground); }
+  .horarios dd { margin: 0; font-weight: 700; }
+
+  .formulario-seccion { display: grid; gap: 28px; }
+  @media (min-width: 960px) { .formulario-seccion { grid-template-columns: 1fr 1.4fr; align-items: start; } }
+  .formulario-intro { display: grid; gap: 14px; justify-items: start; }
+  .formulario { display: grid; gap: 18px; padding: clamp(22px, 3vw, 36px); border-radius: var(--radio-xl); }
+  .formulario__fila { display: grid; gap: 18px; }
+  @media (min-width: 640px) { .formulario__fila { grid-template-columns: 1fr 1fr; } }
+  .formulario__trampa { position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden; }
+
+  /* Botón que se transforma */
+  .envio { justify-self: start; overflow: hidden; transition: width 500ms var(--resorte), border-radius 400ms var(--ease-out-quart), background-color var(--transicion); }
+  .envio > span { transition: opacity 250ms var(--ease-out-quart), transform 450ms var(--resorte); }
+  .envio__cargando,
+  .envio__ok { position: absolute; inset: 0; display: grid; place-items: center; opacity: 0; transform: scale(0.6); }
+  .envio__cargando::before {
+    content: ''; width: 22px; height: 22px; border-radius: 50%;
+    border: 2.5px solid rgb(255 255 255 / 0.35); border-top-color: var(--blanco);
+    animation: girar 700ms linear infinite;
+  }
+  .envio[data-estado='enviando'],
+  .envio[data-estado='ok'] { width: 54px !important; padding: 0; }
+  .envio[data-estado='enviando'] .envio__texto,
+  .envio[data-estado='ok'] .envio__texto { opacity: 0; transform: translateY(-8px); }
+  .envio[data-estado='enviando'] .envio__cargando { opacity: 1; transform: none; }
+  .envio[data-estado='ok'] { background: var(--verde-copol); }
+  .envio[data-estado='ok'] .envio__ok { opacity: 1; transform: none; }
+  @keyframes girar { to { transform: rotate(360deg); } }
+
+  .formulario__estado:empty { display: none; }
+  .formulario__estado { padding: 14px 16px; border-radius: var(--radio-md); background: var(--muted); font-weight: 600; }
+  .formulario__estado--ok { background: #dff3e6; color: var(--verde-oscuro); }
+  .formulario__estado--error { background: #fde7e5; color: #8c1d18; }
+  .formulario__estado--aviso { background: #fffbd6; color: var(--tinta); border: 1.5px dashed #8a7f00; }
+</style>

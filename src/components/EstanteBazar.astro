@@ -1,0 +1,92 @@
+---
+// Estante de productos con stock (server island: se genera en cada visita con la base del panel,
+// dentro de una página estática). Usar con `server:defer` y un `slot="fallback"`.
+import TarjetaProducto from './TarjetaProducto.astro';
+import Button from './ui/Button.astro';
+import Icono from './Icono.astro';
+import { destacados, obtenerCatalogo } from '../lib/inventario';
+
+interface Props {
+  cantidad?: number;
+  /** Muestra accesos por categoría y el total de productos. */
+  completo?: boolean;
+}
+const { cantidad = 10, completo = true } = Astro.props;
+Astro.response.headers.set('Cache-Control', 'no-store, max-age=0');
+const catalogo = await obtenerCatalogo();
+const lista = destacados(catalogo, cantidad);
+const chips = [...catalogo.categorias].filter((c) => c.id !== 'destacados').sort((a, b) => b.conStock - a.conStock).slice(0, 8);
+---
+<div class="estante-bazar">
+  {completo && (
+    <div class="estante-bazar__cabecera">
+      <p class="estante-bazar__bajada">
+        {catalogo.enVivo ? `${catalogo.totales.conStock} productos con stock. ` : ''}Consultá condiciones por WhatsApp; las imágenes son ilustrativas.
+      </p>
+      <Button href="/hipermercado/bazar/" variant="outline">Ver los {catalogo.totales.total} productos <Icono nombre="flecha" tamano={18} /></Button>
+    </div>
+  )}
+  {completo && (
+    <nav class="chips" aria-label="Categorías del Bazar">
+      {chips.map((c) => <a class="chip" href={`/hipermercado/bazar/?categoria=${encodeURIComponent(c.id)}`}>{c.nombre}<span class="chip__n">{c.total}</span></a>)}
+    </nav>
+  )}
+  {lista.length > 0 ? (
+    <ul class="estante" aria-label="Productos destacados del Bazar">
+      {lista.map((p) => <li><TarjetaProducto producto={p} /></li>)}
+      <li class="estante__final">
+        <a href="/hipermercado/bazar/?stock=con-stock" class="ver-mas">
+          <span class="ver-mas__icono"><Icono nombre="carrito" tamano={26} /></span>
+          <strong>Ver todo con stock</strong>
+          <span>{catalogo.totales.conStock} productos disponibles</span>
+          <Icono nombre="flecha" tamano={20} />
+        </a>
+      </li>
+    </ul>
+  ) : (
+    <p class="estante-bazar__vacio">Consultá el <a href="/hipermercado/bazar/">catálogo completo del Bazar</a>.</p>
+  )}
+</div>
+
+<style is:global>
+  .estante-bazar { display: grid; gap: clamp(16px, 2.2vw, 24px); }
+  .estante-bazar__cabecera { display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: center; justify-content: space-between; }
+  .estante-bazar__bajada { color: var(--muted-foreground); max-width: 60ch; }
+  .chips { display: flex; gap: 8px; flex-wrap: wrap; }
+  .chip {
+    display: inline-flex; align-items: center; gap: 8px; padding: 7px 8px 7px 14px; border-radius: var(--radio-pill);
+    border: 1px solid var(--border); background: var(--card); text-decoration: none; color: var(--foreground);
+    font-weight: 600; font-size: 0.9375rem; transition: background var(--transicion), border-color var(--transicion), transform 300ms var(--resorte);
+  }
+  .chip:hover { background: var(--muted); border-color: var(--borde-fuerte); }
+  .chip:active { transform: scale(0.97); }
+  .chip__n { min-width: 28px; padding: 1px 8px; border-radius: var(--radio-pill); background: var(--muted); color: var(--verde-oscuro); font-size: 0.8125rem; text-align: center; font-variant-numeric: tabular-nums; }
+  .estante { list-style: none; margin: 0; padding: 0; display: grid; gap: clamp(12px, 1.6vw, 20px); grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
+  .estante > li { display: flex; min-width: 0; }
+  .estante > li > .producto { flex: 1; }
+  @media (min-width: 1100px) { .estante { grid-template-columns: repeat(5, minmax(0, 1fr)); } .estante__final { display: none !important; } }
+  @media (max-width: 639px) {
+    .chips { flex-wrap: nowrap; overflow-x: auto; margin-inline: calc(-1 * var(--gutter)); padding: 2px var(--gutter) 6px; scrollbar-width: none; scroll-snap-type: x proximity; }
+    .chip { flex: none; scroll-snap-align: start; }
+    .estante {
+      grid-auto-flow: column; grid-template-columns: none; grid-auto-columns: 44%;
+      overflow-x: auto; scroll-snap-type: x mandatory; overscroll-behavior-x: contain;
+      margin-inline: calc(-1 * var(--gutter)); padding: 4px var(--gutter) 12px; scroll-padding-inline: var(--gutter);
+      scrollbar-width: none;
+    }
+    .estante > li { scroll-snap-align: start; }
+  }
+  .ver-mas {
+    flex: 1; display: grid; place-content: center; justify-items: center; gap: 6px; text-align: center; min-height: 220px;
+    border-radius: var(--radio-lg); border: 1.5px dashed var(--borde-fuerte); text-decoration: none; color: var(--verde-oscuro); padding: 16px;
+    transition: background var(--transicion), border-color var(--transicion);
+  }
+  .ver-mas:hover { background: var(--muted); border-color: var(--verde-oscuro); }
+  .ver-mas span:not(.ver-mas__icono) { font-size: 0.875rem; color: var(--muted-foreground); }
+  .ver-mas__icono { width: 52px; height: 52px; border-radius: 50%; display: grid; place-items: center; background: var(--accent); color: var(--tinta); margin-bottom: 4px; }
+  .estante-esqueleto { display: grid; gap: 16px; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
+  .estante-esqueleto span { aspect-ratio: 3 / 4; border-radius: var(--radio-lg); background: linear-gradient(90deg, var(--muted), #f4f9f6, var(--muted)); background-size: 200% 100%; }
+  @media (prefers-reduced-motion: no-preference) { .estante-esqueleto span { animation: brillo 1.4s linear infinite; } }
+  @keyframes brillo { to { background-position: -200% 0; } }
+  @media (max-width: 639px) { .estante-esqueleto { grid-template-columns: repeat(2, 1fr); } .estante-esqueleto span:nth-child(n + 3) { display: none; } }
+</style>

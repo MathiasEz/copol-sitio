@@ -1,0 +1,123 @@
+---
+import '../styles/global.css';
+import Encabezado from '../components/Encabezado.astro';
+import Pie from '../components/Pie.astro';
+import { CONTACTO, REDES, SITIO } from '../data/confirmado/sitio';
+
+interface Props {
+  titulo: string;
+  descripcion?: string;
+  imagen?: string;
+  noIndexar?: boolean;
+}
+
+const { titulo, descripcion = SITIO.descripcion, imagen = '/og-copol.jpg', noIndexar: noIndexarPagina = false } = Astro.props;
+// Copias de prueba (vista previa de Vercel o SITIO_DE_PRUEBA=1 al compilar): que los buscadores no las indexen.
+const noIndexar = noIndexarPagina || process.env.VERCEL_ENV === 'preview' || process.env.SITIO_DE_PRUEBA === '1';
+const tituloCompleto = Astro.url.pathname === '/' ? `${SITIO.nombre} · ${SITIO.nombreCompleto} — ${SITIO.lema}` : `${titulo} · ${SITIO.nombre} Cooperativa Policial`;
+const canonica = new URL(Astro.url.pathname, Astro.site);
+const imagenAbs = new URL(imagen, Astro.site);
+
+const organizacion = {
+  '@context': 'https://schema.org',
+  '@type': 'Organization',
+  name: `${SITIO.nombreCompleto} (${SITIO.nombre})`,
+  url: Astro.site?.toString(),
+  logo: new URL('/apple-touch-icon.png', Astro.site).toString(),
+  slogan: SITIO.lema,
+  foundingDate: String(SITIO.fundacion),
+  email: CONTACTO.email,
+  telephone: '+598 0800 1804',
+  address: {
+    '@type': 'PostalAddress',
+    streetAddress: CONTACTO.casaCentral.direccion,
+    addressLocality: CONTACTO.casaCentral.ciudad,
+    addressCountry: 'UY',
+  },
+  sameAs: [REDES.facebook, REDES.instagram],
+};
+---
+<!doctype html>
+<html lang="es-UY" data-fondo="verdoso">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{tituloCompleto}</title>
+  <meta name="description" content={descripcion} />
+  <link rel="canonical" href={canonica} />
+  {noIndexar && <meta name="robots" content="noindex" />}
+  <meta name="theme-color" content="#006633" />
+  <link rel="icon" href="/favicon.png" type="image/png" />
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+  <link rel="sitemap" href="/sitemap-index.xml" />
+
+  <meta property="og:type" content="website" />
+  <meta property="og:locale" content="es_UY" />
+  <meta property="og:site_name" content={`${SITIO.nombre} · ${SITIO.nombreCompleto}`} />
+  <meta property="og:title" content={tituloCompleto} />
+  <meta property="og:description" content={descripcion} />
+  <meta property="og:url" content={canonica} />
+  <meta property="og:image" content={imagenAbs} />
+  <meta name="twitter:card" content="summary_large_image" />
+
+  <script type="application/ld+json" set:html={JSON.stringify(organizacion)} />
+  <script is:inline>
+    // Las animaciones de aparición solo se activan con JS disponible y sin preferencia de movimiento reducido.
+    if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) document.documentElement.classList.add('js-animar');
+    // Fondo elegido con el switch de la barra superior (antes de pintar, para evitar un parpadeo).
+    try {
+      const fondo = localStorage.getItem('copol-fondo');
+      if (fondo === 'blanco' || fondo === 'verdoso') document.documentElement.dataset.fondo = fondo;
+    } catch (e) { /* almacenamiento no disponible */ }
+  </script>
+</head>
+<body>
+  <a class="saltar" href="#contenido">Saltar al contenido</a>
+  <Encabezado />
+  <main id="contenido" tabindex="-1">
+    <slot />
+  </main>
+  <Pie />
+  <script>
+    // Imágenes de .media: aparecen nítidas al terminar de cargar (sin JS se ven directamente).
+    // Escucha en fase de captura (load/error no burbujean) para cubrir también las de carga diferida.
+    const marcar = (e: Event) => {
+      const img = e.target as HTMLElement;
+      if (img instanceof HTMLImageElement && img.parentElement?.classList.contains('media')) img.classList.add('cargada');
+    };
+    document.addEventListener('load', marcar, true);
+    document.addEventListener('error', marcar, true);
+    document.querySelectorAll<HTMLImageElement>('.media > img').forEach((img) => {
+      if (img.complete && img.naturalWidth) img.classList.add('cargada');
+    });
+
+    // Escalonado: los hijos de .escalonar aparecen uno tras otro.
+    document.querySelectorAll<HTMLElement>('.escalonar').forEach((grupo) => {
+      [...grupo.children].forEach((hijo, i) => {
+        hijo.classList.add('aparecer');
+        (hijo as HTMLElement).style.setProperty('--i', String(Math.min(i, 8)));
+      });
+    });
+
+    const elementos = document.querySelectorAll('.aparecer, .mascara, [data-revelar]');
+    if (document.documentElement.classList.contains('js-animar') && 'IntersectionObserver' in window) {
+      const io = new IntersectionObserver(
+        (entradas) => entradas.forEach((e) => {
+          if (e.isIntersecting) {
+            e.target.classList.add('visible');
+            io.unobserve(e.target);
+          }
+        }),
+        { rootMargin: '0px 0px -8% 0px' },
+      );
+      elementos.forEach((el) => io.observe(el));
+    } else {
+      elementos.forEach((el) => el.classList.add('visible'));
+    }
+  </script>
+</body>
+</html>
+
+<style>
+  main:focus { outline: none; }
+</style>

@@ -1,0 +1,26 @@
+---
+// Button (anatomía shadcn/ui). Con `href` renderiza un <a>; sin él, un <button>.
+// Los enlaces externos (http) reciben rel="noopener" automáticamente.
+import type { HTMLAttributes } from 'astro/types';
+
+type Variante = 'default' | 'secondary' | 'outline' | 'ghost' | 'accent' | 'inverse' | 'link';
+type Tamano = 'sm' | 'default' | 'lg' | 'icon';
+
+interface Props extends Omit<HTMLAttributes<'a'>, 'class'>, Omit<HTMLAttributes<'button'>, 'class' | keyof HTMLAttributes<'a'>> {
+  variant?: Variante;
+  size?: Tamano;
+  href?: string;
+  block?: boolean;
+  class?: string;
+  type?: 'button' | 'submit' | 'reset';
+}
+
+const { variant = 'default', size = 'default', href, block = false, class: clase, type = 'button', rel, ...resto } = Astro.props;
+const clases = ['btn', `btn--${variant}`, size !== 'default' && `btn--${size}`, block && 'btn--block', clase];
+const relFinal = rel ?? (href?.startsWith('http') ? 'noopener' : undefined);
+---
+{href ? (
+  <a href={href} class:list={clases} rel={relFinal} {...resto}><slot /></a>
+) : (
+  <button type={type} class:list={clases} {...resto}><slot /></button>
+)}

@@ -1,0 +1,77 @@
+---
+import Base from '../../layouts/Base.astro';
+import EncabezadoPagina from '../../components/EncabezadoPagina.astro';
+import BandaSocio from '../../components/BandaSocio.astro';
+import Icono from '../../components/Icono.astro';
+import { LOCALES } from '../../lib/datos';
+import { foto } from '../../lib/imagenes';
+import { MANUAL, SITIO } from '../../data/confirmado/sitio';
+import Button from '../../components/ui/Button.astro';
+import Card from '../../components/ui/Card.astro';
+import LineaTiempo from '../../components/LineaTiempo.astro';
+import { HITOS_PUBLICADOS } from '../../data/confirmado/historia';
+
+// Línea de tiempo: solo hitos confirmados (src/data/confirmado/historia.ts). Los que no tienen año
+// confirmado quedan pendientes y no se publican (docs/pendientes.md § Historia).
+const sucursales = LOCALES.filter((l) => l.tipo === 'sucursal').length;
+const agencias = LOCALES.filter((l) => l.tipo === 'agencia').length;
+const ESTATUTOS = 'https://anyflip.com/iosef/lfeu';
+---
+<Base titulo="Nuestra historia" descripcion="La historia de COPOL: de las Cantinas Policiales de 1917 a la Cooperativa Policial, con misión, visión y estatutos.">
+  <EncabezadoPagina
+    titulo="Nuestra historia"
+    antetitulo={`Desde ${SITIO.fundacion}`}
+    bajada="Más de un siglo de compromiso, solidaridad y servicio a nuestros socios."
+    migas={[{ texto: 'Sobre nosotros', href: '/sobre-nosotros/' }, { texto: 'Nuestra historia' }]}
+    imagen={foto('cantinas-policiales')}
+    altImagen="Fotografía histórica en blanco y negro de las Cantinas Policiales, con socios recorriendo el local"
+  />
+
+  <section class="contenedor seccion" aria-labelledby="linea-titulo">
+    <div class="encabezado-seccion">
+      <div>
+        <span class="eyebrow">De 1917 a hoy</span>
+        <h2 id="linea-titulo"><span class="mascara"><span>Nuestra línea de tiempo</span></span></h2>
+        <p class="lead">{MANUAL.origen}</p>
+      </div>
+    </div>
+    <LineaTiempo hitos={HITOS_PUBLICADOS} resumenHoy={`Hoy somos ${LOCALES.length} locales: Casa Central, ${sucursales} sucursales y ${agencias} agencias.`} />
+  </section>
+
+  <section class="contenedor seccion mv" aria-labelledby="mv-titulo">
+    <h2 id="mv-titulo" class="visualmente-oculto">Misión y visión</h2>
+    <Card as="article" variant="muted" class="mv__bloque aparecer">
+      <span class="eyebrow">Misión</span>
+      {MANUAL.mision.map((p) => <p>{p}</p>)}
+    </Card>
+    <Card as="article" variant="primary" class="mv__bloque sobre-verde aparecer">
+      <span class="eyebrow">Visión</span>
+      {MANUAL.vision.map((p) => <p>{p}</p>)}
+    </Card>
+  </section>
+
+  <section class="contenedor" aria-labelledby="estatutos-titulo">
+    <Card class="estatutos">
+      <span class="card__icono"><Icono nombre="documento" tamano={26} /></span>
+      <div>
+        <h2 id="estatutos-titulo">Estatutos</h2>
+        <p>Consultá el documento oficial de los estatutos de la Cooperativa Policial.</p>
+      </div>
+      <Button href={ESTATUTOS}>Ver estatutos <Icono nombre="externo" tamano={18} /><span class="visualmente-oculto"> (abre un sitio externo)</span></Button>
+    </Card>
+  </section>
+
+  <BandaSocio />
+</Base>
+
+<style>
+  .mv { display: grid; gap: 20px; }
+  @media (min-width: 900px) { .mv { grid-template-columns: 1fr 1fr; } }
+  .mv :global(.mv__bloque) { padding: clamp(24px, 4vw, 44px); border-radius: var(--radio-xl); }
+  .mv :global(.card--muted p) { color: var(--foreground); }
+  .mv :global(.card--primary .eyebrow) { color: var(--amarillo-copol); }
+
+  :global(.estatutos) { flex-direction: row !important; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 20px !important; }
+  :global(.estatutos) > div { flex: 1 1 320px; display: grid; gap: 6px; }
+  :global(.estatutos) h2 { font-size: 1.5rem; }
+</style>

@@ -1,0 +1,81 @@
+---
+import Base from '../../layouts/Base.astro';
+import EncabezadoPagina from '../../components/EncabezadoPagina.astro';
+import Icono from '../../components/Icono.astro';
+import { foto } from '../../lib/imagenes';
+import { CONTACTO, REDES, whatsapp } from '../../data/confirmado/sitio';
+import Button from '../../components/ui/Button.astro';
+import Media from '../../components/ui/Media.astro';
+import CarruselOfertas from '../../components/CarruselOfertas.astro';
+import { OFERTAS_SUPERMERCADO } from '../../data/confirmado/ofertas-supermercado';
+
+// Campañas vigentes: solo las que tienen pieza oficial e información publicada por la cooperativa
+// (motos Zanella en el Bazar y convenio de garantía de alquiler con Porto Seguro). Confirmar su vigencia
+// (docs/pendientes.md). Las ofertas del supermercado van en su propia sección, antes.
+const campanas = [
+  {
+    imagen: 'banner-motos-2',
+    alt: 'Pieza gráfica: “Subite a una Zanella” Sapucai 125cc Full, 15 cuotas sin recargo',
+    titulo: 'Motos 0 km en el Bazar',
+    texto: 'Zanella Pollerita y Sapucai, hasta en 15 cuotas sin recargo. Consultá las bases y condiciones en el sector Bazar.',
+    accion: { texto: 'Consultar por WhatsApp', href: whatsapp(CONTACTO.whatsappGeneral.numero, 'Hola! Quiero info sobre las motos nuevas en stock') },
+  },
+  {
+    imagen: 'banner-garantia-alquiler',
+    alt: 'Pieza gráfica del nuevo convenio Porto Seguro y COPOL: garantía de alquiler',
+    titulo: 'Nuevo convenio: garantía de alquiler',
+    texto: 'Con Porto Seguro, en todo el país, hasta en 10 cuotas sin tarjeta.',
+    accion: { texto: 'Ver convenios', href: '/beneficios/convenios/' },
+  },
+] as const;
+---
+<Base titulo="Promociones" descripcion="Ofertas del supermercado COPOL y campañas vigentes: motos en el Bazar y garantía de alquiler.">
+  <EncabezadoPagina
+    titulo="Promociones"
+    antetitulo="Hipermercado · Ofertas activas"
+    bajada="Campañas y ofertas de la Cooperativa Policial para todos."
+    migas={[{ texto: 'Hipermercado', href: '/hipermercado/' }, { texto: 'Promociones' }]}
+  >
+    <Button href={REDES.instagram} variant="outline"><Icono nombre="instagram" tamano={18} /> Novedades en Instagram</Button>
+  </EncabezadoPagina>
+
+  <section class="contenedor seccion supermercado" aria-labelledby="super-titulo">
+    <div class="encabezado-seccion">
+      <div>
+        <span class="eyebrow">Promociones del supermercado</span>
+        <h2 id="super-titulo"><span class="mascara"><span>{OFERTAS_SUPERMERCADO.titulo}</span></span></h2>
+        <p class="lead">Ofertas del supermercado de COPOL para {OFERTAS_SUPERMERCADO.mes}.</p>
+      </div>
+      <Button href="/hipermercado/tienda/" variant="outline">Horarios y ubicación <Icono nombre="flecha" tamano={18} /></Button>
+    </div>
+    <CarruselOfertas ofertas={OFERTAS_SUPERMERCADO.ofertas} titulo={`Promociones del supermercado: ${OFERTAS_SUPERMERCADO.titulo}`} />
+  </section>
+
+  <section class="contenedor seccion" aria-labelledby="campanas-titulo">
+    <h2 id="campanas-titulo"><span class="mascara"><span>Campañas vigentes</span></span></h2>
+    <ul class="campanas">
+      {campanas.map((c) => (
+        <li class="campana grupo-hover aparecer">
+          <Media src={foto(c.imagen)} alt={c.alt} widths={[400, 640, 960]} sizes="(min-width: 900px) 600px, 100vw" />
+          <div class="campana__texto">
+            <h3>{c.titulo}</h3>
+            <p>{c.texto}</p>
+            {c.accion && (
+              <a href={c.accion.href} class="enlace-flecha" rel={c.accion.href.startsWith('http') ? 'noopener' : undefined}>{c.accion.texto} <Icono nombre="flecha" tamano={18} /></a>
+            )}
+          </div>
+        </li>
+      ))}
+    </ul>
+  </section>
+
+</Base>
+
+<style>
+  /* Mosaico tipo masonry: cada pieza conserva su proporción original, sin recortes ni bandas. */
+  .campanas { list-style: none; margin: 24px 0 0; padding: 0; columns: 2 380px; column-gap: 24px; }
+  .campana { break-inside: avoid; display: grid; gap: 14px; margin-bottom: 32px; }
+  .campana__texto { display: grid; gap: 8px; justify-items: start; padding-inline: 2px; }
+  .campana__texto p { color: var(--muted-foreground); }
+  .supermercado { display: grid; gap: clamp(20px, 2.6vw, 28px); }
+</style>

@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://cooperativapolicial.com.uy/sitemap-index.xml

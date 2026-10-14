@@ -1,0 +1,90 @@
+---
+// Banner proporcionado por la cooperativa (≈ 2000 × 521 px), enlazado a su sección.
+// - Se muestra SIEMPRE completo y con su proporción original: sin recortes ni deformaciones, para no
+//   perder el texto que viene dentro de la imagen.
+// - En móvil ocupa todo el ancho de la pantalla (sin márgenes laterales) para ganar legibilidad.
+// - `movil`: versión alternativa opcional para pantallas angostas (p. ej. 1080 × 1080). Cuando la
+//   cooperativa la entregue, basta con pasarla y se usa automáticamente por debajo de 640 px.
+// - AVIF + WebP en varios anchos: cada dispositivo descarga solo el tamaño que necesita.
+import { getImage } from 'astro:assets';
+import type { ImageMetadata } from 'astro';
+
+interface Props {
+  src: ImageMetadata;
+  movil?: ImageMetadata;
+  /** Texto alternativo: transcribe el texto del banner e indica el destino. */
+  alt: string;
+  href: string;
+  prioridad?: boolean;
+  class?: string;
+}
+const { src, movil, alt, href, prioridad = false, class: clase } = Astro.props;
+
+const variantes = async (img: ImageMetadata, anchos: number[], format: 'avif' | 'webp') => {
+  const lista = anchos.filter((w) => w <= img.width);
+  const r = await getImage({ src: img, widths: lista.length ? lista : [img.width], format, quality: format === 'avif' ? 60 : 78 });
+  return r.srcSet.attribute;
+};
+const ANCHOS = [480, 768, 1024, 1366, 1600, 2000];
+const SIZES = '(min-width: 1344px) 1280px, (min-width: 640px) calc(100vw - 64px), 100vw';
+const fuentes = [
+  ...(movil
+    ? [
+        { media: '(max-width: 639px)', type: 'image/avif', srcset: await variantes(movil, [480, 768, 1080], 'avif'), sizes: '100vw' },
+        { media: '(max-width: 639px)', type: 'image/webp', srcset: await variantes(movil, [480, 768, 1080], 'webp'), sizes: '100vw' },
+      ]
+    : []),
+  { type: 'image/avif', srcset: await variantes(src, ANCHOS, 'avif'), sizes: SIZES },
+  { type: 'image/webp', srcset: await variantes(src, ANCHOS, 'webp'), sizes: SIZES },
+];
+const respaldo = await getImage({ src, width: Math.min(1366, src.width), format: 'webp', quality: 78 });
+---
+<a href={href} class:list={['banner', { 'banner--con-movil': movil }, clase]} style={`--ratio: ${src.width} / ${src.height}${movil ? `; --ratio-movil: ${movil.width} / ${movil.height}` : ''}`} data-banner>
+  <picture>
+    {fuentes.map((f) => <source media={f.media} type={f.type} srcset={f.srcset} sizes={f.sizes} />)}
+    <img
+      src={respaldo.src}
+      alt={alt}
+      width={src.width}
+      height={src.height}
+      loading={prioridad ? 'eager' : 'lazy'}
+      fetchpriority={prioridad ? 'high' : undefined}
+      decoding="async"
+    />
+  </picture>
+</a>
+
+<style>
+  .banner {
+    position: relative;
+    display: block;
+    aspect-ratio: var(--ratio);
+    overflow: hidden;
+    border-radius: var(--radio-xl);
+    background: #f1bcd6; /* tono de fondo de los banners: evita un hueco blanco mientras carga */
+    isolation: isolate;
+    transition: box-shadow var(--transicion), transform 500ms var(--resorte);
+  }
+  .banner picture,
+  .banner img { display: block; width: 100%; height: 100%; }
+  .banner img { object-fit: contain; }
+  .banner::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.06);
+    pointer-events: none;
+  }
+  .banner:hover { box-shadow: var(--sombra-suave); }
+  @media (prefers-reduced-motion: no-preference) and (hover: hover) {
+    .banner:hover { transform: translateY(-2px); }
+  }
+  .banner:focus-visible { outline: 3px solid var(--ring); outline-offset: 4px; }
+  @media (max-width: 639px) {
+    /* A todo el ancho de la pantalla: compensa el margen lateral del contenedor. */
+    .banner { margin-inline: calc(-1 * var(--gutter)); border-radius: 0; }
+    .banner::after { box-shadow: none; }
+    .banner--con-movil { aspect-ratio: var(--ratio-movil); }
+  }
+</style>

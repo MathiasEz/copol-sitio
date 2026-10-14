@@ -1,0 +1,20 @@
+---
+// Card (anatomía shadcn/ui). Con `href` toda la tarjeta es un enlace.
+// Variantes: default · muted · primary · dashed
+import type { HTMLAttributes } from 'astro/types';
+
+interface Props extends Omit<HTMLAttributes<'div'>, 'class'> {
+  variant?: 'default' | 'muted' | 'primary' | 'dashed';
+  href?: string;
+  as?: 'div' | 'article' | 'li' | 'section';
+  class?: string;
+}
+const { variant = 'default', href, as = 'div', class: clase, ...resto } = Astro.props;
+const clases = ['card', variant !== 'default' && `card--${variant}`, clase];
+const Etiqueta = as;
+---
+{href ? (
+  <a href={href} class:list={clases} rel={href.startsWith('http') ? 'noopener' : undefined} {...resto}><slot /></a>
+) : (
+  <Etiqueta class:list={clases} {...resto}><slot /></Etiqueta>
+)}
