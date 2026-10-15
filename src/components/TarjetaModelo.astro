@@ -50,12 +50,12 @@ const resumen = n > 1
     ) : (
       <div class="producto__sin-imagen"><Icono nombre="imagen" tamano={28} /><span>Imagen no disponible</span></div>
     )}
+  </div>
+  <div class="producto__cuerpo">
     <span class="stock-etiqueta" data-stock-etiqueta>
       <Icono nombre={ICONO_ESTADO[m.estado]} tamano={14} />
       <span data-stock-texto>{ESTADO_STOCK[m.estado]}</span>
     </span>
-  </div>
-  <div class="producto__cuerpo">
     <span class="producto__categoria">{m.categoria}{m.marca && ` · ${m.marca}`}</span>
     <Titulo class="producto__nombre" data-nombre>{m.nombre}</Titulo>
     {resumen && <span class="producto__codigo">{resumen}</span>}
