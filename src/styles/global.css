@@ -58,8 +58,9 @@
   --fuente: 'Figtree Variable', 'Segoe UI', system-ui, sans-serif;
 
   --radio-pill: 999px;
+  /* Contenedores (tarjetas, cajas de imagen, paneles, banners): 28 px en todo el sitio. */
   --radio-xl: 28px;
-  --radio-lg: 20px;
+  --radio-lg: 28px;
   --radio-md: 14px;
 
   --sombra: 0 24px 48px -12px rgb(0 51 26 / 0.18);
@@ -594,3 +595,8 @@ a:hover > .media::after { box-shadow: var(--anillo-fuerte); }
 .bloque__cabecera h2 { font-size: clamp(1.625rem, 3vw, 2.25rem); }
 .bloque__bajada { color: var(--muted-foreground); margin-top: 8px; max-width: 60ch; }
 .bloque__acciones { display: flex; flex-wrap: wrap; gap: 10px; }
+/* En celular, los grupos de llamados a la acción van a todo el ancho y apilados (como en el carrusel). */
+@media (max-width: 599px) {
+  .bloque__acciones { width: 100%; }
+  .bloque__acciones > .btn { flex: 1 1 100%; }
+}

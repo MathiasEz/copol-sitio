@@ -33,7 +33,7 @@ const externo = (url: string | null) => Boolean(url && /^https?:/.test(url));
               <h3>{n.titulo}</h3>
               {n.texto && <p>{n.texto}</p>}
               {n.enlace_url && n.enlace_texto && (
-                <a href={n.enlace_url} class="btn btn--sm" rel={externo(n.enlace_url) ? 'noopener' : undefined}>{n.enlace_texto} <Icono nombre="flecha" tamano={16} /></a>
+                <a href={n.enlace_url} class="enlace-flecha nov__enlace" rel={externo(n.enlace_url) ? 'noopener' : undefined}>{n.enlace_texto} <Icono nombre="flecha" tamano={18} /></a>
               )}
             </div>
           </article>
@@ -52,6 +52,8 @@ const externo = (url: string | null) => Boolean(url && /^https?:/.test(url));
   .nov__cuerpo { display: grid; gap: 10px; justify-items: start; padding: 4px clamp(18px, 3vw, 32px) clamp(18px, 3vw, 28px); }
   .nov__cuerpo h3 { font-size: clamp(1.25rem, 2vw, 1.5rem); }
   .nov__cuerpo p { color: var(--muted-foreground); max-width: 62ch; }
+  /* Enlace de texto (como "Ver promociones"), alineado al borde izquierdo del título y del texto. */
+  .nov__enlace { margin-top: -6px; margin-bottom: -10px; color: var(--verde-oscuro); }
   @media (min-width: 760px) {
     .nov--imagen-izquierda { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: center; gap: 0; }
     .nov--imagen-izquierda .nov__media { height: 100%; display: grid; place-items: center; }

@@ -1,8 +1,8 @@
 ---
 // Carrusel de Inicio.
-// - Navegación: flechas discretas a los lados de los indicadores, deslizar (táctil o arrastrando con
-//   el mouse), flechas ←/→ del teclado con el carrusel enfocado e indicadores (barras de progreso)
-//   que también son botones accesibles.
+// - Navegación: flechas discretas a los lados de los indicadores, deslizar sobre la imagen (táctil o
+//   arrastrando con el mouse; sobre el texto se desplaza la página), flechas ←/→ del teclado con el
+//   carrusel enfocado e indicadores (barras de progreso) que también son botones accesibles.
 // - Movimiento: el texto sube desde una máscara y las imágenes forman un mazo en abanico que rota
 //   (idea tomada de prompt-motion.com). Sin fundidos genéricos ni desenfoques.
 // - Avance automático cada 2,5 s, en bucle. Un gesto del usuario (flecha, indicador, deslizar)
@@ -76,7 +76,7 @@ const total = diapositivas.length;
 <!-- Título de la página siempre presente: el carrusel oculta las diapositivas que no están activas. -->
 <h1 class="visualmente-oculto">COPOL · Cooperativa Policial</h1>
 <section class="hero" aria-roledescription="carrusel" aria-label="Novedades destacadas" aria-describedby="hero-instrucciones" data-carrusel>
-  <p id="hero-instrucciones" class="visualmente-oculto">Deslizá o usá las flechas izquierda y derecha del teclado para cambiar de novedad.</p>
+  <p id="hero-instrucciones" class="visualmente-oculto">Deslizá sobre la imagen o usá las flechas izquierda y derecha del teclado para cambiar de novedad.</p>
   <div class="contenedor hero__marco">
     <div class="hero__textos" aria-live="off" data-paneles>
       {diapositivas.map((d, i) => (
@@ -199,19 +199,22 @@ const total = diapositivas.length;
       if (e.key === 'ArrowRight') { e.preventDefault(); mostrar(actual + 1, true); }
     });
 
-    // Gestos: deslizar en horizontal (táctil o mouse). El scroll vertical sigue funcionando.
+    // Gestos: deslizar en horizontal (táctil o mouse) SOLO sobre las imágenes. Sobre el texto y los
+    // botones el dedo desplaza la página con normalidad (no cambia de diapositiva por accidente).
+    const mazo = carrusel.querySelector<HTMLElement>('[data-mazo]')!;
     let x0 = 0, y0 = 0, arrastrando = false;
-    carrusel.addEventListener('pointerdown', (e) => {
+    mazo.addEventListener('pointerdown', (e) => {
       if ((e.target as HTMLElement).closest('a, button')) return;
       arrastrando = true; x0 = e.clientX; y0 = e.clientY;
     });
-    carrusel.addEventListener('pointerup', (e) => {
+    mazo.addEventListener('pointerup', (e) => {
       if (!arrastrando) return;
       arrastrando = false;
       const dx = e.clientX - x0, dy = e.clientY - y0;
       if (Math.abs(dx) > 48 && Math.abs(dx) > Math.abs(dy) * 1.2) mostrar(actual + (dx < 0 ? 1 : -1), true);
     });
-    carrusel.addEventListener('pointercancel', () => (arrastrando = false));
+    mazo.addEventListener('pointercancel', () => (arrastrando = false));
+    mazo.addEventListener('pointerleave', () => (arrastrando = false));
 
     // Pausa temporal con el puntero o el foco dentro (el progreso se congela).
     const pausar = (si: boolean) => carrusel.classList.toggle('hero--pausado', si);
@@ -230,7 +233,6 @@ const total = diapositivas.length;
     border-bottom: 1px solid var(--border);
     padding-block: clamp(28px, 5vw, 72px) clamp(36px, 5vw, 64px);
     overflow: hidden;
-    touch-action: pan-y;
   }
   .hero:focus-visible { outline-offset: -6px; border-radius: 0; }
   .hero__marco {
@@ -319,6 +321,9 @@ const total = diapositivas.length;
     padding-top: clamp(28px, 4vw, 48px);
     padding-right: clamp(20px, 3vw, 40px);
     user-select: none;
+    /* El navegador solo se queda con el desplazamiento vertical: el horizontal cambia de diapositiva. */
+    touch-action: pan-y;
+    cursor: grab;
     --spread: 0px;
   }
   .hero__carta {

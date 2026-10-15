@@ -14,9 +14,9 @@
 .producto__codigo { font-size: 0.8125rem; color: var(--muted-foreground); }
 .producto__accion { margin-top: auto; align-self: flex-start; }
 
-/* Etiqueta de stock sobre la imagen */
+/* Etiqueta de stock sobre la imagen: separada lo suficiente de la esquina redondeada (28 px) para no montarse sobre la curva. */
 .stock-etiqueta {
-  position: absolute; top: 10px; left: 10px; z-index: 1;
+  position: absolute; top: 12px; left: 12px; z-index: 1;
   display: inline-flex; align-items: center; gap: 5px;
   padding: 4px 10px 4px 8px; border-radius: var(--radio-pill);
   font-size: 0.75rem; font-weight: 700; line-height: 1.2; letter-spacing: 0.01em;
@@ -31,5 +31,5 @@
   .producto__nombre { font-size: 0.875rem; }
   .producto__accion { align-self: stretch; padding-inline: 8px; font-size: 0.875rem; gap: 6px; }
   .producto__stock { display: none; }
-  .stock-etiqueta { top: 6px; left: 6px; font-size: 0.6875rem; padding: 3px 8px 3px 6px; }
+  .stock-etiqueta { top: 10px; left: 10px; font-size: 0.75rem; padding: 3px 8px 3px 6px; }
 }

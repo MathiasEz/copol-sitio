@@ -219,6 +219,10 @@ const accesos = [
   @media (min-width: 700px) and (max-width: 999px) { .pinecoop { grid-template-columns: 1fr 1fr; } .pinecoop__texto { grid-column: 1 / -1; } }
   .pinecoop__texto { display: grid; gap: 14px; justify-items: start; }
   .pinecoop__acciones { display: flex; flex-wrap: wrap; gap: 10px; }
+  @media (max-width: 599px) {
+    .pinecoop__texto { justify-items: stretch; }
+    .pinecoop__acciones :global(.btn) { flex: 1 1 100%; }
+  }
   .lista-check { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
   .lista-check li { display: flex; gap: 10px; align-items: flex-start; }
   .lista-check :global(svg) { color: var(--verde-copol); margin-top: 3px; flex: none; }
