@@ -14,6 +14,7 @@ import { BASE, type Config } from './config.ts';
 import { ahora, ejecutar, una, type Db } from './db.ts';
 import { almacenConfigurado, ErrorImagen, procesarImagen, variante, type Almacen } from './imagenes.ts';
 import * as N from './novedades.ts';
+import * as E from './empleados.ts';
 import * as P from './productos.ts';
 import * as PR from './propuestas.ts';
 import { hashFicticio, Limitador, problemaClave, puede, tokenAleatorio, verificarClave, type Permiso } from './seguridad.ts';
@@ -49,6 +50,7 @@ const AVISOS: Record<string, V.Contexto['aviso']> = {
   'verificacion-fallida': { tipo: 'error', texto: 'Demasiados intentos con el correo o el código. Ingresá de nuevo.' },
   'sesion-cerrada': { tipo: 'ok', texto: 'Sesión cerrada: esa persona tendrá que volver a ingresar.' },
   'equipo-olvidado': { tipo: 'ok', texto: 'Equipo olvidado: la próxima vez se le pedirán el PIN y el código por correo.' },
+  'empleados-guardado': { tipo: 'ok', texto: 'Información para empleados actualizada.' },
 };
 
 export interface OpcionesApp {
@@ -602,6 +604,49 @@ export function crearApp({ db: fuenteDb, config, almacen, asistente, correo }: O
     await N.eliminarNovedad(c.get('db'), n.id);
     await registrar(c.get('db'), actor(c), 'novedad.baja', 'novedad', String(n.id), { titulo: n.titulo });
     return c.redirect(`${r('/novedades')}?aviso=novedad-eliminada`);
+  });
+
+  // ── Información empleados: la ve todo el personal; la editan los administradores ──
+  app.get('/empleados', requiere('ver'), async (c) => c.html(V.vistaEmpleados(ctx(c), await E.obtenerPortal(c.get('db')), puede(c.get('usuario')!.rol, 'novedades'))));
+  app.get('/empleados/editar', requiere('novedades'), async (c) => c.html(V.vistaFormEmpleados(ctx(c), await E.obtenerPortal(c.get('db')))));
+  app.post('/empleados', requiere('novedades'), async (c) => {
+    const db = c.get('db');
+    const b = await cuerpo(c);
+    const actual = await E.obtenerPortal(db);
+    const errores: Record<string, string> = {};
+    const enlaces = { acosoUrl: E.validarEnlace(b.acoso_url), animoUrl: E.validarEnlace(b.animo_url), recibosUrl: E.validarEnlace(b.recibos_url) };
+    for (const [k, campo] of [['acosoUrl', 'acoso_url'], ['animoUrl', 'animo_url'], ['recibosUrl', 'recibos_url']] as const) if (enlaces[k].error) errores[campo] = enlaces[k].error!;
+    const nuevo: E.Portal = { acosoUrl: enlaces.acosoUrl.url, animoUrl: enlaces.animoUrl.url, recibosUrl: enlaces.recibosUrl.url, carrusel: [], ciudadDelPlata: [], chuy: [] };
+    const archivos: Partial<Record<E.Grupo, File[]>> = {};
+    for (const g of Object.keys(E.GRUPOS) as E.Grupo[]) {
+      nuevo[g] = actual[g]
+        .map((img, k) => ({ src: img.src, alt: texto(b[`alt_${g}_${k}`], 160).slice(0, 160) || img.alt, quitar: b[`quitar_${g}_${k}`] === '1' }))
+        .filter((x) => !x.quitar)
+        .map(({ src, alt }) => ({ src, alt }));
+      const subidos = [b[`nuevas_${g}`]].flat().filter((f): f is File => f instanceof File && f.size > 0);
+      const max = E.GRUPOS[g].max;
+      if (nuevo[g].length + subidos.length > max) errores[`nuevas_${g}`] = max === 1 ? 'Esta sección admite una sola imagen: quitá la actual para cambiarla.' : `Esta sección admite hasta ${max} imágenes.`;
+      archivos[g] = subidos;
+    }
+    // Las imágenes se suben solo si el resto es válido (así no quedan archivos huérfanos).
+    if (!Object.keys(errores).length) {
+      for (const g of Object.keys(archivos) as E.Grupo[]) {
+        const alt = texto(b[`alt_nueva_${g}`], 160).slice(0, 160) || E.GRUPOS[g].titulo.replace(/ \(carrusel\)$/, '');
+        for (const archivo of archivos[g]!) {
+          try {
+            nuevo[g].push({ src: await procesarImagen(archivo, { maxMB: config.maxImagenMB, tipo: 'novedad', carpeta: 'empleados', nombre: slug(g), almacen: guardarEn }), alt });
+          } catch (e) {
+            if (!(e instanceof ErrorImagen)) throw e;
+            errores[`nuevas_${g}`] = `${archivo.name}: ${e.message}`;
+          }
+        }
+      }
+    }
+    if (Object.keys(errores).length) return c.html(V.vistaFormEmpleados(ctx(c), { ...actual, acosoUrl: nuevo.acosoUrl, animoUrl: nuevo.animoUrl, recibosUrl: nuevo.recibosUrl }, errores), 400);
+    await E.guardarPortal(db, nuevo);
+    const resumen = (p: E.Portal) => ({ protocolo: p.acosoUrl, encuesta: p.animoUrl, recibos: p.recibosUrl, fotos: { carrusel: p.carrusel.length, ciudadDelPlata: p.ciudadDelPlata.length, chuy: p.chuy.length } });
+    await registrar(db, actor(c), 'empleados.edicion', 'empleados', null, { antes: resumen(actual), despues: resumen(nuevo) });
+    return c.redirect(`${r('/empleados')}?aviso=empleados-guardado`);
   });
 
   // ── Usuarios (solo administradores) ──

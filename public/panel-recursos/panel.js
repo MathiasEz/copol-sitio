@@ -68,6 +68,62 @@
     }
   });
 
+  // ── Carrusel de "Información empleados": flechas (sin JS se desliza igual) ──
+  document.querySelectorAll('[data-carrusel-panel]').forEach((c) => {
+    const pista = c.querySelector('[data-pista]');
+    const controles = c.querySelector('[data-controles]');
+    if (!pista || !controles) return;
+    controles.hidden = false;
+    const paso = (dir) => {
+      const item = pista.firstElementChild;
+      const ancho = item ? item.getBoundingClientRect().width + 12 : pista.clientWidth;
+      const alFinal = pista.scrollLeft + pista.clientWidth >= pista.scrollWidth - 4;
+      const alInicio = pista.scrollLeft <= 4;
+      // En los extremos vuelve al otro lado (en bucle).
+      if (dir > 0 && alFinal) pista.scrollTo({ left: 0, behavior: 'smooth' });
+      else if (dir < 0 && alInicio) pista.scrollTo({ left: pista.scrollWidth, behavior: 'smooth' });
+      else pista.scrollBy({ left: dir * ancho, behavior: 'smooth' });
+    };
+    c.querySelector('[data-anterior]')?.addEventListener('click', () => paso(-1));
+    c.querySelector('[data-siguiente]')?.addEventListener('click', () => paso(1));
+  });
+
+  // ── Fotos grandes: se achican en el navegador antes de enviarlas ──
+  // Vercel rechaza pedidos de más de ~4,5 MB; una foto de celular ronda los 3-6 MB. Se reducen a 1800 px
+  // (WebP). Si el navegador no puede, se envían tal cual y el servidor informa si son demasiado grandes.
+  const achicar = async (archivo) => {
+    if (!/^image\/(jpeg|png|webp|avif|heic|heif)$/.test(archivo.type) || archivo.size < 900 * 1024) return archivo;
+    const bitmap = await createImageBitmap(archivo, { imageOrientation: 'from-image' });
+    const escala = Math.min(1, 1800 / Math.max(bitmap.width, bitmap.height));
+    const lienzo = document.createElement('canvas');
+    lienzo.width = Math.round(bitmap.width * escala);
+    lienzo.height = Math.round(bitmap.height * escala);
+    lienzo.getContext('2d').drawImage(bitmap, 0, 0, lienzo.width, lienzo.height);
+    bitmap.close?.();
+    const blob = await new Promise((ok) => lienzo.toBlob(ok, 'image/webp', 0.86));
+    return blob && blob.size < archivo.size ? new File([blob], archivo.name.replace(/\.\w+$/, '') + '.webp', { type: 'image/webp' }) : archivo;
+  };
+  document.addEventListener('submit', async (e) => {
+    const form = e.target;
+    if (!(form instanceof HTMLFormElement) || !form.matches('[data-comprimir]') || form.dataset.listo) return;
+    const entradas = [...form.querySelectorAll('input[type="file"]')].filter((i) => i.files?.length);
+    if (!entradas.length || typeof DataTransfer === 'undefined' || typeof createImageBitmap === 'undefined') return;
+    e.preventDefault();
+    const boton = form.querySelector('button[type="submit"]');
+    boton?.setAttribute('aria-busy', 'true');
+    if (boton) boton.disabled = true;
+    try {
+      for (const entrada of entradas) {
+        const dt = new DataTransfer();
+        for (const f of entrada.files) dt.items.add(await achicar(f).catch(() => f));
+        entrada.files = dt.files;
+      }
+    } finally {
+      form.dataset.listo = '1';
+      form.submit();
+    }
+  });
+
   // ── Escaneo del código interno con la cámara ──
   // El permiso de cámara se pide recién al tocar "Escanear código". Si no hay cámara, no hay permiso o
   // el navegador no puede leer códigos, el campo sigue disponible para ingresarlo a mano.

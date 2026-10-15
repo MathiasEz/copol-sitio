@@ -36,6 +36,7 @@
     "@libsql/client": "^0.18.0",
     "@vercel/blob": "^2.8.1",
     "@zxing/browser": "^0.2.1",
+    "@zxing/library": "^0.23.0",
     "astro": "^7.3.8",
     "hono": "^4.13.13",
     "sharp": "^0.35.5"

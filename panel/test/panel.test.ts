@@ -302,6 +302,58 @@ describe('novedades', () => {
   });
 });
 
+describe('información empleados', () => {
+  it('la ve todo el personal, con los QR generados; solo el administrador la edita', async () => {
+    for (const usuario of ['lector', 'editor']) {
+      const n = new Navegador();
+      await n.ingresar(usuario);
+      const html = await (await n.pedir(`${RUTA}/empleados`)).text();
+      assert.match(html, new RegExp(`href="${RUTA}/empleados"[^>]*>.*Información empleados`), `${usuario}: opción en el menú`);
+      assert.match(html, /<svg class="qr"[^>]*aria-label="Código QR: Acoso laboral"/);
+      assert.match(html, /aria-label="Código QR: ¿Cómo te sentís hoy\?"/);
+      assert.match(html, /Tu cooperativa/);
+      assert.match(html, /Pinecoop Chuy/);
+      assert.doesNotMatch(html, /empleados\/editar/, `${usuario}: sin botón Editar`);
+      assert.equal((await n.pedir(`${RUTA}/empleados/editar`)).status, 403);
+      assert.equal((await n.post(`${RUTA}/empleados`, { recibos_url: 'https://ejemplo.com' })).status, 403);
+    }
+  });
+  it('el administrador cambia enlaces y fotos, con validación y registro', async () => {
+    const n = new Navegador();
+    await n.ingresar('principal');
+    assert.match(await (await n.pedir(`${RUTA}/empleados`)).text(), new RegExp(`${RUTA}/empleados/editar`));
+    await n.pedir(`${RUTA}/empleados/editar`);
+    const malo = await n.post(`${RUTA}/empleados`, { acoso_url: 'javascript:alert(1)', animo_url: '', recibos_url: '' });
+    assert.equal(malo.status, 400);
+    assert.match(await malo.text(), /https:\/\//);
+    assert.equal(await fila("SELECT 1 FROM ajustes WHERE clave = 'portal_empleados'"), undefined, 'con errores no se guarda nada');
+
+    const ok = await n.post(`${RUTA}/empleados`, {
+      acoso_url: 'https://intranet.copol.test/protocolo.pdf', animo_url: 'https://forms.copol.test/animo', recibos_url: 'https://recibos.copol.test/',
+      quitar_carrusel_0: '1', alt_carrusel_1: 'Tienda por dentro',
+      nuevas_ciudadDelPlata: await png(1600, 900), alt_nueva_ciudadDelPlata: 'Obra en Ciudad del Plata',
+    });
+    assert.equal(ok.status, 302);
+    assert.equal(ok.headers.get('location'), `${RUTA}/empleados?aviso=empleados-guardado`);
+    const html = await (await n.pedir(`${RUTA}/empleados?aviso=empleados-guardado`)).text();
+    assert.match(html, /href="https:\/\/recibos\.copol\.test\/"/);
+    assert.match(html, /href="https:\/\/intranet\.copol\.test\/protocolo\.pdf"/);
+    assert.match(html, /alt="Obra en Ciudad del Plata"/);
+    assert.match(html, /src="[^"]*\/empleados\/ciudaddelplata-[0-9a-f]+-800\.webp"/i);
+    assert.match(html, /Tienda por dentro/);
+    assert.doesNotMatch(html, /casa-central\.webp/, 'la foto quitada ya no aparece');
+
+    // Ciudad del Plata admite una sola imagen
+    await n.pedir(`${RUTA}/empleados/editar`);
+    const demas = await n.post(`${RUTA}/empleados`, { acoso_url: 'https://intranet.copol.test/protocolo.pdf', nuevas_ciudadDelPlata: await png(800, 600) });
+    assert.equal(demas.status, 400);
+    assert.match(await demas.text(), /admite una sola imagen/);
+    const ev = await fila<{ detalle: string; usuario: string }>("SELECT detalle, usuario FROM auditoria WHERE accion = 'empleados.edicion' ORDER BY id DESC LIMIT 1");
+    assert.equal(ev!.usuario, 'principal');
+    assert.match(ev!.detalle, /recibos\.copol\.test/);
+  });
+});
+
 describe('usuarios', () => {
   it('alta simple con usuario o correo, rol y contraseña temporal; edición y baja', async () => {
     const n = new Navegador();

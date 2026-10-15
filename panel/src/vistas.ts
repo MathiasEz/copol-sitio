@@ -6,6 +6,7 @@ import type { HtmlEscapedString } from 'hono/utils/html';
 import { ACCIONES, type Evento } from './auditoria.ts';
 import { BASE } from './config.ts';
 import { variante } from './imagenes.ts';
+import { GRUPOS, qrSvg, type Grupo, type ImagenPortal, type Portal } from './empleados.ts';
 import { PLANTILLAS, type Novedad, type Plantilla } from './novedades.ts';
 import type * as AC from './acceso.ts';
 import { describirEquipo } from './acceso.ts';
@@ -53,6 +54,10 @@ const ICONOS: Record<string, string> = {
   enviar: '<path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/>',
   luna: '<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>',
   sol: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
+  empleados: '<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="11" r="2.5"/><path d="M5.5 17a3.5 3.5 0 0 1 7 0M15 9h3M15 13h3"/>',
+  'flecha-externa': '<path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/>',
+  izquierda: '<path d="m15 18-6-6 6-6"/>',
+  derecha: '<path d="m9 18 6-6-6-6"/>',
 };
 export const icono = (n: string, t = 18) => raw(`<svg class="i" width="${t}" height="${t}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONOS[n] ?? ''}</svg>`);
 
@@ -102,6 +107,7 @@ export function layout(c: Contexto, titulo: string, cuerpo: H, acciones: H | '' 
       ${puede(u.rol, 'auditoria') ? item('/registro', 'Registro', 'registro') : ''}
       ${puede(u.rol, 'auditoria') ? item('/accesos', 'Accesos', 'escudo') : ''}
       ${puede(u.rol, 'asistente') ? item('/asistente', 'Asistente', 'chispa') : ''}
+      ${item('/empleados', 'Información empleados', 'empleados')}
     </nav>
     <div class="sidebar__pie">
       <a href="${r('/perfil')}" class="perfil" ${si(c.ruta.startsWith(r('/perfil')), 'aria-current="page"')}>
@@ -683,6 +689,107 @@ export function vistaAsistente(c: Contexto, d: DatosAsistente) {
   </form>
 </section>
 <script src="/panel-recursos/asistente.js" defer></script>`);
+}
+
+// ── Información empleados (todo el personal; edita el administrador) ──
+/** Imagen del portal: las fotos iniciales son estáticas; las subidas tienen variantes de 800 y 1600 px. */
+const imgPortal = (src: string) => (src.startsWith('/panel-recursos/') ? { src, srcset: null } : { src: variante(src, 800), srcset: `${variante(src, 800)} 800w, ${variante(src, 1600)} 1600w` });
+const fotoPortal = (i: ImagenPortal, sizes: string, clase = '') => {
+  const f = imgPortal(i.src);
+  return f.srcset
+    ? html`<img class="${clase}" src="${f.src}" srcset="${f.srcset}" sizes="${sizes}" alt="${i.alt}" loading="lazy" decoding="async">`
+    : html`<img class="${clase}" src="${f.src}" alt="${i.alt}" loading="lazy" decoding="async">`;
+};
+const pendiente = (editar: boolean, texto: string) => html`<div class="portal-pendiente">${icono('info', 18)}<p>${editar ? html`${texto} <a href="${r('/empleados/editar')}">Cargalo en Editar</a>.` : 'Disponible pronto.'}</p></div>`;
+
+export function vistaEmpleados(c: Contexto, p: Portal, editar: boolean) {
+  const tarjetaQr = (titulo: string, eyebrow: string, texto: string, url: string, boton: string, faltante: string) => html`<section class="card portal-qr">
+    <div class="portal-qr__texto"><span class="portal__eyebrow">${eyebrow}</span><h2>${titulo}</h2><p class="muted">${texto}</p></div>
+    ${url
+      ? html`<div class="portal-qr__codigo">${raw(qrSvg(url, `Código QR: ${titulo}`))}</div>
+        <p class="muted portal-qr__ayuda">Escaneá el código con la cámara del celular o abrilo desde acá.</p>
+        <a class="btn" href="${url}" target="_blank" rel="noopener noreferrer">${boton}${icono('flecha-externa', 16)}</a>`
+      : pendiente(editar, faltante)}
+  </section>`;
+  return layout(c, 'Información empleados', html`
+<div class="portal">
+  <div class="portal__qrs">
+    ${tarjetaQr('Acoso laboral', 'RR.HH.', 'Protocolo de prevención y erradicación del acoso en cualquiera de sus modalidades, violencia laboral y discriminación en el ambiente de trabajo.', p.acosoUrl, 'Abrir el protocolo', 'Falta el enlace del protocolo.')}
+    ${tarjetaQr('¿Cómo te sentís hoy?', 'Bienestar', 'Contanos cómo estás: tu respuesta nos ayuda a cuidar el ambiente de trabajo.', p.animoUrl, 'Responder', 'Falta el enlace de la encuesta.')}
+  </div>
+
+  <section class="card portal__bloque" aria-labelledby="portal-coop">
+    <h2 id="portal-coop" class="portal__titulo">Tu cooperativa</h2>
+    ${p.carrusel.length
+      ? html`<div class="carrusel-panel" data-carrusel-panel>
+        <ul class="carrusel-panel__pista" tabindex="0" aria-label="Fotos de la cooperativa (deslizá para ver más)" data-pista>
+          ${p.carrusel.map((i, k) => html`<li class="carrusel-panel__item"><figure>${fotoPortal(i, '(min-width: 900px) 560px, 88vw')}${i.alt ? html`<figcaption>${i.alt}</figcaption>` : ''}</figure><span class="sr">Foto ${k + 1} de ${p.carrusel.length}</span></li>`)}
+        </ul>
+        ${p.carrusel.length > 1 ? html`<div class="carrusel-panel__controles" data-controles hidden>
+          <button class="btn btn--outline btn--icono" type="button" data-anterior aria-label="Foto anterior">${icono('izquierda', 18)}</button>
+          <button class="btn btn--outline btn--icono" type="button" data-siguiente aria-label="Foto siguiente">${icono('derecha', 18)}</button>
+        </div>` : ''}
+      </div>`
+      : pendiente(editar, 'Todavía no hay fotos.')}
+  </section>
+
+  <section class="card portal__bloque" aria-labelledby="portal-cdp">
+    <div><span class="portal__eyebrow">Próximamente</span><h2 id="portal-cdp" class="portal__titulo">Ciudad del Plata</h2></div>
+    ${p.ciudadDelPlata.length ? html`<div class="portal__foto">${fotoPortal(p.ciudadDelPlata[0], '(min-width: 900px) 760px, 92vw')}</div>` : editar ? pendiente(true, 'Falta la imagen.') : ''}
+  </section>
+
+  <section class="card portal__bloque" aria-labelledby="portal-chuy">
+    <div><h2 id="portal-chuy" class="portal__titulo">Pinecoop Chuy</h2><p class="muted">En obras para que puedas disfrutarlo.</p></div>
+    ${p.chuy.length ? html`<div class="portal__fotos portal__fotos--${p.chuy.length}">${p.chuy.map((i) => html`<div class="portal__foto">${fotoPortal(i, '(min-width: 900px) 380px, 92vw')}</div>`)}</div>` : editar ? pendiente(true, 'Faltan las imágenes.') : ''}
+  </section>
+
+  <section class="card portal__bloque portal-recibos" aria-labelledby="portal-recibos">
+    <h2 id="portal-recibos" class="portal__titulo">Tus recibos</h2>
+    ${p.recibosUrl
+      ? html`<a class="btn btn--lg" href="${p.recibosUrl}" target="_blank" rel="noopener noreferrer">Aquí<span class="sr">: ver tus recibos</span>${icono('flecha-externa', 18)}</a>`
+      : pendiente(editar, 'Falta el enlace de los recibos.')}
+  </section>
+</div>`, editar ? html`<a class="btn btn--outline" href="${r('/empleados/editar')}">${icono('editar', 16)}Editar</a>` : '');
+}
+
+export function vistaFormEmpleados(c: Contexto, p: Portal, errores: Record<string, string> = {}) {
+  const err = (k: string) => (errores[k] ? html`<span class="error" id="err-${k}">${errores[k]}</span>` : '');
+  const inv = (k: string) => (errores[k] ? raw(`aria-invalid="true" aria-describedby="err-${k}"`) : '');
+  const enlace = (nombre: string, etiqueta: string, valor: string, ayuda: string) => html`<label class="campo"><span class="label">${etiqueta}</span>
+    <input class="input" type="url" name="${nombre}" value="${valor}" maxlength="500" placeholder="https://…" ${inv(nombre)}><span class="ayuda">${ayuda}</span>${err(nombre)}</label>`;
+  const grupo = (g: Grupo) => {
+    const { titulo, max } = GRUPOS[g];
+    const imgs = p[g];
+    return html`<section class="card form"><h2 class="card__titulo">${titulo}</h2>
+      ${imgs.length ? html`<ul class="portal-editar__imgs">${imgs.map((i, k) => html`<li class="portal-editar__img">
+        ${fotoPortal(i, '160px')}
+        <label class="campo"><span class="label">Descripción</span><input class="input" name="alt_${g}_${k}" value="${i.alt}" maxlength="160"></label>
+        <label class="check"><input type="checkbox" name="quitar_${g}_${k}" value="1"><span>Quitar</span></label>
+      </li>`)}</ul>` : html`<p class="muted">Sin imágenes.</p>`}
+      ${imgs.length < max ? html`<label class="campo"><span class="label">${max - imgs.length > 1 ? 'Agregar imágenes' : 'Agregar imagen'}</span>
+        <input class="input" type="file" name="nuevas_${g}" accept="image/jpeg,image/png,image/webp,image/avif" ${si(max - imgs.length > 1, 'multiple')} ${inv(`nuevas_${g}`)}>
+        <span class="ayuda">${max === 1 ? 'Una sola imagen' : `Hasta ${max} en total; podés elegir varias a la vez`} · JPG, PNG, WebP o AVIF</span>${err(`nuevas_${g}`)}</label>
+        <label class="campo"><span class="label">${max - imgs.length > 1 ? 'Descripción de las nuevas' : 'Descripción de la imagen'} <span class="opcional">(opcional)</span></span><input class="input" name="alt_nueva_${g}" maxlength="160"></label>` : html`<p class="ayuda">${max === 1 ? 'Para cambiar la imagen, marcá "Quitar", guardá y subí la nueva.' : `Llegaste al máximo de ${max}. Quitá una para agregar otra.`}</p>${err(`nuevas_${g}`)}`}
+    </section>`;
+  };
+  return layout(c, 'Editar información empleados', html`
+${Object.keys(errores).length ? html`<div class="alert alert--error" role="alert">${icono('info')}<p>Revisá los campos marcados. No se guardó nada.</p></div>` : ''}
+<form method="post" action="${r('/empleados')}" enctype="multipart/form-data" novalidate class="grid-form" data-comprimir>
+  ${csrfCampo(c)}
+  <div class="col">
+    <section class="card form"><h2 class="card__titulo">Enlaces</h2>
+      ${enlace('acoso_url', 'Protocolo de acoso laboral (RR.HH.)', p.acosoUrl, 'El QR se genera solo con este enlace. Si es un archivo de Drive, compartilo como "Cualquier persona con el enlace".')}
+      ${enlace('animo_url', '¿Cómo te sentís hoy?', p.animoUrl, 'Enlace de la encuesta (por ejemplo, un formulario de Google).')}
+      ${enlace('recibos_url', 'Tus recibos', p.recibosUrl, 'Dirección donde cada empleado ve sus recibos (botón "Aquí").')}
+    </section>
+    ${grupo('carrusel')}
+  </div>
+  <div class="col">
+    ${grupo('ciudadDelPlata')}
+    ${grupo('chuy')}
+    <div class="acciones-form"><button class="btn btn--lg" type="submit">Guardar cambios</button><a class="btn btn--ghost" href="${r('/empleados')}">Cancelar</a></div>
+  </div>
+</form>`);
 }
 
 export function vistaError(c: Contexto, estado: number, titulo: string, texto: string) {

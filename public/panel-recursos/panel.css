@@ -348,4 +348,47 @@ select.input { padding-right: 28px; }
 .evento--malo { color: var(--destructive); }
 .simple__caja form + .btn--ghost, .simple__caja > .btn--ghost { justify-self: center; }
 
+/* ── Información empleados ── */
+.portal { display: grid; gap: 16px; max-width: 960px; min-width: 0; }
+/* min-width: 0 en la cadena de grillas: si no, el carrusel ensancha la página en lugar de desplazarse. */
+.portal > *, .portal__bloque > *, .carrusel-panel { min-width: 0; }
+.portal__qrs { display: grid; gap: 16px; }
+@media (min-width: 760px) { .portal__qrs { grid-template-columns: 1fr 1fr; } }
+.portal__eyebrow { display: block; font-size: .75rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--primary); margin-bottom: 2px; }
+.portal__titulo { font-size: 1.125rem; font-weight: 700; }
+.portal__bloque { display: grid; gap: 12px; }
+.portal-qr { display: grid; gap: 12px; justify-items: center; text-align: center; align-content: start; }
+.portal-qr h2 { font-size: 1.125rem; font-weight: 700; }
+.portal-qr__texto { display: grid; gap: 4px; }
+.portal-qr__texto p { font-size: .875rem; max-width: 46ch; }
+/* El QR siempre sobre blanco (también en modo oscuro) para que lo lea cualquier cámara. */
+.portal-qr__codigo { background: #fff; padding: 10px; border-radius: var(--radius); border: 1px solid var(--border); width: min(100%, 220px); }
+.qr { display: block; width: 100%; height: auto; }
+.portal-qr__ayuda { font-size: .8125rem; }
+.portal-pendiente { display: flex; gap: 8px; align-items: center; justify-content: center; width: 100%; padding: 18px 14px; border: 1.5px dashed var(--input); border-radius: var(--radius); color: var(--muted-foreground); font-size: .875rem; text-align: center; }
+.portal-pendiente a { color: var(--primary); font-weight: 600; }
+.portal__foto { border-radius: var(--radius); overflow: hidden; background: var(--muted); }
+.portal__foto img { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: cover; }
+.portal__fotos { display: grid; gap: 10px; }
+@media (min-width: 560px) { .portal__fotos--2 { grid-template-columns: 1fr 1fr; } .portal__fotos--2 .portal__foto img { aspect-ratio: 4 / 3; } }
+.portal-recibos { justify-items: start; }
+.portal-recibos .btn { min-width: 160px; }
+
+/* Carrusel "Tu cooperativa": desplazamiento con encastre (funciona sin JavaScript); flechas con JS. */
+.carrusel-panel { display: grid; gap: 10px; }
+.carrusel-panel__pista { list-style: none; margin: 0; padding: 0 0 4px; display: grid; grid-auto-flow: column; grid-auto-columns: min(88%, 560px); gap: 12px; overflow-x: auto; scroll-snap-type: x mandatory; overscroll-behavior-x: contain; scrollbar-width: thin; border-radius: var(--radius); }
+.carrusel-panel__pista:focus-visible { outline: 2px solid var(--ring); outline-offset: 3px; }
+/* position: relative contiene el texto oculto (.sr, absoluto): sin esto escapa del recorte y ensancha la página. */
+.carrusel-panel__item { scroll-snap-align: start; position: relative; }
+.carrusel-panel__item figure { margin: 0; display: grid; gap: 6px; }
+.carrusel-panel__item img { display: block; width: 100%; aspect-ratio: 16 / 10; object-fit: cover; border-radius: var(--radius); background: var(--muted); }
+.carrusel-panel__item figcaption { font-size: .8125rem; color: var(--muted-foreground); }
+.carrusel-panel__controles { display: flex; gap: 8px; justify-content: flex-end; }
+.carrusel-panel__controles[hidden] { display: none; }
+
+/* Edición */
+.portal-editar__imgs { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+.portal-editar__img { display: grid; grid-template-columns: 112px minmax(0, 1fr); gap: 4px 12px; align-items: center; }
+.portal-editar__img img { grid-row: span 2; width: 112px; aspect-ratio: 4 / 3; object-fit: cover; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--muted); }
+
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; } }

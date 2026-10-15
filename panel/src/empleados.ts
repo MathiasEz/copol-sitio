@@ -1,0 +1,104 @@
+// "Información empleados": página interna del panel para todo el personal (cualquier rol).
+// Estructura según el boceto del 15/10/2026: Acoso laboral (QR), ¿Cómo te sentís hoy? (QR), Tu cooperativa
+// (carrusel), Próximamente Ciudad del Plata, Pinecoop Chuy (en obras) y Tus recibos.
+// Los enlaces y las imágenes los cargan los administradores desde el panel; se guardan como JSON en la
+// tabla `ajustes`. Los QR se generan en el servidor a partir de cada enlace (siempre nítidos).
+import * as ZX from '@zxing/library';
+import { ahora, ejecutar, una, type Db } from './db.ts';
+
+const Z = ((ZX as unknown as { default?: typeof ZX }).default ?? ZX);
+const CLAVE = 'portal_empleados';
+
+export interface ImagenPortal { src: string; alt: string }
+export interface Portal {
+  /** Protocolo de prevención y erradicación del acoso, violencia laboral y discriminación (RR.HH.). */
+  acosoUrl: string;
+  /** Encuesta "¿Cómo te sentís hoy?". */
+  animoUrl: string;
+  /** Recibos de sueldo. */
+  recibosUrl: string;
+  carrusel: ImagenPortal[];
+  ciudadDelPlata: ImagenPortal[];
+  chuy: ImagenPortal[];
+}
+export type Grupo = 'carrusel' | 'ciudadDelPlata' | 'chuy';
+export const GRUPOS: Record<Grupo, { titulo: string; max: number }> = {
+  carrusel: { titulo: 'Tu cooperativa (carrusel)', max: 8 },
+  ciudadDelPlata: { titulo: 'Próximamente Ciudad del Plata', max: 1 },
+  chuy: { titulo: 'Pinecoop Chuy', max: 2 },
+};
+
+const FOTO = (n: string, alt: string): ImagenPortal => ({ src: `/panel-recursos/empleados/${n}.webp`, alt });
+/**
+ * Contenido inicial. Enlaces: los que tienen los QR impresos (leídos de las fotos el 15/10/2026); ese día
+ * ninguno respondía (el del ánimo está desactivado en qrco.de y el archivo de Drive no existe), así que
+ * hay que reemplazarlos desde "Editar". Fotos: las propias del sitio (docs/registro-de-activos.md).
+ */
+export const PORTAL_INICIAL: Portal = {
+  acosoUrl: 'https://drive.google.com/file/d/1uHQVgzptVtiu-tDu38TfgMY0P75UfzQm/view?usp=sharing',
+  animoUrl: 'https://qrco.de/bgfywa',
+  recibosUrl: '',
+  carrusel: [
+    FOTO('casa-central', 'Fachada de la Casa Central de COPOL'),
+    FOTO('tienda-interior', 'Interior de la Tienda COPOL'),
+    FOTO('pinecoop-salinas', 'Piscina y cabañas del Parque Vacacional Pinecoop en Salinas'),
+    FOTO('fiestas-eventos', 'Salón de fiestas y eventos de COPOL'),
+  ],
+  ciudadDelPlata: [],
+  chuy: [FOTO('pinecoop-chuy', 'Pinecoop Chuy en obras')],
+};
+
+const lista = (v: unknown, max: number): ImagenPortal[] =>
+  (Array.isArray(v) ? v : [])
+    .filter((i): i is ImagenPortal => !!i && typeof i.src === 'string' && typeof i.alt === 'string')
+    .map((i) => ({ src: i.src, alt: i.alt.slice(0, 160) }))
+    .slice(0, max);
+
+export async function obtenerPortal(db: Db): Promise<Portal> {
+  const fila = await una<{ valor: string }>(db, 'SELECT valor FROM ajustes WHERE clave = ?', [CLAVE]);
+  if (!fila) return structuredClone(PORTAL_INICIAL);
+  let d: Partial<Portal> = {};
+  try { d = JSON.parse(fila.valor); } catch { /* valor dañado: se usa el inicial */ }
+  const texto = (v: unknown) => (typeof v === 'string' ? v : '');
+  return {
+    acosoUrl: texto(d.acosoUrl), animoUrl: texto(d.animoUrl), recibosUrl: texto(d.recibosUrl),
+    carrusel: lista(d.carrusel, GRUPOS.carrusel.max), ciudadDelPlata: lista(d.ciudadDelPlata, GRUPOS.ciudadDelPlata.max), chuy: lista(d.chuy, GRUPOS.chuy.max),
+  };
+}
+
+export async function guardarPortal(db: Db, p: Portal) {
+  await ejecutar(db, 'INSERT INTO ajustes (clave, valor, actualizado_en) VALUES (?, ?, ?) ON CONFLICT (clave) DO UPDATE SET valor = excluded.valor, actualizado_en = excluded.actualizado_en', [CLAVE, JSON.stringify(p), ahora()]);
+}
+
+/** Enlace válido para un QR o un botón: https (o http) y sin espacios. Vacío = sin enlace. */
+export function validarEnlace(v: unknown): { url: string; error?: string } {
+  const url = typeof v === 'string' ? v.trim() : '';
+  if (!url) return { url: '' };
+  if (url.length > 500) return { url, error: 'El enlace es demasiado largo (máximo 500 caracteres).' };
+  try {
+    const u = new URL(url);
+    if (u.protocol !== 'https:' && u.protocol !== 'http:') throw new Error();
+  } catch {
+    return { url, error: 'Pegá un enlace completo que empiece con https://' };
+  }
+  return { url };
+}
+
+const cacheQr = new Map<string, string>();
+/** QR en SVG (sin estilos en línea: la política de seguridad del panel los bloquea). */
+export function qrSvg(texto: string, etiqueta: string): string {
+  const clave = `${texto}\n${etiqueta}`;
+  const guardado = cacheQr.get(clave);
+  if (guardado) return guardado;
+  const pistas = new Map<ZX.EncodeHintType, unknown>([[Z.EncodeHintType.ERROR_CORRECTION, Z.QRCodeDecoderErrorCorrectionLevel.M], [Z.EncodeHintType.MARGIN, 0]]);
+  const m = new Z.QRCodeWriter().encode(texto, Z.BarcodeFormat.QR_CODE, 0, 0, pistas);
+  const n = m.getWidth();
+  const margen = 4;
+  let d = '';
+  for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) if (m.get(x, y)) d += `M${x + margen} ${y + margen}h1v1h-1z`;
+  const escapar = (s: string) => s.replace(/[&<>"]/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[ch]!);
+  const svg = `<svg class="qr" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${n + margen * 2} ${n + margen * 2}" role="img" aria-label="${escapar(etiqueta)}" shape-rendering="crispEdges"><rect width="100%" height="100%" fill="#fff"/><path d="${d}" fill="#000"/></svg>`;
+  if (cacheQr.size > 50) cacheQr.clear();
+  cacheQr.set(clave, svg);
+  return svg;
+}
