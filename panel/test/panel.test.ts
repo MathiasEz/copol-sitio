@@ -373,6 +373,7 @@ describe('asistente', () => {
     }
     const q = ultimo.content;
     const herramienta = q.startsWith('proponer:') ? { name: 'proponer_cambios', input: { cambios: JSON.parse(q.slice('proponer:'.length)) } }
+      : q.startsWith('grupo:') ? { name: 'proponer_stock_grupo', input: JSON.parse(q.slice('grupo:'.length)) }
       : /stock/.test(q) ? { name: 'buscar_productos', input: { texto: 'parlante' } }
       : /panel/.test(q) ? { name: 'leer_pagina', input: { ruta: `${RUTA}/usuarios` } }
       : /contacto/.test(q) ? { name: 'leer_pagina', input: { ruta: '/contacto/' } }
@@ -404,7 +405,7 @@ describe('asistente', () => {
     assert.match(pantallaLector, /Tu rol es de solo consulta/);
     assert.doesNotMatch(pantallaLector, /Poné sin stock/);
     const hl = await herramientasDe(lector);
-    assert.ok(!hl.nombres.includes('proponer_cambios'), 'el visualizador no recibe la herramienta de cambios');
+    assert.ok(!hl.nombres.some((h) => h.startsWith('proponer_')), 'el visualizador no recibe herramientas de cambios');
     assert.ok(hl.sistema.includes('rol de **solo consulta**'), 'el instructivo indica que el rol es de solo consulta');
     assert.doesNotMatch(hl.sistema, /proponer_cambios con todos/);
     const propuestaLector = await (await preguntar(lector, `proponer:${JSON.stringify([{ codigo: '100001', estado: 'sin-dato' }])}`)).json();
@@ -436,7 +437,7 @@ describe('asistente', () => {
     assert.equal(gateway.at(-1)!.cuerpo!.model, 'google/gemini-2.5-flash');
     assert.equal(gateway.at(-1)!.cuerpo!.temperature, 0.2);
     const herramientas = (gateway.at(-1)!.cuerpo!.tools as { name: string }[]).map((t) => t.name);
-    assert.deepEqual(herramientas.sort(), ['buscar_productos', 'leer_pagina', 'listar_novedades', 'proponer_cambios', 'resumen_stock', 'ultimos_cambios']);
+    assert.deepEqual(herramientas.sort(), ['buscar_productos', 'leer_pagina', 'listar_novedades', 'proponer_cambios', 'proponer_stock_grupo', 'resumen_stock', 'ultimos_cambios']);
     assert.equal(datos.propuesta, null);
     const ev = await fila<{ detalle: string; usuario: string }>("SELECT detalle, usuario FROM auditoria WHERE accion = 'asistente.consulta' ORDER BY id DESC LIMIT 1");
     assert.equal(ev?.usuario, 'principal');
@@ -545,6 +546,50 @@ describe('asistente', () => {
       assert.equal((await decidir(n, d1.propuesta.id, 'confirmar')).status, 409);
       assert.equal((await decidir(n, d2.propuesta.id, 'confirmar')).status, 200);
       assert.equal((await estufa())!.stock_cantidad, 7);
+    });
+    it('cambia el stock de una categoría entera (más de 50 productos) en un solo paso', async () => {
+      const t = new Date().toISOString();
+      await db.batch([
+        "INSERT INTO categorias (rubro_id, id, nombre, orden) VALUES ('bazar', 'celulares-prueba', 'Celulares prueba', 9)",
+        ...Array.from({ length: 70 }, (_, k) => ({
+          sql: "INSERT INTO productos (id, rubro_id, codigo, nombre, marca, categoria_id, stock_estado, stock_cantidad, origen, creado_en, actualizado_en) VALUES (?, 'bazar', ?, ?, ?, 'celulares-prueba', ?, ?, 'importado', ?, ?)",
+          args: [`cel-${k}`, String(200000 + k), `CELULAR PRUEBA ${k}`, k % 2 ? 'Samsung' : 'Motorola', k < 5 ? 'sin-stock' : 'con-stock', k === 6 ? 4 : null, t, t],
+        })),
+      ], 'write');
+      try {
+        const n = await admin();
+        const lector = new Navegador();
+        await lector.ingresar('lector', 'Propia-Clave-2026!');
+        await lector.pedir(`${RUTA}/asistente`);
+        assert.equal((await (await preguntar(lector, `grupo:${JSON.stringify({ categoria: 'celulares-prueba', estado: 'sin-stock' })}`)).json()).propuesta, null, 'el visualizador no puede');
+
+        // Sin filtro o con una categoría inexistente no se propone nada
+        assert.equal((await (await preguntar(n, `grupo:${JSON.stringify({ estado: 'sin-stock' })}`)).json()).propuesta, null);
+        assert.equal((await (await preguntar(n, `grupo:${JSON.stringify({ categoria: 'no-existe', estado: 'sin-stock' })}`)).json()).propuesta, null);
+
+        // Filtros combinados: solo los Samsung que hoy tienen stock
+        const s = await (await preguntar(n, `grupo:${JSON.stringify({ categoria: 'celulares-prueba', texto: 'samsung', estado_actual: 'con-stock', estado: 'sin-stock' })}`)).json();
+        assert.equal(s.propuesta.items.length, 33);
+
+        const r = await (await preguntar(n, `grupo:${JSON.stringify({ categoria: 'celulares-prueba', estado: 'sin-stock' })}`)).json();
+        assert.equal(r.propuesta.items.length, 65, 'los 5 que ya estaban sin stock se omiten');
+        assert.match(r.respuesta, /ya_tenian_ese_stock\W+5\b/);
+        const conStock = async () => Number((await fila<{ n: number }>("SELECT COUNT(*) n FROM productos WHERE categoria_id = 'celulares-prueba' AND stock_estado = 'con-stock'"))!.n);
+        assert.equal(await conStock(), 65, 'proponer no modifica nada');
+        assert.equal((await decidir(n, s.propuesta.id, 'confirmar')).status, 409, 'la propuesta anterior quedó reemplazada');
+
+        // Un producto cambiado después de la propuesta no se pisa
+        await db.execute("UPDATE productos SET version = version + 1 WHERE id = 'cel-10'");
+        const ok = await (await decidir(n, r.propuesta.id, 'confirmar')).json();
+        assert.match(ok.mensaje, /64 de 65 cambios aplicados/);
+        assert.equal(await conStock(), 1);
+        const cel6 = await fila<{ stock_estado: string; stock_cantidad: number | null; actualizado_por: string }>("SELECT stock_estado, stock_cantidad, actualizado_por FROM productos WHERE id = 'cel-6'");
+        assert.deepEqual({ ...cel6 }, { stock_estado: 'sin-stock', stock_cantidad: null, actualizado_por: 'principal' });
+        const reg = await fila<{ n: number }>("SELECT COUNT(*) n FROM auditoria WHERE accion = 'stock.cambio' AND entidad_id LIKE 'cel-%' AND detalle LIKE '%\"via\":\"asistente\"%'");
+        assert.equal(Number(reg!.n), 64);
+      } finally {
+        await db.batch(["DELETE FROM productos WHERE categoria_id = 'celulares-prueba'", "DELETE FROM categorias WHERE id = 'celulares-prueba'"], 'write');
+      }
     });
     it('sin JavaScript muestra la tarjeta con Confirmar y Cancelar', async () => {
       const n = await admin();

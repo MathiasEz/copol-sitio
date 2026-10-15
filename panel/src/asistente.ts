@@ -10,7 +10,7 @@ import { ACCIONES, listarEventos } from './auditoria.ts';
 import { todas, type Db } from './db.ts';
 import { listarNovedades, PLANTILLAS } from './novedades.ts';
 import { buscarProductos, esEstado, ESTADOS, listarCategorias, RUBRO, type EstadoStock } from './productos.ts';
-import { MAX_ITEMS, preparar, type Propuesta } from './propuestas.ts';
+import { MAX_GRUPO, MAX_ITEMS, preparar, prepararGrupo, type Propuesta } from './propuestas.ts';
 import { armarInstructivo } from './instructivo-asistente.ts';
 import { puede, type Rol } from './seguridad.ts';
 
@@ -157,6 +157,22 @@ const HERRAMIENTAS = [
       required: ['cambios'],
     },
   },
+  {
+    name: 'proponer_stock_grupo',
+    description: `Prepara un cambio de STOCK para un grupo de productos (una categoría entera, una marca, los que contienen una palabra, los que hoy tienen cierto estado, o una lista de códigos), sin buscarlos uno por uno: el servidor arma la lista. Usala siempre que el cambio de stock abarque más de 10 productos o un grupo descrito ("todos los celulares", "todo lo de Samsung"). Los filtros se combinan (todos tienen que cumplirse). Solo cambia estado y cantidad; para nombres, marcas u otros datos usá proponer_cambios. NO aplica nada: la persona confirma en la tarjeta. Hasta ${MAX_GRUPO} productos; reemplaza la propuesta anterior.`,
+    input_schema: {
+      type: 'object',
+      properties: {
+        categoria: { type: 'string', description: 'Id de la categoría (ver la lista de categorías).' },
+        texto: { type: 'string', description: 'Palabras que tienen que aparecer en el nombre, la marca o el código (por ejemplo "samsung" o "iphone 13").' },
+        estado_actual: { type: 'string', enum: ['con-stock', 'sin-stock', 'sin-dato'], description: 'Solo los productos que hoy tienen este estado.' },
+        codigos: { type: 'array', items: { type: 'string' }, maxItems: MAX_GRUPO, description: 'Lista de códigos internos COPOL exactos (opcional).' },
+        estado: { type: 'string', enum: ['con-stock', 'sin-stock', 'sin-dato'], description: 'Estado de stock nuevo.' },
+        cantidad: { type: ['integer', 'null'], minimum: 0, description: 'Unidades (opcional; 0 = sin stock). Si se omite, se borra la cantidad.' },
+      },
+      required: ['estado'],
+    },
+  },
 ] as const;
 
 type Entrada = Record<string, unknown>;
@@ -165,7 +181,7 @@ const fechaLocal = (iso: string) => new Date(iso).toLocaleString('es-UY', { date
 interface Contexto { db: Db; origen: string; pedir: typeof fetch; usuarioId: number; rol: Rol; propuesta: Propuesta | null }
 
 /** Herramientas disponibles para el rol: sin permiso de stock no hay propuestas de cambios. */
-const herramientasPara = (rol: Rol) => HERRAMIENTAS.filter((h) => h.name !== 'proponer_cambios' || puede(rol, 'stock'));
+const herramientasPara = (rol: Rol) => HERRAMIENTAS.filter((h) => !h.name.startsWith('proponer_') || puede(rol, 'stock'));
 
 async function ejecutarHerramienta(nombre: string, entrada: Entrada, x: Contexto): Promise<unknown> {
   const { db, origen, pedir } = x;
@@ -177,6 +193,20 @@ async function ejecutarHerramienta(nombre: string, entrada: Entrada, x: Contexto
       return {
         estado: p.items.length ? 'PENDIENTE DE CONFIRMACIÓN: todavía no se aplicó nada. La persona tiene que revisar la tarjeta y tocar "Confirmar cambios".' : 'No hay cambios válidos para proponer.',
         propuestos: p.items.map((i) => ({ codigo: i.codigo, nombre: i.nombre, cambios: i.cambios.map((c) => `${c.campo}: ${c.antes} → ${c.despues}`) })),
+        errores: p.errores,
+      };
+    }
+    case 'proponer_stock_grupo': {
+      if (!puede(x.rol, 'stock')) return { error: 'Tu rol solo permite consultar: no podés proponer cambios.' };
+      const p = await prepararGrupo(db, x.usuarioId, entrada);
+      if (p.items.length) x.propuesta = p;
+      // Resumen corto: la lista completa la ve la persona en la tarjeta.
+      return {
+        estado: p.items.length ? 'PENDIENTE DE CONFIRMACIÓN: todavía no se aplicó nada. La persona tiene que revisar la tarjeta y tocar "Confirmar cambios".' : 'No hay cambios válidos para proponer.',
+        productos_del_filtro: p.seleccionados,
+        a_cambiar: p.items.length,
+        ya_tenian_ese_stock: p.sinCambios,
+        ejemplos: p.items.slice(0, 8).map((i) => `${i.nombre} (${i.codigo ?? 'sin código'}): ${i.cambios.map((c) => `${c.campo} ${c.antes} → ${c.despues}`).join(', ')}`),
         errores: p.errores,
       };
     }
