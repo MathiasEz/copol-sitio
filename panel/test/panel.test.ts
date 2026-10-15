@@ -554,6 +554,15 @@ describe('asistente', () => {
       assert.match(html, /name="accion" value="confirmar"/);
       assert.match(html, /name="accion" value="cancelar"/);
     });
+    it('los scripts arman las direcciones con la dirección real del panel (no /panel)', async () => {
+      const n = await admin();
+      const html = await (await n.pedir(`${RUTA}/asistente`)).text();
+      assert.ok(html.includes(`data-base="${RUTA}"`), 'la página informa la dirección del panel');
+      for (const archivo of ['asistente.js', 'panel.js']) {
+        const js = await fs.readFile(path.join(import.meta.dirname, '../../public/panel-recursos', archivo), 'utf8');
+        assert.doesNotMatch(js, /['"`]\/panel\//, `${archivo} no usa /panel fijo`);
+      }
+    });
   });
 
   it('limpia el historial y el HTML de las páginas', () => {

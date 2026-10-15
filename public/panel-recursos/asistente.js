@@ -15,6 +15,7 @@
   const errorCaja = caja.querySelector('[data-error]');
   const restantes = form.querySelector('[data-restantes]');
   const CLAVE = 'copol-asistente';
+  const BASE = document.documentElement.dataset.base || '';
   let conversacion = [];
   let ocupado = false;
 
@@ -32,7 +33,7 @@
         const a = document.createElement('a');
         a.href = url;
         a.textContent = url;
-        if (url.startsWith('http') || !url.startsWith('/panel')) { a.target = '_blank'; a.rel = 'noopener'; }
+        if (url.startsWith('http') || !BASE || !url.startsWith(BASE)) { a.target = '_blank'; a.rel = 'noopener'; }
         padre.append(a, m[4].slice(url.length));
       }
       ultimo = m.index + m[0].length;
@@ -89,7 +90,7 @@
   const formAccion = (id, accion, etiqueta, clase) => {
     const f = crear('form');
     f.method = 'post';
-    f.action = `/panel/asistente/propuestas/${encodeURIComponent(id)}`;
+    f.action = `${BASE}/asistente/propuestas/${encodeURIComponent(id)}`;
     for (const [k, v] of [['_csrf', csrf], ['accion', accion]]) {
       const i = crear('input');
       i.type = 'hidden'; i.name = k; i.value = v;
@@ -144,7 +145,7 @@
     error('');
     try {
       const res = await fetch(f.action, { method: 'POST', body: new FormData(f), headers: { Accept: 'application/json' }, credentials: 'same-origin' });
-      if (res.redirected) { location.href = '/panel/ingresar?aviso=sesion-vencida'; return; }
+      if (res.redirected) { location.href = `${BASE}/ingresar?aviso=sesion-vencida`; return; }
       const r = await res.json().catch(() => ({ ok: false, mensaje: 'Respuesta inesperada del servidor.' }));
       if (!r.ok) throw new Error(r.mensaje || 'No se pudo completar.');
       card.querySelector('.propuesta__acciones')?.remove();
@@ -199,7 +200,7 @@
     boton.disabled = true;
     try {
       const res = await fetch(form.action, { method: 'POST', body: datos, headers: { Accept: 'application/json' }, credentials: 'same-origin' });
-      if (res.redirected) { location.href = '/panel/ingresar?aviso=sesion-vencida'; return; }
+      if (res.redirected) { location.href = `${BASE}/ingresar?aviso=sesion-vencida`; return; }
       const r = await res.json().catch(() => ({ ok: false, error: 'Respuesta inesperada del servidor.' }));
       if (!r.ok) throw new Error(r.error || 'No se pudo responder.');
       espera.remove();

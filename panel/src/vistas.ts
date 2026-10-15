@@ -62,7 +62,7 @@ const etiquetaCodigo = 'Código interno COPOL';
 
 function cabeza(titulo: string) {
   return html`<!doctype html>
-<html lang="es-UY">
+<html lang="es-UY" data-base="${BASE}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">

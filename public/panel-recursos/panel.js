@@ -30,7 +30,7 @@
     nota_('Guardando…');
     try {
       const res = await fetch(form.action, { method: 'POST', body: new FormData(form), headers: { Accept: 'application/json' }, credentials: 'same-origin' });
-      if (res.redirected || res.status === 401) { location.href = '/panel/ingresar?aviso=sesion-vencida'; return; }
+      if (res.redirected || res.status === 401) { location.href = `${document.documentElement.dataset.base || ''}/ingresar?aviso=sesion-vencida`; return; }
       const datos = await res.json().catch(() => ({ ok: false, error: 'Respuesta inesperada del servidor.' }));
       // Solo se confirma si el servidor releyó la base y verificó el valor guardado.
       if (!datos.ok || !datos.verificado) {
