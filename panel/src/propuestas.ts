@@ -17,11 +17,29 @@ export interface Cambio { campo: string; antes: string; despues: string }
 export interface ItemPropuesta { id: string; codigo: string | null; nombre: string; version: number; datos: P.DatosProducto; soloStock: boolean; cambios: Cambio[] }
 export interface Propuesta { id: string; items: ItemPropuesta[]; errores: string[]; expira: string }
 export interface ResultadoItem { codigo: string | null; nombre: string; ok: boolean; error?: string }
+/** Lo que se guarda de cada producto aplicado: además del resultado, qué cambió (para poder revertirlo). */
+type Diferencias = Record<string, [unknown, unknown]>;
+type ResultadoGuardado = ResultadoItem & { id?: string; dif?: Diferencias };
 
 const CAMPOS = ['stock_estado', 'stock_cantidad', 'nombre', 'marca', 'descripcion', 'categoria_id', 'codigo'] as const;
-const ETIQUETAS: Record<(typeof CAMPOS)[number], string> = {
+type Campo = (typeof CAMPOS)[number];
+const ETIQUETAS: Record<Campo, string> = {
   stock_estado: 'Stock', stock_cantidad: 'Cantidad', nombre: 'Nombre', marca: 'Marca', descripcion: 'Descripción', categoria_id: 'Categoría', codigo: 'Código interno COPOL',
 };
+const esCampo = (k: string): k is Campo => (CAMPOS as readonly string[]).includes(k);
+const esDeStock = (k: string) => k === 'stock_estado' || k === 'stock_cantidad';
+
+/** Valor legible para la tarjeta "antes → después". */
+function mostrarValor(campo: Campo, v: unknown, categorias: Map<string, string>) {
+  if (v == null || v === '') return '—';
+  if (campo === 'stock_estado') return P.ESTADOS[v as P.EstadoStock] ?? String(v);
+  if (campo === 'categoria_id') return categorias.get(String(v)) ?? String(v);
+  const t = String(v);
+  return t.length > 140 ? `${t.slice(0, 140)}…` : t;
+}
+/** Compara valores de la base (la cantidad puede llegar como número o como bigint/texto). */
+const igual = (campo: string, a: unknown, b: unknown) =>
+  campo === 'stock_cantidad' ? (a == null ? null : Number(a)) === (b == null ? null : Number(b)) : (a ?? null) === (b ?? null);
 
 /** Valida los cambios pedidos y guarda la propuesta pendiente (una por usuario: la nueva reemplaza a la anterior). */
 export async function preparar(db: Db, usuarioId: number, pedidos: unknown): Promise<Propuesta> {
@@ -70,14 +88,8 @@ export async function preparar(db: Db, usuarioId: number, pedidos: unknown): Pro
 
     const s = P.normalizarStock(datos.stock_estado, datos.stock_cantidad);
     const despues: P.DatosProducto = { ...datos, stock_estado: s.estado, stock_cantidad: s.cantidad };
-    const mostrar = (campo: (typeof CAMPOS)[number], v: unknown) => {
-      if (v == null || v === '') return '—';
-      if (campo === 'stock_estado') return P.ESTADOS[v as P.EstadoStock];
-      if (campo === 'categoria_id') return categorias.get(String(v)) ?? String(v);
-      const t = String(v);
-      return t.length > 140 ? `${t.slice(0, 140)}…` : t;
-    };
-    const antesDe = (k: (typeof CAMPOS)[number]) => (k === 'stock_cantidad' ? actualCant : (p[k] ?? null));
+    const mostrar = (campo: Campo, v: unknown) => mostrarValor(campo, v, categorias);
+    const antesDe = (k: Campo) => (k === 'stock_cantidad' ? actualCant : (p[k] ?? null));
     const cambios = CAMPOS.filter((k) => antesDe(k) !== (despues[k] ?? null)).map((k) => ({ campo: ETIQUETAS[k], antes: mostrar(k, antesDe(k)), despues: mostrar(k, despues[k]) }));
     if (!cambios.length) { errores.push(`${p.nombre} (${codigo}) ya tiene esos datos: no hay nada que cambiar.`); continue; }
     items.push({ id: p.id, codigo: p.codigo, nombre: p.nombre, version: Number(p.version), datos: despues, soloStock: cambios.every((c) => c.campo === 'Stock' || c.campo === 'Cantidad'), cambios });
@@ -153,6 +165,66 @@ export async function prepararGrupo(db: Db, usuarioId: number, ped: PedidoGrupo)
   return { ...(await guardar(db, usuarioId, items, errores)), seleccionados: lista.length, sinCambios };
 }
 
+export type PropuestaReversion = Propuesta & { revertida?: { creada: string; productos: number } };
+
+/**
+ * Prepara la vuelta atrás de una propuesta ya aplicada por el mismo usuario (atras = 1: la última, 2: la
+ * anterior…). Devuelve cada producto a los valores que tenía antes; si un producto se volvió a modificar
+ * después (por el panel o por otra propuesta), se omite para no pisar ese cambio. Se confirma igual que
+ * cualquier propuesta, y como también queda aplicada, se puede revertir a su vez.
+ */
+export async function prepararReversion(db: Db, usuarioId: number, atras = 1): Promise<PropuestaReversion> {
+  const n = Math.min(Math.max(1, Math.trunc(Number(atras)) || 1), 20);
+  const vacia = (errores: string[]): PropuestaReversion => ({ id: '', items: [], errores, expira: '' });
+  const prop = (await todas<{ id: string; creada_en: string; items: string; resultado: string }>(db,
+    "SELECT id, creada_en, items, resultado FROM propuestas WHERE usuario_id = ? AND estado = 'aplicada' AND resultado IS NOT NULL ORDER BY creada_en DESC LIMIT 1 OFFSET ?", [usuarioId, n - 1]))[0];
+  if (!prop) return vacia([n === 1 ? 'No hay cambios aplicados con el asistente para revertir.' : `No hay una ${n}.ª propuesta aplicada para revertir.`]);
+
+  const items = JSON.parse(prop.items) as ItemPropuesta[];
+  const resultados = JSON.parse(prop.resultado) as ResultadoGuardado[];
+  const aplicados = resultados.map((r, k) => ({ id: r.id ?? items[k]?.id, r })).filter((x) => x.r.ok && x.id);
+  if (!aplicados.length) return vacia(['Esa propuesta no llegó a cambiar ningún producto: no hay nada que revertir.']);
+
+  // Propuestas aplicadas antes de guardar las diferencias: se toman del Registro de cambios.
+  const sinDif = aplicados.filter((x) => !x.r.dif).map((x) => x.id!);
+  if (sinDif.length) {
+    const eventos = await todas<{ entidad_id: string; detalle: string }>(db,
+      `SELECT entidad_id, detalle FROM auditoria WHERE usuario_id = ? AND entidad = 'producto' AND accion IN ('stock.cambio', 'producto.edicion')
+       AND fecha >= ? AND detalle LIKE '%"via":"asistente"%' AND entidad_id IN (${sinDif.map(() => '?').join(', ')}) ORDER BY id`, [usuarioId, prop.creada_en, ...sinDif]);
+    const primero = new Map<string, Diferencias>();
+    for (const e of eventos) if (!primero.has(e.entidad_id)) { try { primero.set(e.entidad_id, JSON.parse(e.detalle).cambios ?? {}); } catch { /* detalle ilegible */ } }
+    for (const x of aplicados) if (!x.r.dif) x.r.dif = primero.get(x.id!);
+  }
+
+  const [listaCategorias, inventario] = await Promise.all([P.listarCategorias(db), P.buscarProductos(db, { porPagina: 100_000 })]);
+  const categorias = new Map(listaCategorias.map((c) => [c.id, c.nombre]));
+  const porId = new Map(inventario.items.map((p) => [p.id, p]));
+  const nuevos: ItemPropuesta[] = [];
+  const errores: string[] = [];
+  const omitidos: string[] = [];
+  for (const { id, r } of aplicados) {
+    const p = porId.get(id!);
+    const dif = Object.entries(r.dif ?? {}).filter(([k]) => esCampo(k)) as [Campo, [unknown, unknown]][];
+    if (!p) { errores.push(`${r.nombre} (${r.codigo ?? 'sin código'}): el producto ya no existe.`); continue; }
+    if (!dif.length) { errores.push(`${p.nombre} (${p.codigo ?? 'sin código'}): no se encontró qué había cambiado.`); continue; }
+    // Solo si sigue con los valores que dejó la propuesta (nadie lo tocó después).
+    if (dif.some(([k, [, despues]]) => !igual(k, p[k], despues))) { omitidos.push(`${p.nombre} (${p.codigo ?? 'sin código'})`); continue; }
+    const datos: P.DatosProducto = {
+      codigo: p.codigo, nombre: p.nombre, descripcion: p.descripcion, categoria_id: p.categoria_id, marca: p.marca,
+      stock_estado: p.stock_estado, stock_cantidad: p.stock_cantidad == null ? null : Number(p.stock_cantidad),
+    };
+    for (const [k, [antes]] of dif) (datos as unknown as Record<string, unknown>)[k] = k === 'stock_cantidad' ? (antes == null ? null : Number(antes)) : antes;
+    nuevos.push({
+      id: p.id, codigo: p.codigo, nombre: p.nombre, version: Number(p.version), datos, soloStock: dif.every(([k]) => esDeStock(k)),
+      cambios: dif.map(([k, [antes, despues]]) => ({ campo: ETIQUETAS[k], antes: mostrarValor(k, despues, categorias), despues: mostrarValor(k, antes, categorias) })),
+    });
+  }
+  if (omitidos.length) errores.unshift(`${omitidos.length} producto(s) se modificaron después y no se revierten (para no pisar ese cambio): ${omitidos.slice(0, 10).join('; ')}${omitidos.length > 10 ? '…' : ''}.`);
+  const revertida = { creada: prop.creada_en, productos: aplicados.length };
+  if (!nuevos.length) return { ...vacia([...errores, 'No queda nada para revertir de esa propuesta.']), revertida };
+  return { ...(await guardar(db, usuarioId, nuevos, errores)), revertida };
+}
+
 type Fila = { id: string; usuario_id: number; expira_en: string; estado: string; items: string };
 export type Aplicacion = { estado: 'ok'; resultados: ResultadoItem[] } | { estado: 'no-existe' | 'vencida' | 'usada' | 'sin-permiso' };
 
@@ -171,22 +243,22 @@ export async function aplicar(db: Db, propuestaId: string, actor: Actor & { id: 
   const tomada = await ejecutar(db, "UPDATE propuestas SET estado = 'aplicada' WHERE id = ? AND estado = 'pendiente'", [prop.id]);
   if (!tomada.cambios) return { estado: 'usada' };
 
-  const porItem = new Map<ItemPropuesta, ResultadoItem>();
-  for (const [i, r] of await aplicarStockEnLote(db, items.filter((x) => x.soloStock), actor)) porItem.set(i, r);
+  const porItem = new Map<ItemPropuesta, ResultadoGuardado>();
+  for (const [i, r] of await aplicarStockEnLote(db, items.filter((x) => x.soloStock), actor, prop.id)) porItem.set(i, r);
   for (const i of items.filter((x) => !x.soloStock)) {
     const res = await P.editarProducto(db, i.id, i.datos, null, actor.usuario, i.version);
     if ('error' in res) {
-      porItem.set(i, { codigo: i.codigo, nombre: i.nombre, ok: false, error: ERRORES[res.error] });
+      porItem.set(i, { id: i.id, codigo: i.codigo, nombre: i.nombre, ok: false, error: ERRORES[res.error] });
       continue;
     }
     const cambios = P.diferencias(res.antes, res.despues);
-    const accion = Object.keys(cambios).every((k) => k === 'stock_estado' || k === 'stock_cantidad') ? 'stock.cambio' : 'producto.edicion';
-    await registrar(db, actor, accion, 'producto', i.id, { nombre: res.despues.nombre, codigo: res.despues.codigo, cambios, via: 'asistente' });
-    porItem.set(i, { codigo: res.despues.codigo, nombre: res.despues.nombre, ok: true });
+    const accion = Object.keys(cambios).every(esDeStock) ? 'stock.cambio' : 'producto.edicion';
+    await registrar(db, actor, accion, 'producto', i.id, { nombre: res.despues.nombre, codigo: res.despues.codigo, cambios, via: 'asistente', propuesta: prop.id });
+    porItem.set(i, { id: i.id, codigo: res.despues.codigo, nombre: res.despues.nombre, ok: true, dif: cambios });
   }
-  const resultados = items.map((i) => porItem.get(i)!);
-  await ejecutar(db, 'UPDATE propuestas SET resultado = ? WHERE id = ?', [JSON.stringify(resultados), prop.id]);
-  return { estado: 'ok', resultados };
+  const guardados = items.map((i) => porItem.get(i)!);
+  await ejecutar(db, 'UPDATE propuestas SET resultado = ? WHERE id = ?', [JSON.stringify(guardados), prop.id]);
+  return { estado: 'ok', resultados: guardados.map(({ codigo, nombre, ok, error }) => ({ codigo, nombre, ok, ...(error ? { error } : {}) })) };
 }
 
 const ERRORES = {
@@ -200,7 +272,7 @@ const ERRORES = {
  * su control de versión), una relectura para verificar lo guardado y el registro de cambios en otro lote.
  * Con Turso son 4 viajes por la red en lugar de 4 por producto.
  */
-async function aplicarStockEnLote(db: Db, items: ItemPropuesta[], actor: Actor & { usuario: string }): Promise<[ItemPropuesta, ResultadoItem][]> {
+async function aplicarStockEnLote(db: Db, items: ItemPropuesta[], actor: Actor & { usuario: string }, propuestaId: string): Promise<[ItemPropuesta, ResultadoGuardado][]> {
   if (!items.length) return [];
   const leer = async () => {
     const filas = await todas<P.Producto>(db, `SELECT * FROM productos WHERE id IN (${items.map(() => '?').join(', ')})`, items.map((i) => i.id));
@@ -208,8 +280,8 @@ async function aplicarStockEnLote(db: Db, items: ItemPropuesta[], actor: Actor &
   };
   const antes = await leer();
   const t = ahora();
-  const fallo = (i: ItemPropuesta, error: keyof typeof ERRORES): ResultadoItem => ({ codigo: i.codigo, nombre: i.nombre, ok: false, error: ERRORES[error] });
-  const salida = new Map<ItemPropuesta, ResultadoItem>();
+  const fallo = (i: ItemPropuesta, error: keyof typeof ERRORES): ResultadoGuardado => ({ id: i.id, codigo: i.codigo, nombre: i.nombre, ok: false, error: ERRORES[error] });
+  const salida = new Map<ItemPropuesta, ResultadoGuardado>();
   const aActualizar: ItemPropuesta[] = [];
   for (const i of items) {
     const a = antes.get(i.id);
@@ -234,9 +306,9 @@ async function aplicarStockEnLote(db: Db, items: ItemPropuesta[], actor: Actor &
     const cambios = P.diferencias(antes.get(i.id)!, d);
     registros.push({
       sql: 'INSERT INTO auditoria (fecha, usuario_id, usuario, accion, entidad, entidad_id, detalle, ip) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-      args: [t, actor.id, actor.usuario, 'stock.cambio', 'producto', i.id, JSON.stringify({ nombre: d.nombre, codigo: d.codigo, cambios, via: 'asistente' }), actor.ip],
+      args: [t, actor.id, actor.usuario, 'stock.cambio', 'producto', i.id, JSON.stringify({ nombre: d.nombre, codigo: d.codigo, cambios, via: 'asistente', propuesta: propuestaId }), actor.ip],
     });
-    salida.set(i, { codigo: d.codigo, nombre: d.nombre, ok: true });
+    salida.set(i, { id: i.id, codigo: d.codigo, nombre: d.nombre, ok: true, dif: cambios });
   });
   if (registros.length) await db.batch(registros, 'write');
   return items.map((i) => [i, salida.get(i)!]);

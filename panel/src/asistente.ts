@@ -10,7 +10,7 @@ import { ACCIONES, listarEventos } from './auditoria.ts';
 import { todas, type Db } from './db.ts';
 import { listarNovedades, PLANTILLAS } from './novedades.ts';
 import { buscarProductos, esEstado, ESTADOS, listarCategorias, RUBRO, type EstadoStock } from './productos.ts';
-import { MAX_GRUPO, MAX_ITEMS, preparar, prepararGrupo, type Propuesta } from './propuestas.ts';
+import { MAX_GRUPO, MAX_ITEMS, preparar, prepararGrupo, prepararReversion, type Propuesta } from './propuestas.ts';
 import { armarInstructivo } from './instructivo-asistente.ts';
 import { puede, type Rol } from './seguridad.ts';
 
@@ -173,6 +173,16 @@ const HERRAMIENTAS = [
       required: ['estado'],
     },
   },
+  {
+    name: 'proponer_revertir',
+    description: 'Prepara la vuelta atrás de cambios que la persona ya aplicó con el asistente: devuelve cada producto a como estaba antes (stock, cantidad y demás datos que se hayan cambiado). Los productos modificados después por otra vía se omiten para no pisar ese cambio. NO aplica nada: la persona confirma en la tarjeta. Reemplaza la propuesta anterior.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        atras: { type: 'integer', minimum: 1, maximum: 20, description: '1 = los últimos cambios aplicados (por defecto), 2 = los anteriores, etc.' },
+      },
+    },
+  },
 ] as const;
 
 type Entrada = Record<string, unknown>;
@@ -206,6 +216,18 @@ async function ejecutarHerramienta(nombre: string, entrada: Entrada, x: Contexto
         productos_del_filtro: p.seleccionados,
         a_cambiar: p.items.length,
         ya_tenian_ese_stock: p.sinCambios,
+        ejemplos: p.items.slice(0, 8).map((i) => `${i.nombre} (${i.codigo ?? 'sin código'}): ${i.cambios.map((c) => `${c.campo} ${c.antes} → ${c.despues}`).join(', ')}`),
+        errores: p.errores,
+      };
+    }
+    case 'proponer_revertir': {
+      if (!puede(x.rol, 'stock')) return { error: 'Tu rol solo permite consultar: no podés proponer cambios.' };
+      const p = await prepararReversion(db, x.usuarioId, Number(entrada.atras) || 1);
+      if (p.items.length) x.propuesta = p;
+      return {
+        estado: p.items.length ? 'PENDIENTE DE CONFIRMACIÓN: todavía no se revirtió nada. La persona tiene que revisar la tarjeta y tocar "Confirmar cambios".' : 'No hay cambios para revertir.',
+        cambios_originales: p.revertida ? `aplicados a ${p.revertida.productos} producto(s), propuestos el ${fechaLocal(p.revertida.creada)}` : null,
+        a_revertir: p.items.length,
         ejemplos: p.items.slice(0, 8).map((i) => `${i.nombre} (${i.codigo ?? 'sin código'}): ${i.cambios.map((c) => `${c.campo} ${c.antes} → ${c.despues}`).join(', ')}`),
         errores: p.errores,
       };

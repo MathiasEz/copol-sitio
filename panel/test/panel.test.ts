@@ -374,6 +374,7 @@ describe('asistente', () => {
     const q = ultimo.content;
     const herramienta = q.startsWith('proponer:') ? { name: 'proponer_cambios', input: { cambios: JSON.parse(q.slice('proponer:'.length)) } }
       : q.startsWith('grupo:') ? { name: 'proponer_stock_grupo', input: JSON.parse(q.slice('grupo:'.length)) }
+      : q.startsWith('revertir:') ? { name: 'proponer_revertir', input: JSON.parse(q.slice('revertir:'.length)) }
       : /stock/.test(q) ? { name: 'buscar_productos', input: { texto: 'parlante' } }
       : /panel/.test(q) ? { name: 'leer_pagina', input: { ruta: `${RUTA}/usuarios` } }
       : /contacto/.test(q) ? { name: 'leer_pagina', input: { ruta: '/contacto/' } }
@@ -437,7 +438,7 @@ describe('asistente', () => {
     assert.equal(gateway.at(-1)!.cuerpo!.model, 'google/gemini-2.5-flash');
     assert.equal(gateway.at(-1)!.cuerpo!.temperature, 0.2);
     const herramientas = (gateway.at(-1)!.cuerpo!.tools as { name: string }[]).map((t) => t.name);
-    assert.deepEqual(herramientas.sort(), ['buscar_productos', 'leer_pagina', 'listar_novedades', 'proponer_cambios', 'proponer_stock_grupo', 'resumen_stock', 'ultimos_cambios']);
+    assert.deepEqual(herramientas.sort(), ['buscar_productos', 'leer_pagina', 'listar_novedades', 'proponer_cambios', 'proponer_revertir', 'proponer_stock_grupo', 'resumen_stock', 'ultimos_cambios']);
     assert.equal(datos.propuesta, null);
     const ev = await fila<{ detalle: string; usuario: string }>("SELECT detalle, usuario FROM auditoria WHERE accion = 'asistente.consulta' ORDER BY id DESC LIMIT 1");
     assert.equal(ev?.usuario, 'principal');
@@ -587,6 +588,35 @@ describe('asistente', () => {
         assert.deepEqual({ ...cel6 }, { stock_estado: 'sin-stock', stock_cantidad: null, actualizado_por: 'principal' });
         const reg = await fila<{ n: number }>("SELECT COUNT(*) n FROM auditoria WHERE accion = 'stock.cambio' AND entidad_id LIKE 'cel-%' AND detalle LIKE '%\"via\":\"asistente\"%'");
         assert.equal(Number(reg!.n), 64);
+
+        // ── Revertir: vuelve cada producto a como estaba ──
+        await db.execute("DELETE FROM auditoria WHERE accion = 'asistente.consulta'"); // límite diario de la prueba
+        // Propuesta aplicada antes de que se guardaran las diferencias: se reconstruyen desde el Registro.
+        const fila_ = await fila<{ resultado: string }>('SELECT resultado FROM propuestas WHERE id = ?', [r.propuesta.id]);
+        const viejo = (JSON.parse(fila_!.resultado) as Record<string, unknown>[]).map(({ codigo, nombre, ok, error }) => ({ codigo, nombre, ok, error }));
+        await db.execute({ sql: 'UPDATE propuestas SET resultado = ? WHERE id = ?', args: [JSON.stringify(viejo), r.propuesta.id] });
+        // Un producto modificado después de la propuesta no se revierte
+        await db.execute("UPDATE productos SET stock_estado = 'sin-dato', version = version + 1 WHERE id = 'cel-20'");
+        const v = await (await preguntar(n, `revertir:${JSON.stringify({})}`)).json();
+        assert.equal(v.propuesta.items.length, 63);
+        assert.ok(v.propuesta.errores.some((e: string) => /1 producto\(s\) se modificaron después/.test(e) && /CELULAR PRUEBA 20/.test(e)));
+        const item6 = v.propuesta.items.find((i: { codigo: string }) => i.codigo === '200006');
+        assert.deepEqual(item6.cambios, [{ campo: 'Stock', antes: 'Sin stock', despues: 'Con stock' }, { campo: 'Cantidad', antes: '—', despues: '4' }]);
+        assert.equal(await conStock(), 1, 'proponer la reversión no modifica nada');
+        assert.match((await (await decidir(n, v.propuesta.id, 'confirmar')).json()).mensaje, /63 de 63 cambios aplicados/);
+        assert.equal(await conStock(), 64, 'vuelven los que tenían stock (63 + el que no se había cambiado)');
+        const sinStock = (await db.execute("SELECT id FROM productos WHERE categoria_id = 'celulares-prueba' AND stock_estado = 'sin-stock' ORDER BY id")).rows;
+        assert.deepEqual(sinStock.map((f) => f.id),['cel-0', 'cel-1', 'cel-2', 'cel-3', 'cel-4'], 'los que ya estaban sin stock siguen igual');
+        assert.equal(Number((await fila<{ stock_cantidad: number }>("SELECT stock_cantidad FROM productos WHERE id = 'cel-6'"))!.stock_cantidad), 4);
+        assert.equal((await fila<{ stock_estado: string }>("SELECT stock_estado FROM productos WHERE id = 'cel-20'"))!.stock_estado, 'sin-dato');
+
+        // Deshacer la reversión (usa las diferencias guardadas) y no repetir lo ya revertido
+        const w = await (await preguntar(n, `revertir:${JSON.stringify({ atras: 1 })}`)).json();
+        assert.equal(w.propuesta.items.length, 63);
+        assert.ok(w.propuesta.items.every((i: { cambios: { campo: string; despues: string }[] }) => i.cambios[0].despues === 'Sin stock'));
+        const otraVez = await (await preguntar(n, `revertir:${JSON.stringify({ atras: 2 })}`)).json();
+        assert.equal(otraVez.propuesta, null, 'la propuesta original ya fue revertida: no queda nada');
+        assert.match(otraVez.respuesta, /No queda nada para revertir/);
       } finally {
         await db.batch(["DELETE FROM productos WHERE categoria_id = 'celulares-prueba'", "DELETE FROM categorias WHERE id = 'celulares-prueba'"], 'write');
       }
