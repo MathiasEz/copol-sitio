@@ -371,8 +371,24 @@ select.input { padding-right: 28px; }
 .portal__foto img { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: cover; }
 .portal__fotos { display: grid; gap: 10px; }
 @media (min-width: 560px) { .portal__fotos--2 { grid-template-columns: 1fr 1fr; } .portal__fotos--2 .portal__foto img { aspect-ratio: 4 / 3; } }
-.portal-recibos { justify-items: start; }
-.portal-recibos .btn { min-width: 160px; }
+/* "Tus recibos": bloque destacado (verde COPOL), con ícono, título grande y botón amarillo. */
+.portal-recibos {
+  display: grid; gap: 16px 20px; align-items: center; grid-template-columns: auto minmax(0, 1fr);
+  padding: clamp(20px, 3.5vw, 32px); border-radius: var(--radius-lg); color: #fff;
+  background: linear-gradient(135deg, #006633 0%, #008d36 100%); box-shadow: 0 14px 34px -14px rgb(0 102 51 / .55);
+}
+@media (min-width: 640px) { .portal-recibos { grid-template-columns: auto minmax(0, 1fr) auto; } }
+.portal-recibos__icono { display: grid; place-items: center; width: 64px; height: 64px; border-radius: 18px; background: rgb(255 255 255 / .16); color: #fff; }
+.portal-recibos__texto { display: grid; gap: 4px; }
+.portal-recibos__eyebrow { font-size: .75rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #f8ea39; }
+.portal-recibos h2 { font-size: clamp(1.5rem, 3vw, 1.875rem); font-weight: 800; line-height: 1.1; color: #fff; }
+.portal-recibos p { color: rgb(255 255 255 / .88); font-size: .9375rem; }
+.portal-recibos__boton { min-height: 56px; padding: 14px 34px; font-size: 1.125rem; font-weight: 800; border-radius: 999px; background: #f8ea39; color: #12261a; box-shadow: 0 8px 20px -8px rgb(0 0 0 / .45); }
+.portal-recibos__boton:hover { background: #fff36b; color: #12261a; }
+.portal-recibos__boton:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
+@media (max-width: 639px) { .portal-recibos__boton { grid-column: 1 / -1; width: 100%; } }
+.portal-recibos .portal-pendiente { grid-column: 1 / -1; color: #fff; border-color: rgb(255 255 255 / .5); }
+.portal-recibos .portal-pendiente a { color: #f8ea39; }
 
 /* Carrusel "Tu cooperativa": desplazamiento con encastre (funciona sin JavaScript); flechas con JS. */
 .carrusel-panel { display: grid; gap: 10px; }
@@ -383,8 +399,14 @@ select.input { padding-right: 28px; }
 /* Piezas gráficas completas (4:5), sin recortar el texto que traen. */
 .carrusel-panel__item img { display: block; width: 100%; aspect-ratio: 4 / 5; object-fit: contain; border-radius: var(--radius); background: var(--muted); }
 .carrusel-panel__controles { display: flex; gap: 8px; justify-content: flex-end; align-items: center; }
-.carrusel-panel__contador { margin-right: auto; font-size: .875rem; font-weight: 600; font-variant-numeric: tabular-nums; }
 .carrusel-panel__controles [data-pausa][aria-pressed="true"] { background: var(--muted); }
+/* Con JS: cinta continua (sin encastre ni barra), con los bordes desvanecidos. */
+.carrusel-panel--continuo .carrusel-panel__pista {
+  scroll-snap-type: none; scrollbar-width: none; scroll-behavior: auto;
+  -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 28px, #000 calc(100% - 28px), transparent 100%);
+  mask-image: linear-gradient(90deg, transparent 0, #000 28px, #000 calc(100% - 28px), transparent 100%);
+}
+.carrusel-panel--continuo .carrusel-panel__pista::-webkit-scrollbar { display: none; }
 .carrusel-panel__controles[hidden] { display: none; }
 
 /* Edición */

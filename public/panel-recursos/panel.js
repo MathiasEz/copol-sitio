@@ -68,75 +68,85 @@
     }
   });
 
-  // ── Carrusel de "Información empleados" ──
-  // Avanza solo cada 4 s (en bucle). Se detiene con el puntero o el foco encima, mientras se toca, con la
-  // pestaña oculta y con el botón Pausar; con "reducir movimiento" no avanza solo. Sin JS se desliza igual.
+  // ── Carrusel de "Información empleados": cinta continua ──
+  // Las piezas pasan de seguido, a velocidad fija (cada una tarda ~1,5 s en pasar), en bucle sin cortes
+  // (se duplican). Se detiene con el puntero o el foco encima, mientras se toca o se desliza a mano (retoma
+  // a los 2,5 s), con la pestaña oculta y con el botón Pausar. Con "reducir movimiento" empieza detenida.
+  // Sin JS queda la tira deslizable con encastre.
   const ICONO_PAUSA = '<path d="M9 5v14M15 5v14"/>';
   const ICONO_PLAY = '<path d="M7 4v16l13-8Z"/>';
+  const SEGUNDOS_POR_PIEZA = 1.5;
   document.querySelectorAll('[data-carrusel-panel]').forEach((c) => {
     const pista = c.querySelector('[data-pista]');
     const controles = c.querySelector('[data-controles]');
     if (!pista || !controles) return;
+    const originales = [...pista.children];
+    // Copias para el bucle: decorativas (ocultas para lectores de pantalla).
+    for (let vuelta = 0; vuelta < 2; vuelta++) {
+      originales.forEach((li) => {
+        const copia = li.cloneNode(true);
+        copia.setAttribute('aria-hidden', 'true');
+        copia.querySelectorAll('img').forEach((img) => { img.alt = ''; img.loading = 'eager'; });
+        copia.querySelectorAll('.sr').forEach((s) => s.remove());
+        pista.append(copia);
+      });
+    }
+    c.classList.add('carrusel-panel--continuo');
     controles.hidden = false;
-    const items = [...pista.children];
-    const contador = c.querySelector('[data-contador]');
-    const botonPausa = c.querySelector('[data-pausa]');
-    const actual = () => {
-      const izq = pista.getBoundingClientRect().left;
-      let mejor = 0, min = Infinity;
-      items.forEach((it, i) => { const d = Math.abs(it.getBoundingClientRect().left - izq); if (d < min) { min = d; mejor = i; } });
-      return mejor;
-    };
-    const alFinal = () => pista.scrollLeft + pista.clientWidth >= pista.scrollWidth - 4;
-    const ir = (i) => {
-      const n = items.length;
-      const destino = items[((i % n) + n) % n];
-      pista.scrollTo({ left: destino.offsetLeft - items[0].offsetLeft, behavior: 'smooth' });
-    };
-    // Hacia adelante: al llegar al final (aunque queden piezas visibles a la derecha) vuelve al principio.
-    const siguiente = () => (alFinal() ? ir(0) : ir(actual() + 1));
-    const anterior = () => (pista.scrollLeft <= 4 ? ir(items.length - 1) : ir(actual() - 1));
-    c.querySelector('[data-anterior]')?.addEventListener('click', () => { anterior(); reiniciar(); });
-    c.querySelector('[data-siguiente]')?.addEventListener('click', () => { siguiente(); reiniciar(); });
-    let espera;
-    pista.addEventListener('scroll', () => {
-      clearTimeout(espera);
-      espera = setTimeout(() => { if (contador) contador.textContent = `${actual() + 1} / ${items.length}`; }, 80);
-    }, { passive: true });
+    const boton = c.querySelector('[data-pausa]');
+    const textoBoton = c.querySelector('[data-pausa-texto]');
 
-    // Avance automático
-    const reducido = matchMedia('(prefers-reduced-motion: reduce)').matches;
-    let pausadoPorUsuario = reducido;
+    const anchoSet = () => pista.children[originales.length].offsetLeft - pista.children[0].offsetLeft;
+    const velocidad = () => (pista.children[1].offsetLeft - pista.children[0].offsetLeft) / SEGUNDOS_POR_PIEZA;
+
+    let pausadoPorUsuario = matchMedia('(prefers-reduced-motion: reduce)').matches;
     let encima = false;
-    let reloj = null;
-    const detener = () => { clearInterval(reloj); reloj = null; };
-    const arrancar = () => {
-      detener();
-      if (!pausadoPorUsuario && !encima && !document.hidden) reloj = setInterval(siguiente, 4000);
+    let enMano = false;
+    let pos = 0;
+    let ultimo = 0;
+    let retomar;
+    const activo = () => !pausadoPorUsuario && !encima && !enMano && !document.hidden;
+    // El avance depende del tiempo real (no de los cuadros por segundo). Mientras está detenida, el reloj
+    // se mantiene al día para que al retomar no "salte".
+    const cuadro = (t) => {
+      const dt = ultimo ? (t - ultimo) / 1000 : 0;
+      ultimo = t;
+      if (activo() && dt < 5) {
+        const set = anchoSet();
+        pos += velocidad() * dt;
+        if (set > 0 && pos >= set) pos -= set;
+        pista.scrollLeft = pos;
+      }
+      requestAnimationFrame(cuadro);
     };
-    const reiniciar = () => arrancar();
-    const pintarPausa = () => {
-      if (!botonPausa) return;
-      botonPausa.setAttribute('aria-pressed', String(pausadoPorUsuario));
-      botonPausa.setAttribute('aria-label', pausadoPorUsuario ? 'Reanudar el carrusel' : 'Pausar el carrusel');
-      const svg = botonPausa.querySelector('svg');
+    // Al retomar, sigue desde donde la dejó la persona (dentro del primer juego de piezas).
+    const sincronizar = () => { const set = anchoSet(); pos = set > 0 ? pista.scrollLeft % set : pista.scrollLeft; };
+    const pintar = () => {
+      boton?.setAttribute('aria-pressed', String(pausadoPorUsuario));
+      if (textoBoton) textoBoton.textContent = pausadoPorUsuario ? 'Reproducir' : 'Pausar';
+      const svg = boton?.querySelector('svg');
       if (svg) svg.innerHTML = pausadoPorUsuario ? ICONO_PLAY : ICONO_PAUSA;
     };
-    botonPausa?.addEventListener('click', () => { pausadoPorUsuario = !pausadoPorUsuario; pintarPausa(); arrancar(); });
-    c.addEventListener('mouseenter', () => { encima = true; detener(); });
-    c.addEventListener('mouseleave', () => { encima = false; arrancar(); });
-    c.addEventListener('focusin', () => { encima = true; detener(); });
-    c.addEventListener('focusout', (e) => { if (!c.contains(e.relatedTarget)) { encima = false; arrancar(); } });
-    // Al tocar con el dedo se detiene y retoma a los 6 s.
-    let retomar;
-    pista.addEventListener('touchstart', () => { detener(); clearTimeout(retomar); retomar = setTimeout(arrancar, 6000); }, { passive: true });
+    boton?.addEventListener('click', () => { pausadoPorUsuario = !pausadoPorUsuario; sincronizar(); pintar(); });
+    pista.addEventListener('mouseenter', () => { encima = true; });
+    pista.addEventListener('mouseleave', () => { encima = false; sincronizar(); });
+    pista.addEventListener('focusin', () => { encima = true; });
+    pista.addEventListener('focusout', () => { encima = false; sincronizar(); });
+    const tocar = () => { enMano = true; clearTimeout(retomar); };
+    const soltar = () => { clearTimeout(retomar); retomar = setTimeout(() => { enMano = false; sincronizar(); }, 2500); };
+    pista.addEventListener('pointerdown', tocar);
+    pista.addEventListener('touchstart', tocar, { passive: true });
+    pista.addEventListener('pointerup', soltar);
+    pista.addEventListener('touchend', soltar, { passive: true });
+    pista.addEventListener('wheel', () => { tocar(); soltar(); }, { passive: true });
     pista.addEventListener('keydown', (e) => {
-      if (e.key === 'ArrowRight') { e.preventDefault(); siguiente(); }
-      if (e.key === 'ArrowLeft') { e.preventDefault(); anterior(); }
+      if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+      e.preventDefault();
+      pista.scrollLeft += (e.key === 'ArrowRight' ? 1 : -1) * (pista.children[1].offsetLeft - pista.children[0].offsetLeft);
+      sincronizar();
     });
-    document.addEventListener('visibilitychange', arrancar);
-    pintarPausa();
-    arrancar();
+    pintar();
+    requestAnimationFrame(cuadro);
   });
 
   // ── Fotos grandes: se achican en el navegador antes de enviarlas ──

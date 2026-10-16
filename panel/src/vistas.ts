@@ -58,6 +58,7 @@ const ICONOS: Record<string, string> = {
   'flecha-externa': '<path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/>',
   izquierda: '<path d="m15 18-6-6 6-6"/>',
   pausa: '<path d="M9 5v14M15 5v14"/>',
+  recibo: '<path d="M6 2h12v20l-3-2-3 2-3-2-3 2Z"/><path d="M9 7h6M9 11h6M9 15h4"/>',
   derecha: '<path d="m9 18 6-6-6-6"/>',
 };
 export const icono = (n: string, t = 18) => raw(`<svg class="i" width="${t}" height="${t}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONOS[n] ?? ''}</svg>`);
@@ -723,14 +724,11 @@ export function vistaEmpleados(c: Contexto, p: Portal, editar: boolean) {
     <h2 id="portal-coop" class="portal__titulo">Tu cooperativa</h2>
     ${p.carrusel.length
       ? html`<div class="carrusel-panel" data-carrusel-panel>
-        <ul class="carrusel-panel__pista" tabindex="0" aria-label="Piezas de la cooperativa (avanza sola; deslizá o usá las flechas)" data-pista>
+        <ul class="carrusel-panel__pista" tabindex="0" aria-label="Piezas de la cooperativa (se desplazan solas; pasá el mouse o tocá para detenerlas)" data-pista>
           ${p.carrusel.map((i, k) => html`<li class="carrusel-panel__item">${fotoPortal(i, '(min-width: 900px) 360px, 80vw')}<span class="sr">Pieza ${k + 1} de ${p.carrusel.length}</span></li>`)}
         </ul>
         ${p.carrusel.length > 1 ? html`<div class="carrusel-panel__controles" data-controles hidden>
-          <span class="carrusel-panel__contador muted" data-contador aria-live="polite">1 / ${p.carrusel.length}</span>
-          <button class="btn btn--outline btn--icono" type="button" data-pausa aria-label="Pausar el carrusel" aria-pressed="false">${icono('pausa', 18)}</button>
-          <button class="btn btn--outline btn--icono" type="button" data-anterior aria-label="Foto anterior">${icono('izquierda', 18)}</button>
-          <button class="btn btn--outline btn--icono" type="button" data-siguiente aria-label="Foto siguiente">${icono('derecha', 18)}</button>
+          <button class="btn btn--outline btn--sm" type="button" data-pausa aria-pressed="false">${icono('pausa', 16)}<span data-pausa-texto>Pausar</span></button>
         </div>` : ''}
       </div>`
       : pendiente(editar, 'Todavía no hay fotos.')}
@@ -746,10 +744,15 @@ export function vistaEmpleados(c: Contexto, p: Portal, editar: boolean) {
     ${p.chuy.length ? html`<div class="portal__fotos portal__fotos--${p.chuy.length}">${p.chuy.map((i) => html`<div class="portal__foto">${fotoPortal(i, '(min-width: 900px) 380px, 92vw')}</div>`)}</div>` : editar ? pendiente(true, 'Faltan las imágenes.') : ''}
   </section>
 
-  <section class="card portal__bloque portal-recibos" aria-labelledby="portal-recibos">
-    <h2 id="portal-recibos" class="portal__titulo">Tus recibos</h2>
+  <section class="portal-recibos" aria-labelledby="portal-recibos">
+    <span class="portal-recibos__icono" aria-hidden="true">${icono('recibo', 30)}</span>
+    <div class="portal-recibos__texto">
+      <span class="portal-recibos__eyebrow">Funcionarios</span>
+      <h2 id="portal-recibos">Tus recibos</h2>
+      <p>Consultá tus recibos de sueldo en el portal oficial de COPOL.</p>
+    </div>
     ${p.recibosUrl
-      ? html`<a class="btn btn--lg" href="${p.recibosUrl}" target="_blank" rel="noopener noreferrer">Aquí<span class="sr">: ver tus recibos</span>${icono('flecha-externa', 18)}</a>`
+      ? html`<a class="btn portal-recibos__boton" href="${p.recibosUrl}" target="_blank" rel="noopener noreferrer">Aquí<span class="sr">: ver tus recibos</span>${icono('flecha-externa', 20)}</a>`
       : pendiente(editar, 'Falta el enlace de los recibos.')}
   </section>
 </div>`, editar ? html`<a class="btn btn--outline" href="${r('/empleados/editar')}">${icono('editar', 16)}Editar</a>` : '');
