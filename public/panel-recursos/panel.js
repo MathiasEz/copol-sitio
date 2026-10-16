@@ -68,24 +68,75 @@
     }
   });
 
-  // ── Carrusel de "Información empleados": flechas (sin JS se desliza igual) ──
+  // ── Carrusel de "Información empleados" ──
+  // Avanza solo cada 4 s (en bucle). Se detiene con el puntero o el foco encima, mientras se toca, con la
+  // pestaña oculta y con el botón Pausar; con "reducir movimiento" no avanza solo. Sin JS se desliza igual.
+  const ICONO_PAUSA = '<path d="M9 5v14M15 5v14"/>';
+  const ICONO_PLAY = '<path d="M7 4v16l13-8Z"/>';
   document.querySelectorAll('[data-carrusel-panel]').forEach((c) => {
     const pista = c.querySelector('[data-pista]');
     const controles = c.querySelector('[data-controles]');
     if (!pista || !controles) return;
     controles.hidden = false;
-    const paso = (dir) => {
-      const item = pista.firstElementChild;
-      const ancho = item ? item.getBoundingClientRect().width + 12 : pista.clientWidth;
-      const alFinal = pista.scrollLeft + pista.clientWidth >= pista.scrollWidth - 4;
-      const alInicio = pista.scrollLeft <= 4;
-      // En los extremos vuelve al otro lado (en bucle).
-      if (dir > 0 && alFinal) pista.scrollTo({ left: 0, behavior: 'smooth' });
-      else if (dir < 0 && alInicio) pista.scrollTo({ left: pista.scrollWidth, behavior: 'smooth' });
-      else pista.scrollBy({ left: dir * ancho, behavior: 'smooth' });
+    const items = [...pista.children];
+    const contador = c.querySelector('[data-contador]');
+    const botonPausa = c.querySelector('[data-pausa]');
+    const actual = () => {
+      const izq = pista.getBoundingClientRect().left;
+      let mejor = 0, min = Infinity;
+      items.forEach((it, i) => { const d = Math.abs(it.getBoundingClientRect().left - izq); if (d < min) { min = d; mejor = i; } });
+      return mejor;
     };
-    c.querySelector('[data-anterior]')?.addEventListener('click', () => paso(-1));
-    c.querySelector('[data-siguiente]')?.addEventListener('click', () => paso(1));
+    const alFinal = () => pista.scrollLeft + pista.clientWidth >= pista.scrollWidth - 4;
+    const ir = (i) => {
+      const n = items.length;
+      const destino = items[((i % n) + n) % n];
+      pista.scrollTo({ left: destino.offsetLeft - items[0].offsetLeft, behavior: 'smooth' });
+    };
+    // Hacia adelante: al llegar al final (aunque queden piezas visibles a la derecha) vuelve al principio.
+    const siguiente = () => (alFinal() ? ir(0) : ir(actual() + 1));
+    const anterior = () => (pista.scrollLeft <= 4 ? ir(items.length - 1) : ir(actual() - 1));
+    c.querySelector('[data-anterior]')?.addEventListener('click', () => { anterior(); reiniciar(); });
+    c.querySelector('[data-siguiente]')?.addEventListener('click', () => { siguiente(); reiniciar(); });
+    let espera;
+    pista.addEventListener('scroll', () => {
+      clearTimeout(espera);
+      espera = setTimeout(() => { if (contador) contador.textContent = `${actual() + 1} / ${items.length}`; }, 80);
+    }, { passive: true });
+
+    // Avance automático
+    const reducido = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    let pausadoPorUsuario = reducido;
+    let encima = false;
+    let reloj = null;
+    const detener = () => { clearInterval(reloj); reloj = null; };
+    const arrancar = () => {
+      detener();
+      if (!pausadoPorUsuario && !encima && !document.hidden) reloj = setInterval(siguiente, 4000);
+    };
+    const reiniciar = () => arrancar();
+    const pintarPausa = () => {
+      if (!botonPausa) return;
+      botonPausa.setAttribute('aria-pressed', String(pausadoPorUsuario));
+      botonPausa.setAttribute('aria-label', pausadoPorUsuario ? 'Reanudar el carrusel' : 'Pausar el carrusel');
+      const svg = botonPausa.querySelector('svg');
+      if (svg) svg.innerHTML = pausadoPorUsuario ? ICONO_PLAY : ICONO_PAUSA;
+    };
+    botonPausa?.addEventListener('click', () => { pausadoPorUsuario = !pausadoPorUsuario; pintarPausa(); arrancar(); });
+    c.addEventListener('mouseenter', () => { encima = true; detener(); });
+    c.addEventListener('mouseleave', () => { encima = false; arrancar(); });
+    c.addEventListener('focusin', () => { encima = true; detener(); });
+    c.addEventListener('focusout', (e) => { if (!c.contains(e.relatedTarget)) { encima = false; arrancar(); } });
+    // Al tocar con el dedo se detiene y retoma a los 6 s.
+    let retomar;
+    pista.addEventListener('touchstart', () => { detener(); clearTimeout(retomar); retomar = setTimeout(arrancar, 6000); }, { passive: true });
+    pista.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowRight') { e.preventDefault(); siguiente(); }
+      if (e.key === 'ArrowLeft') { e.preventDefault(); anterior(); }
+    });
+    document.addEventListener('visibilitychange', arrancar);
+    pintarPausa();
+    arrancar();
   });
 
   // ── Fotos grandes: se achican en el navegador antes de enviarlas ──

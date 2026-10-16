@@ -57,6 +57,7 @@ const ICONOS: Record<string, string> = {
   empleados: '<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="11" r="2.5"/><path d="M5.5 17a3.5 3.5 0 0 1 7 0M15 9h3M15 13h3"/>',
   'flecha-externa': '<path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/>',
   izquierda: '<path d="m15 18-6-6 6-6"/>',
+  pausa: '<path d="M9 5v14M15 5v14"/>',
   derecha: '<path d="m9 18 6-6-6-6"/>',
 };
 export const icono = (n: string, t = 18) => raw(`<svg class="i" width="${t}" height="${t}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONOS[n] ?? ''}</svg>`);
@@ -722,10 +723,12 @@ export function vistaEmpleados(c: Contexto, p: Portal, editar: boolean) {
     <h2 id="portal-coop" class="portal__titulo">Tu cooperativa</h2>
     ${p.carrusel.length
       ? html`<div class="carrusel-panel" data-carrusel-panel>
-        <ul class="carrusel-panel__pista" tabindex="0" aria-label="Fotos de la cooperativa (deslizá para ver más)" data-pista>
-          ${p.carrusel.map((i, k) => html`<li class="carrusel-panel__item"><figure>${fotoPortal(i, '(min-width: 900px) 560px, 88vw')}${i.alt ? html`<figcaption>${i.alt}</figcaption>` : ''}</figure><span class="sr">Foto ${k + 1} de ${p.carrusel.length}</span></li>`)}
+        <ul class="carrusel-panel__pista" tabindex="0" aria-label="Piezas de la cooperativa (avanza sola; deslizá o usá las flechas)" data-pista>
+          ${p.carrusel.map((i, k) => html`<li class="carrusel-panel__item">${fotoPortal(i, '(min-width: 900px) 360px, 80vw')}<span class="sr">Pieza ${k + 1} de ${p.carrusel.length}</span></li>`)}
         </ul>
         ${p.carrusel.length > 1 ? html`<div class="carrusel-panel__controles" data-controles hidden>
+          <span class="carrusel-panel__contador muted" data-contador aria-live="polite">1 / ${p.carrusel.length}</span>
+          <button class="btn btn--outline btn--icono" type="button" data-pausa aria-label="Pausar el carrusel" aria-pressed="false">${icono('pausa', 18)}</button>
           <button class="btn btn--outline btn--icono" type="button" data-anterior aria-label="Foto anterior">${icono('izquierda', 18)}</button>
           <button class="btn btn--outline btn--icono" type="button" data-siguiente aria-label="Foto siguiente">${icono('derecha', 18)}</button>
         </div>` : ''}
@@ -763,13 +766,13 @@ export function vistaFormEmpleados(c: Contexto, p: Portal, errores: Record<strin
     return html`<section class="card form"><h2 class="card__titulo">${titulo}</h2>
       ${imgs.length ? html`<ul class="portal-editar__imgs">${imgs.map((i, k) => html`<li class="portal-editar__img">
         ${fotoPortal(i, '160px')}
-        <label class="campo"><span class="label">Descripción</span><input class="input" name="alt_${g}_${k}" value="${i.alt}" maxlength="160"></label>
+        <label class="campo"><span class="label">Descripción</span><input class="input" name="alt_${g}_${k}" value="${i.alt}" maxlength="400"></label>
         <label class="check"><input type="checkbox" name="quitar_${g}_${k}" value="1"><span>Quitar</span></label>
       </li>`)}</ul>` : html`<p class="muted">Sin imágenes.</p>`}
       ${imgs.length < max ? html`<label class="campo"><span class="label">${max - imgs.length > 1 ? 'Agregar imágenes' : 'Agregar imagen'}</span>
         <input class="input" type="file" name="nuevas_${g}" accept="image/jpeg,image/png,image/webp,image/avif" ${si(max - imgs.length > 1, 'multiple')} ${inv(`nuevas_${g}`)}>
         <span class="ayuda">${max === 1 ? 'Una sola imagen' : `Hasta ${max} en total; podés elegir varias a la vez`} · JPG, PNG, WebP o AVIF</span>${err(`nuevas_${g}`)}</label>
-        <label class="campo"><span class="label">${max - imgs.length > 1 ? 'Descripción de las nuevas' : 'Descripción de la imagen'} <span class="opcional">(opcional)</span></span><input class="input" name="alt_nueva_${g}" maxlength="160"></label>` : html`<p class="ayuda">${max === 1 ? 'Para cambiar la imagen, marcá "Quitar", guardá y subí la nueva.' : `Llegaste al máximo de ${max}. Quitá una para agregar otra.`}</p>${err(`nuevas_${g}`)}`}
+        <label class="campo"><span class="label">${max - imgs.length > 1 ? 'Descripción de las nuevas' : 'Descripción de la imagen'} <span class="opcional">(opcional)</span></span><input class="input" name="alt_nueva_${g}" maxlength="400"></label>` : html`<p class="ayuda">${max === 1 ? 'Para cambiar la imagen, marcá "Quitar", guardá y subí la nueva.' : `Llegaste al máximo de ${max}. Quitá una para agregar otra.`}</p>${err(`nuevas_${g}`)}`}
     </section>`;
   };
   return layout(c, 'Editar información empleados', html`

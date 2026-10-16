@@ -620,7 +620,7 @@ export function crearApp({ db: fuenteDb, config, almacen, asistente, correo }: O
     const archivos: Partial<Record<E.Grupo, File[]>> = {};
     for (const g of Object.keys(E.GRUPOS) as E.Grupo[]) {
       nuevo[g] = actual[g]
-        .map((img, k) => ({ src: img.src, alt: texto(b[`alt_${g}_${k}`], 160).slice(0, 160) || img.alt, quitar: b[`quitar_${g}_${k}`] === '1' }))
+        .map((img, k) => ({ src: img.src, alt: texto(b[`alt_${g}_${k}`], 400).slice(0, 400) || img.alt, quitar: b[`quitar_${g}_${k}`] === '1' }))
         .filter((x) => !x.quitar)
         .map(({ src, alt }) => ({ src, alt }));
       const subidos = [b[`nuevas_${g}`]].flat().filter((f): f is File => f instanceof File && f.size > 0);
@@ -631,7 +631,7 @@ export function crearApp({ db: fuenteDb, config, almacen, asistente, correo }: O
     // Las imágenes se suben solo si el resto es válido (así no quedan archivos huérfanos).
     if (!Object.keys(errores).length) {
       for (const g of Object.keys(archivos) as E.Grupo[]) {
-        const alt = texto(b[`alt_nueva_${g}`], 160).slice(0, 160) || E.GRUPOS[g].titulo.replace(/ \(carrusel\)$/, '');
+        const alt = texto(b[`alt_nueva_${g}`], 400).slice(0, 400) || E.GRUPOS[g].titulo.replace(/ \(carrusel\)$/, '');
         for (const archivo of archivos[g]!) {
           try {
             nuevo[g].push({ src: await procesarImagen(archivo, { maxMB: config.maxImagenMB, tipo: 'novedad', carpeta: 'empleados', nombre: slug(g), almacen: guardarEn }), alt });

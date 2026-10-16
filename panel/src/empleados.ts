@@ -30,19 +30,22 @@ export const GRUPOS: Record<Grupo, { titulo: string; max: number }> = {
 
 const FOTO = (n: string, alt: string): ImagenPortal => ({ src: `/panel-recursos/empleados/${n}.webp`, alt });
 /**
- * Contenido inicial. Enlaces: los que tienen los QR impresos (leídos de las fotos el 15/10/2026); ese día
- * ninguno respondía (el del ánimo está desactivado en qrco.de y el archivo de Drive no existe), así que
- * hay que reemplazarlos desde "Editar". Fotos: las propias del sitio (docs/registro-de-activos.md).
+ * Contenido inicial. Enlaces: los de los QR entregados por la cooperativa el 16/10/2026 (verificados: el
+ * protocolo es un PDF y la encuesta un formulario de Google) y el portal oficial de recibos de funcionarios.
+ * Carrusel: piezas gráficas de la cooperativa (4:5), en el orden entregado; se muestran completas, sin recorte.
  */
 export const PORTAL_INICIAL: Portal = {
-  acosoUrl: 'https://drive.google.com/file/d/1uHQVgzptVtiu-tDu38TfgMY0P75UfzQm/view?usp=sharing',
-  animoUrl: 'https://qrco.de/bgfywa',
-  recibosUrl: '',
+  acosoUrl: 'https://149508.asset.memtas.com/storage/picture/608c53b1ff5b4a9801b35f37/6acf93c65d1e8d0323743295.pdf?utm_source=email_marketing&utm_admin=149508&utm_medium=email&utm_campaign=Protocolo_de_Acoso_y_Violencia_Laboral',
+  animoUrl: 'https://docs.google.com/forms/d/e/1FAIpQLSeDHOygPj5L5LANRDR1ZcVKAYNSGGDfv0rl9x3R1j1AK3bMmw/viewform',
+  recibosUrl: 'https://www.copol.com.uy/Copolrecibos/',
   carrusel: [
-    FOTO('casa-central', 'Fachada de la Casa Central de COPOL'),
-    FOTO('tienda-interior', 'Interior de la Tienda COPOL'),
-    FOTO('pinecoop-salinas', 'Piscina y cabañas del Parque Vacacional Pinecoop en Salinas'),
-    FOTO('fiestas-eventos', 'Salón de fiestas y eventos de COPOL'),
+    FOTO('hacete-socio', 'Hacete socio. Conocé tus beneficios. Escribinos por WhatsApp al 098 631 414.'),
+    FOTO('parques-y-locales', '2 parques vacacionales y más de 20 locales en todo el país. Próximamente: Parque vacacional Pinecoop Chuy. Parque vacacional Pinecoop Salinas, Canelones.'),
+    FOTO('servicios-salud-mental', 'COPOL Salud Mental: primera consulta gratuita por videollamada, para socios de todo el país, WhatsApp 099 411 050. Servicio fúnebre Abbate: línea 24 h 0800 8508, 097 352 367, 2622 2032. Estudio Jurídico Notarial Arretche Coelho & Asociados: 092 014 553.'),
+    FOTO('servicios-salud-bucal', 'COPOL Salud Bucal: odontología general, operatoria, endodoncia, cirugía, prótesis, ortodoncia e implantes, 097 742 303 y 091 437 950. Clínica veterinaria: emergencia 24 horas, 092 785 874. Viajá con COPOL: 098 492 925 y 091 213 956. Convenios: Bookshop, barracas y ferretería, gomería y gimnasio para socios.'),
+    FOTO('locales-del-interior', 'En nuestros locales del interior tenés todo a tu alcance: supermercado, óptica, farmacia, recargas de gas, mueblería, barracas, tienda y zapatería. Nuevo convenio: Stadium.'),
+    FOTO('garantia-alquiler', 'Garantía de alquiler COPOL + Porto Seguro. Financiás sin tarjeta.'),
+    FOTO('claro-socios-nuevos', 'Contrato especial Claro para socios nuevos en COPOL, $396: 100 GB de internet, WhatsApp gratis, 3000 minutos, 500 SMS, saldo incluido de $200, 1 mes de Prime Video y roaming en Europa y América.'),
   ],
   ciudadDelPlata: [],
   chuy: [FOTO('pinecoop-chuy', 'Pinecoop Chuy en obras')],
@@ -51,7 +54,7 @@ export const PORTAL_INICIAL: Portal = {
 const lista = (v: unknown, max: number): ImagenPortal[] =>
   (Array.isArray(v) ? v : [])
     .filter((i): i is ImagenPortal => !!i && typeof i.src === 'string' && typeof i.alt === 'string')
-    .map((i) => ({ src: i.src, alt: i.alt.slice(0, 160) }))
+    .map((i) => ({ src: i.src, alt: i.alt.slice(0, 400) }))
     .slice(0, max);
 
 export async function obtenerPortal(db: Db): Promise<Portal> {

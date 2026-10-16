@@ -313,6 +313,12 @@ describe('información empleados', () => {
       assert.match(html, /aria-label="Código QR: ¿Cómo te sentís hoy\?"/);
       assert.match(html, /Tu cooperativa/);
       assert.match(html, /Pinecoop Chuy/);
+      // Contenido inicial: enlaces de los QR entregados y las 7 piezas del carrusel, en orden.
+      assert.match(html, /href="https:\/\/docs\.google\.com\/forms\/d\/e\/1FAIpQLSeDHOygPj5L5LANRDR1ZcVKAYNSGGDfv0rl9x3R1j1AK3bMmw\/viewform"/);
+      assert.match(html, /href="https:\/\/149508\.asset\.memtas\.com\/[^"]+\.pdf/);
+      assert.match(html, /href="https:\/\/www\.copol\.com\.uy\/Copolrecibos\/"/);
+      const piezas = [...html.matchAll(/\/panel-recursos\/empleados\/([a-z-]+)\.webp/g)].map((m) => m[1]);
+      assert.deepEqual(piezas.slice(0, 7), ['hacete-socio', 'parques-y-locales', 'servicios-salud-mental', 'servicios-salud-bucal', 'locales-del-interior', 'garantia-alquiler', 'claro-socios-nuevos']);
       assert.doesNotMatch(html, /empleados\/editar/, `${usuario}: sin botón Editar`);
       assert.equal((await n.pedir(`${RUTA}/empleados/editar`)).status, 403);
       assert.equal((await n.post(`${RUTA}/empleados`, { recibos_url: 'https://ejemplo.com' })).status, 403);
@@ -330,7 +336,7 @@ describe('información empleados', () => {
 
     const ok = await n.post(`${RUTA}/empleados`, {
       acoso_url: 'https://intranet.copol.test/protocolo.pdf', animo_url: 'https://forms.copol.test/animo', recibos_url: 'https://recibos.copol.test/',
-      quitar_carrusel_0: '1', alt_carrusel_1: 'Tienda por dentro',
+      quitar_carrusel_0: '1', alt_carrusel_1: 'Parques y locales (descripción editada)',
       nuevas_ciudadDelPlata: await png(1600, 900), alt_nueva_ciudadDelPlata: 'Obra en Ciudad del Plata',
     });
     assert.equal(ok.status, 302);
@@ -340,8 +346,8 @@ describe('información empleados', () => {
     assert.match(html, /href="https:\/\/intranet\.copol\.test\/protocolo\.pdf"/);
     assert.match(html, /alt="Obra en Ciudad del Plata"/);
     assert.match(html, /src="[^"]*\/empleados\/ciudaddelplata-[0-9a-f]+-800\.webp"/i);
-    assert.match(html, /Tienda por dentro/);
-    assert.doesNotMatch(html, /casa-central\.webp/, 'la foto quitada ya no aparece');
+    assert.match(html, /Parques y locales \(descripción editada\)/);
+    assert.doesNotMatch(html, /hacete-socio\.webp/, 'la pieza quitada ya no aparece');
 
     // Ciudad del Plata admite una sola imagen
     await n.pedir(`${RUTA}/empleados/editar`);
