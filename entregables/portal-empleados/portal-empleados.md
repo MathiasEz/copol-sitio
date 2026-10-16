@@ -6,7 +6,7 @@ Hay dos versiones con el mismo contenido y el mismo orden:
 
 | Versión | Dónde está | Para qué |
 |---|---|---|
-| `portal-empleados.html` (este paquete) | Archivo único para cargar en **Udu** | Página para el personal, con los colores del sitio web (fondo amarillo claro, verdes COPOL). |
+| `portal-empleados.html` (este paquete) | Archivo único para cargar en **Odoo** | Página para el personal, con los colores del sitio web (fondo amarillo claro, verdes COPOL). |
 | Panel de stock → "Información empleados" | Panel de administración del sitio | La misma sección dentro del panel. Ahí los administradores cambian enlaces y fotos desde "Editar". |
 
 > Si se cambia un enlace o una foto, hay que actualizarlo **en las dos** versiones.
@@ -20,13 +20,19 @@ Hay dos versiones con el mismo contenido y el mismo orden:
 - **Todos los estilos están encerrados** en `#copol-portal`, así que no alteran el resto de la página donde se pegue. La única excepción es el fondo y el margen de `body`, que solo aplican si se abre como página propia.
 - **Funciona en celular, tablet y computadora.** En pantallas angostas todo va en una columna.
 
-### Cómo cargarlo en Udu
+### Cómo cargarlo en Odoo (sitio web)
 
 1. Abrí `portal-empleados.html` con un editor de texto (Bloc de notas, VS Code).
 2. Editá el bloque **CONFIGURACIÓN** (ver punto 4), si hace falta.
-3. Cargá el contenido completo en Udu, como página HTML o en un bloque de "código HTML / incrustar código".
-4. **Requisito:** Udu tiene que permitir `<script>`. Si los elimina, la página muestra el aviso "activá JavaScript" y no aparecen los QR, las fotos ni los botones.
-5. Revisá la página publicada desde el celular. Escaneá los QR con la cámara y tocá cada botón.
+3. En Odoo: **Sitio web → + Nuevo → Página**. Ponele un nombre, por ejemplo "Información empleados".
+4. En el editor, arrastrá el bloque **"Incrustar código"** ("Embed Code"), que está en los bloques de contenido, y abrilo con **"Editar"**.
+5. Borrá el contenido de ejemplo, pegá **todo** el contenido de `portal-empleados.html` y guardá.
+6. Publicá la página. Si es solo para el personal, no la agregues al menú público; si hace falta, restringí su visibilidad desde las propiedades de la página.
+7. Revisá la página publicada desde el celular. Escaneá los QR con la cámara y tocá cada botón.
+
+> **Requisito:** el bloque "Incrustar código" tiene que conservar los `<script>`, que es lo que hace normalmente. Si se perdieran, la página muestra el aviso "activá JavaScript" y no aparecen los QR, las fotos ni los botones.
+>
+> **Si Odoo rechaza el bloque por tamaño** (≈ 480 KB, por las fotos incluidas), subí esas fotos a la biblioteca de medios de Odoo y cambiá cada `incluida:…` por la dirección de la imagen. Después hay que borrar su línea en el bloque `copol-portal-imagenes`, al final del archivo. Si preferís, lo hago yo.
 
 ---
 
@@ -134,7 +140,7 @@ Reglas:
   - `src` es la dirección de la imagen (`https://…`) o `incluida:<nombre>` para las que ya vienen dentro del archivo: `casa-central`, `tienda-interior`, `pinecoop-salinas`, `fiestas-eventos`, `pinecoop-chuy`.
   - `texto` describe la foto. Lo leen los lectores de pantalla y en el carrusel aparece debajo de la foto.
 
-Ejemplo, con las fotos ya subidas a Udu:
+Ejemplo, con las fotos ya subidas a Odoo:
 
 ```js
 ciudadDelPlata: [
@@ -162,7 +168,7 @@ Para todas:
 - **Peso:** idealmente menos de **400 KB** por foto, para que la página cargue rápido en el celular.
 - **Siempre horizontales.** Las fotos se recortan para llenar el recuadro, así que conviene dejar el motivo principal en el centro, lejos de los bordes.
 - **Solo fotos reales y propias de COPOL:** sin imágenes generadas con IA ni de bancos de imágenes. No usar fotos con datos personales de socios o funcionarios.
-- **Dónde subirlas:** a la biblioteca de medios de Udu (o donde se aloje la página). Después se copia la dirección de la imagen en `src`.
+- **Dónde subirlas:** a la biblioteca de medios de Odoo (Sitio web → editor → insertar imagen, o Configuración → Técnico → Adjuntos). Después se copia la dirección de la imagen en `src`.
 
 ---
 
