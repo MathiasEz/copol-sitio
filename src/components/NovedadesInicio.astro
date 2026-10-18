@@ -1,11 +1,14 @@
 ---
-// Novedades publicadas desde el panel, en el orden elegido allí (server island: se genera en cada
-// visita). Plantillas: imagen a la izquierda y texto a la derecha, imagen completa, o título y texto.
+// Novedades publicadas desde el panel, en el orden elegido allí (server island: se genera en el servidor
+// y la CDN la guarda hasta el próximo cambio; ver src/lib/cache-publica.ts). Plantillas: imagen a la izquierda y texto a la derecha, imagen completa, o título y texto.
 import Icono from './Icono.astro';
 import { obtenerNovedades, type Novedad } from '../lib/inventario';
+import { cachearEnCdn, ETIQUETAS_WEB, sinCache } from '../lib/cache-publica';
 
-Astro.response.headers.set('Cache-Control', 'no-store, max-age=0');
-const novedades = await obtenerNovedades();
+const leidas = await obtenerNovedades();
+if (leidas) cachearEnCdn(Astro.response.headers, ETIQUETAS_WEB.novedades);
+else sinCache(Astro.response.headers);
+const novedades = leidas ?? [];
 const variante = (url: string, ancho: number) => url.replace(/-\d+\.webp$/, `-${ancho}.webp`);
 const img = (n: Novedad) => (n.imagen ? { src: variante(n.imagen, 800), srcset: `${variante(n.imagen, 800)} 800w, ${variante(n.imagen, 1600)} 1600w` } : null);
 const externo = (url: string | null) => Boolean(url && /^https?:/.test(url));

@@ -78,7 +78,15 @@ const desdeJson = () => bazarJson.productos
     largo_desc: p.descripcion?.length ?? 0,
   }));
 
-async function filas(): Promise<{ filas: Fila[]; enVivo: boolean }> {
+// Lecturas simultáneas comparten una sola consulta a la base (p. ej. muchas visitas justo después de que
+// el panel renovó la caché). No guarda nada: la consulta siguiente vuelve a leer la base.
+let enCurso: Promise<{ filas: Fila[]; enVivo: boolean }> | null = null;
+function filas(): Promise<{ filas: Fila[]; enVivo: boolean }> {
+  enCurso ??= leerFilas().finally(() => { enCurso = null; });
+  return enCurso;
+}
+
+async function leerFilas(): Promise<{ filas: Fila[]; enVivo: boolean }> {
   try {
     const db = await obtenerDb();
     const r = await todas<Fila>(db, `SELECT p.id, p.codigo, p.nombre, p.marca, p.categoria_id, c.nombre categoria_nombre, p.subcategoria, p.imagen,
@@ -133,13 +141,13 @@ export function destacados(catalogo: Catalogo, cantidad = 10, categorias = ['cel
 }
 
 export type { Novedad };
-/** Novedades publicadas en el orden definido en el panel ([] si la base no responde). */
-export async function obtenerNovedades(): Promise<Novedad[]> {
+/** Novedades publicadas en el orden definido en el panel (null si la base no responde). */
+export async function obtenerNovedades(): Promise<Novedad[] | null> {
   try {
     return await novedadesPublicadas(await obtenerDb());
   } catch (e) {
     console.error('novedades: no se pudo leer la base de datos:', (e as Error).message);
-    return [];
+    return null;
   }
 }
 

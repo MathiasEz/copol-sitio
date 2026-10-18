@@ -7,14 +7,18 @@ Panel para que el personal autorizado consulte y actualice el inventario del Baz
 ## Cómo viaja el stock (y por qué ahora se ve al instante)
 
 ```
-Panel          ──escribe──►  Base de datos (Turso / libSQL)  ◄──lee en cada visita──  Web pública
-   └─ confirma "Guardado" solo después de releer la fila y comprobar el valor
+Panel          ──escribe──►  Base de datos (Turso / libSQL)  ◄──lee──  Web pública (copia en la CDN de Vercel)
+   ├─ confirma "Guardado" solo después de releer la fila y comprobar el valor
+   └─ borra la copia de la CDN (etiqueta "bazar" o "novedades"): la visita siguiente ya lee el valor nuevo
 ```
 
 - **Antes** (problema reportado el 13/10/2026): la página de Bazar era estática; el stock salía del archivo `bazar.json` generado al compilar, y la lectura en vivo dependía de una variable (`PUBLIC_PANEL_URL`) que no estaba configurada, más 30 s de caché en la API. El panel sí guardaba el cambio (quedó en la base y en el registro), pero la web seguía mostrando el valor viejo.
 - **Ahora**:
-  - `/hipermercado/bazar/` se genera **en cada visita** leyendo la misma base que escribe el panel, con `Cache-Control: no-store` (ni el navegador ni la CDN de Vercel guardan una copia vieja).
-  - En Inicio y en Hipermercado, el estante de productos y las novedades son *server islands*: el resto de la página es estático y rápido, y esas partes se generan en cada visita.
+  - `/hipermercado/bazar/` se genera en el servidor leyendo la misma base que escribe el panel. La CDN de Vercel guarda la página (`Vercel-CDN-Cache-Control: max-age=60, stale-while-revalidate=86400`, etiqueta `Vercel-Cache-Tag: bazar`) y la entrega sin ejecutar la función, así un pico de visitas no hace cola en el servidor ni en la base. El navegador no guarda copia propia (`Cache-Control: public, max-age=0, must-revalidate`). Ver `src/lib/cache-publica.ts`.
+  - Al registrar un cambio visible en la web (stock, productos o novedades), el panel borra las copias de esa etiqueta (`panel/src/web-publica.ts`, desde `registrar()` en `auditoria.ts`): la visita siguiente se genera con el valor nuevo. Si el borrado fallara, la copia se renueva sola a los 60 s.
+  - Si la base no responde, esa versión de la página no se guarda en la CDN (`no-store`).
+  - En Inicio y en Hipermercado, el estante de productos y las novedades son *server islands* con la misma caché (etiquetas `bazar` y `novedades`): el resto de la página es estático.
+  - Los scripts de consola (`panel:sembrar`, `panel:restaurar`) no borran la caché: la web los muestra al renovarse la copia (60 s como máximo).
   - El panel guarda con control de versión y **relee la fila**: el mensaje "Guardado: Sin stock" aparece solo si la base devolvió exactamente ese valor. Si no, muestra un error y no confirma.
   - Si la base no respondiera, la web no muestra un stock viejo: todas las tarjetas pasan a "Consultar disponibilidad" con un aviso.
 - Los textos e imágenes del catálogo importado siguen guardados en el proyecto (`src/data/catalogo/`, `src/assets/catalogo/`); en cada build se generan sus variantes web de 240 y 400 px en `public/catalogo/`.

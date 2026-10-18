@@ -1,5 +1,6 @@
 // Registro de cambios relevantes (quién, qué, cuándo y desde dónde). Nunca guarda contraseñas.
 import { ahora, ejecutar, todas, type Db } from './db.ts';
+import { renovarWebPublica } from './web-publica.ts';
 
 export interface Actor {
   id: number | null;
@@ -11,6 +12,8 @@ export async function registrar(db: Db, actor: Actor, accion: string, entidad: s
   await ejecutar(db, 'INSERT INTO auditoria (fecha, usuario_id, usuario, accion, entidad, entidad_id, detalle, ip) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', [
     ahora(), actor.id, actor.usuario, accion, entidad, entidadId, detalle == null ? null : JSON.stringify(detalle), actor.ip,
   ]);
+  // Todo cambio visible en la web pasa por el registro: es el punto único para renovar la caché de la CDN.
+  await renovarWebPublica(accion);
 }
 
 export interface Evento {

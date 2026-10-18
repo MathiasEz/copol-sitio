@@ -9,16 +9,20 @@ import Campo from '../../components/ui/Campo.astro';
 import Toggle from '../../components/ui/Toggle.astro';
 import { obtenerCatalogoModelos } from '../../lib/inventario';
 import { CONTACTO, whatsapp } from '../../data/confirmado/sitio';
+import { cachearEnCdn, ETIQUETAS_WEB, sinCache } from '../../lib/cache-publica';
 
-// Se genera en cada visita (no es una página estática): el stock sale de la misma base de datos que
-// actualiza el panel, así un cambio guardado se ve en la próxima carga. Sin caché en navegador ni CDN.
-// Textos e imágenes del catálogo importado siguen guardados en el proyecto. Sin precios.
+// Se genera en el servidor (no es una página estática): el stock sale de la misma base de datos que
+// actualiza el panel. La CDN guarda la página y el panel la renueva al guardar un cambio, así un cambio
+// guardado se ve en la próxima carga (src/lib/cache-publica.ts). Textos e imágenes del catálogo importado
+// siguen guardados en el proyecto. Sin precios.
 export const prerender = false;
-Astro.response.headers.set('Cache-Control', 'no-store, max-age=0');
 // Los productos que son el mismo modelo en distintos colores se muestran juntos en una tarjeta
 // (src/lib/variantes.ts); cada color conserva su código interno COPOL y su stock.
 const catalogo = await obtenerCatalogoModelos();
 const MODELOS = catalogo.modelos;
+// Sin la base no hay stock confiable: esa versión no se guarda en la CDN.
+if (catalogo.enVivo) cachearEnCdn(Astro.response.headers, ETIQUETAS_WEB.bazar);
+else sinCache(Astro.response.headers);
 const TOTALES_STOCK = catalogo.totales;
 const secciones = catalogo.categorias.map((c) => ({ ...c, modelos: MODELOS.filter((m) => m.categoriaId === c.id) }));
 ---
@@ -294,6 +298,65 @@ const secciones = catalogo.categorias.map((c) => ({ ...c, modelos: MODELOS.filte
     }
     fichaDesc.append(ul);
   };
+  // Lista de colores de la ficha, armada con los datos compactos de la tarjeta (data-ids + data-v; ver
+  // TarjetaModelo.astro): cada color con su código, su stock, "Agregar" al carrito y su consulta por WhatsApp.
+  type Variante = { id: string; codigo: string; color: string; estado: string };
+  const variantesDe = (tarjeta: HTMLElement): Variante[] => {
+    const ids = (tarjeta.dataset.ids ?? '').split(' ');
+    const datos = JSON.parse(tarjeta.dataset.v ?? '[]') as [string, string, string][];
+    return datos.map(([codigo, color, estado], k) => ({ id: ids[k], codigo, color, estado }));
+  };
+  const WHATSAPP = document.querySelector<HTMLElement>('[data-carrito]')!.dataset.wa;
+  // Mismo mensaje que consultaProducto() de src/lib/inventario.ts.
+  const consultaDe = (modelo: string, v: Variante) =>
+    `https://wa.me/${WHATSAPP}?text=${encodeURIComponent(`Hola! Quiero consultar por el producto: ${v.color ? `${modelo}, color ${v.color.toLowerCase()}` : modelo}${v.codigo ? ` (código interno COPOL ${v.codigo})` : ''}`)}`;
+  const ICONO_STOCK: Record<string, string> = { 'con-stock': 'check', 'sin-stock': 'cerrar', 'sin-dato': 'info' };
+  // Trazos de Icono.astro que usa la ficha.
+  const TRAZOS: Record<string, string> = {
+    check: '<path d="m5 12 4.5 4.5L19 7"/>',
+    cerrar: '<path d="M18 6 6 18M6 6l12 12"/>',
+    info: '<circle cx="12" cy="12" r="9"/><path d="M12 16v-4M12 8h.01"/>',
+    carrito: '<circle cx="9" cy="20" r="1.5"/><circle cx="18" cy="20" r="1.5"/><path d="M2 3h3l2.7 12.4a2 2 0 0 0 2 1.6h7.7a2 2 0 0 0 2-1.5L21 8H6"/>',
+    whatsapp: '<path d="M21 11.5a8.4 8.4 0 0 1-12.4 7.4L3 21l2.1-5.6A8.5 8.5 0 1 1 21 11.5z"/><path d="M9 9.5c0 3 2.5 5.5 5.5 5.5l1-1.5-2-1-1 .8a3.5 3.5 0 0 1-1.8-1.8l.8-1-1-2z"/>',
+  };
+  const icono = (nombre: string, tamano: number) =>
+    `<svg width="${tamano}" height="${tamano}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${TRAZOS[nombre]}</svg>`;
+  const span = (clase: string, texto: string) => Object.assign(document.createElement('span'), { className: clase, textContent: texto });
+  const construirLista = (tarjeta: HTMLElement) => {
+    const modelo = tarjeta.querySelector('[data-nombre]')?.textContent ?? '';
+    const variantes = variantesDe(tarjeta);
+    const ul = document.createElement('ul');
+    ul.className = 'variantes';
+    for (const v of variantes) {
+      const li = document.createElement('li');
+      li.className = 'variante';
+      Object.assign(li.dataset, { id: v.id, estado: v.estado, codigo: v.codigo, color: v.color, modelo, categoriaNombre: tarjeta.dataset.categoriaNombre ?? '' });
+      const deColor = v.color ? `, color ${v.color.toLowerCase()}` : '';
+      li.append(span('variante__color', v.color || (variantes.length > 1 ? 'Color no indicado' : 'Modelo único')));
+      if (v.codigo) li.append(span('variante__codigo', `Código interno COPOL ${v.codigo}`));
+      const stock = span('variante__stock', ETIQUETA[v.estado as Estado] ?? '');
+      stock.insertAdjacentHTML('afterbegin', icono(ICONO_STOCK[v.estado] ?? 'info', 14));
+      const acciones = document.createElement('div');
+      acciones.className = 'variante__acciones';
+      const agregar = document.createElement('button');
+      agregar.type = 'button';
+      agregar.className = 'btn btn--default btn--sm variante__agregar';
+      agregar.dataset.agregar = '';
+      agregar.innerHTML = icono('carrito', 16);
+      const textoAgregar = span('', 'Agregar');
+      textoAgregar.dataset.agregarTexto = '';
+      agregar.append(textoAgregar, span('visualmente-oculto', ` al carrito: ${modelo}${deColor}`));
+      const consulta = Object.assign(document.createElement('a'), { href: consultaDe(modelo, v), className: 'btn btn--outline btn--sm variante__consulta', rel: 'noopener' });
+      consulta.innerHTML = icono('whatsapp', 16);
+      const textoConsulta = span('', 'Consultar');
+      textoConsulta.append(span('visualmente-oculto', `: ${modelo}${deColor}`));
+      consulta.append(textoConsulta);
+      acciones.append(agregar, consulta);
+      li.append(stock, acciones);
+      ul.append(li);
+    }
+    return ul;
+  };
   let tarjetaAbierta: HTMLElement | null = null;
   const abrirFicha = async (tarjeta: HTMLElement) => {
     tarjetaAbierta = tarjeta;
@@ -312,8 +375,8 @@ const secciones = catalogo.categorias.map((c) => ({ ...c, modelos: MODELOS.filte
     ficha.querySelector('[data-ficha-resumen]')!.textContent = tarjeta.querySelector('.producto__codigo')?.textContent ?? '';
     const n = Number(tarjeta.dataset.variantes ?? 1);
     ficha.querySelector('[data-ficha-var-titulo]')!.textContent = n > 1 ? `Colores (${n}) y stock` : 'Código y stock';
-    const lista = tarjeta.querySelector('[data-variantes-lista]')!.cloneNode(true) as HTMLElement;
-    ficha.querySelector('[data-ficha-variantes]')!.replaceChildren(lista);
+    ficha.querySelector('[data-ficha-variantes]')!.replaceChildren(construirLista(tarjeta));
+    marcarAgregados();
     if (!ficha.open) ficha.showModal();
     ficha.querySelector<HTMLElement>('.ficha__caja')!.scrollTop = 0;
     const id = tarjeta.dataset.descripcion;
@@ -364,8 +427,8 @@ const secciones = catalogo.categorias.map((c) => ({ ...c, modelos: MODELOS.filte
   } catch { /* sin almacenamiento: el carrito vive mientras la página esté abierta */ }
 
   // El stock mostrado en el carrito se actualiza con el de esta carga de la página.
-  const filaDe = (id: string) => document.querySelector<HTMLElement>(`[data-secciones] .variante[data-id="${CSS.escape(id)}"]`);
-  carrito.forEach((i) => { const f = filaDe(i.id); if (f) i.estado = f.dataset.estado ?? i.estado; });
+  const estados = new Map(productos.flatMap((p) => variantesDe(p.el).map((v) => [v.id, v.estado] as const)));
+  carrito.forEach((i) => { i.estado = estados.get(i.id) ?? i.estado; });
 
   const unidades = () => carrito.reduce((a, i) => a + i.cantidad, 0);
   const guardarCarrito = () => {
@@ -447,15 +510,18 @@ const secciones = catalogo.categorias.map((c) => ({ ...c, modelos: MODELOS.filte
       return li;
     }));
     carritoEnviar.href = `https://wa.me/${carritoDialogo.dataset.wa}?text=${encodeURIComponent(mensajeWhatsapp())}`;
-    // Marca los botones "Agregar" de lo que ya está en el carrito (en las tarjetas y en la ficha abierta).
-    document.querySelectorAll<HTMLButtonElement>('[data-agregar]').forEach((b) => {
+    marcarAgregados();
+  };
+  // Marca los botones "Agregar" de la ficha abierta con lo que ya está en el carrito.
+  function marcarAgregados() {
+    ficha.querySelectorAll<HTMLButtonElement>('[data-agregar]').forEach((b) => {
       const id = b.closest<HTMLElement>('.variante')?.dataset.id ?? '';
       const item = carrito.find((x) => x.id === id);
       b.toggleAttribute('data-en-carrito', Boolean(item));
       const t = b.querySelector('[data-agregar-texto]');
       if (t) t.textContent = item ? `En el carrito (${item.cantidad})` : 'Agregar';
     });
-  };
+  }
   const cambio = () => { guardarCarrito(); pintarCarrito(); };
 
   let ocultarAviso: number | undefined;
@@ -482,7 +548,6 @@ const secciones = catalogo.categorias.map((c) => ({ ...c, modelos: MODELOS.filte
     avisar(`Agregado al carrito: ${nombreItem(item)} · ${item.cantidad} ${item.cantidad === 1 ? 'unidad' : 'unidades'}`);
   };
 
-  document.querySelectorAll<HTMLButtonElement>('[data-agregar]').forEach((b) => { b.hidden = false; });
   document.addEventListener('click', (e) => {
     const b = (e.target as HTMLElement).closest<HTMLButtonElement>('[data-agregar]');
     const fila = b?.closest<HTMLElement>('.variante');

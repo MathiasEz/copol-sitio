@@ -3,9 +3,14 @@
 // - La etiqueta de stock resume el modelo: "Con stock" si algún color tiene, "Sin stock" si ninguno.
 // - "Ver detalle" abre la ficha (descripción + cada color con su código interno COPOL, su stock y su
 //   consulta por WhatsApp). Sin JavaScript, el mismo botón despliega la lista de colores en la tarjeta.
+// - Los colores viajan compactos en `data-v` ([código, color, estado] en el orden de `data-ids`): el
+//   catálogo tiene ~800 tarjetas y cada byte se repite. La ficha arma con ellos la lista completa
+//   (bazar.astro). Sin JavaScript, la tarjeta despliega los colores y la consulta por WhatsApp.
+// - Los dos íconos de la tarjeta (estado de stock y "Ver detalle") se dibujan con CSS: ~1.500 SVG menos
+//   en el HTML y en el DOM.
 // Agrupación conservadora de variantes: src/lib/variantes.ts.
 import type { ModeloWeb } from '../lib/inventario';
-import { ESTADO_STOCK } from '../lib/inventario';
+import { consultaProducto, ESTADO_STOCK } from '../lib/inventario';
 import Icono from './Icono.astro';
 import '../styles/producto.css';
 
@@ -16,12 +21,12 @@ interface Props {
 }
 const { modelo: m, nivel = 'h3', cargaDiferida = true } = Astro.props;
 const Titulo = nivel;
-const ICONO_ESTADO = { 'con-stock': 'check', 'sin-stock': 'cerrar', 'sin-dato': 'info' } as const;
 const n = m.variantes.length;
 const conStock = m.variantes.filter((v) => v.estado === 'con-stock').length;
 const resumen = n > 1
   ? `${n} colores${conStock && conStock < n ? ` · ${conStock} con stock` : ''}`
   : m.variantes[0].codigo ? `Código interno COPOL ${m.variantes[0].codigo}` : '';
+const consulta = n > 1 ? consultaProducto(m.nombre, null) : m.variantes[0].consulta;
 ---
 <article
   class="producto producto--modelo"
@@ -30,12 +35,14 @@ const resumen = n > 1
   data-variantes={n}
   data-estado={m.estado}
   data-categoria={m.categoriaId}
+  data-categoria-nombre={m.categoria}
   data-descripcion={m.descripcionId ?? ''}
   data-texto={m.texto}
+  data-v={JSON.stringify(m.variantes.map((v) => [v.codigo ?? '', v.color ?? '', v.estado]))}
 >
   <div class="producto__marco" data-abrir-imagen>
     {m.imagen ? (
-      <div class="media media--contain producto__media" style="aspect-ratio: 1; --media-radio: var(--radio-lg)">
+      <div class="media media--contain producto__media">
         <img
           src={m.imagen.src}
           srcset={m.imagen.srcset}
@@ -52,47 +59,45 @@ const resumen = n > 1
     )}
   </div>
   <div class="producto__cuerpo">
-    <span class="stock-etiqueta" data-stock-etiqueta>
-      <Icono nombre={ICONO_ESTADO[m.estado]} tamano={14} />
-      <span data-stock-texto>{ESTADO_STOCK[m.estado]}</span>
-    </span>
+    <span class="stock-etiqueta" data-stock-etiqueta><span data-stock-texto>{ESTADO_STOCK[m.estado]}</span></span>
     <span class="producto__categoria">{m.categoria}{m.marca && ` · ${m.marca}`}</span>
     <Titulo class="producto__nombre" data-nombre>{m.nombre}</Titulo>
     {resumen && <span class="producto__codigo">{resumen}</span>}
   </div>
   <details class="producto__detalle" data-detalle>
     <summary class="btn btn--secondary btn--sm producto__accion" data-abrir>
-      <Icono nombre="info" tamano={17} /><span>{n > 1 ? 'Ver colores y stock' : 'Ver detalle'}<span class="visualmente-oculto">: {m.nombre}</span></span>
+      <span>{n > 1 ? 'Ver colores y stock' : 'Ver detalle'}<span class="visualmente-oculto">: {m.nombre}</span></span>
     </summary>
-    <ul class="variantes" data-variantes-lista>
-      {m.variantes.map((v) => (
-        <li class="variante" data-id={v.id} data-estado={v.estado} data-codigo={v.codigo ?? ''} data-color={v.color ?? ''} data-modelo={m.nombre} data-categoria-nombre={m.categoria}>
-          <span class="variante__color">{v.color ?? (n > 1 ? 'Color no indicado' : 'Modelo único')}</span>
-          {v.codigo && <span class="variante__codigo">Código interno COPOL {v.codigo}</span>}
-          <span class="variante__stock"><Icono nombre={ICONO_ESTADO[v.estado]} tamano={14} />{ESTADO_STOCK[v.estado]}</span>
-          <div class="variante__acciones">
-            {/* Carrito COPOL: se activa con JavaScript (src/pages/hipermercado/bazar.astro). */}
-            <button type="button" class="btn btn--default btn--sm variante__agregar" data-agregar hidden>
-              <Icono nombre="carrito" tamano={16} /><span data-agregar-texto>Agregar</span><span class="visualmente-oculto"> al carrito: {m.nombre}{v.color ? `, color ${v.color.toLowerCase()}` : ''}</span>
-            </button>
-            <a href={v.consulta} class="btn btn--outline btn--sm variante__consulta" rel="noopener">
-              <Icono nombre="whatsapp" tamano={16} /><span>Consultar<span class="visualmente-oculto">: {m.nombre}{v.color ? `, color ${v.color.toLowerCase()}` : ''}</span></span>
-            </a>
-          </div>
-        </li>
-      ))}
-    </ul>
+    <div class="producto__sin-js">
+      {n > 1 && <p>Colores: {m.variantes.map((v) => v.color ?? 'sin indicar').join(', ')}.</p>}
+      <a href={consulta} class="btn btn--outline btn--sm" rel="noopener">Consultar por WhatsApp<span class="visualmente-oculto">: {m.nombre}</span></a>
+    </div>
   </details>
 </article>
 
 <style is:global>
   .producto--modelo .producto__marco { cursor: pointer; }
+  /* Las tarjetas fuera de pantalla no se dibujan ni se calculan hasta acercarse (el catálogo tiene ~800). */
+  .producto--modelo { content-visibility: auto; contain-intrinsic-block-size: auto 400px; }
+  .producto--modelo .producto__media { aspect-ratio: 1; --media-radio: var(--radio-lg); }
+  /* Íconos de la tarjeta como máscara CSS (mismos trazos que Icono.astro: check, cerrar, info). */
+  .producto--modelo { --icono-info: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='M12 16v-4M12 8h.01'/%3E%3C/svg%3E"); }
+  .producto--modelo[data-estado='con-stock'] { --icono-estado: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m5 12 4.5 4.5L19 7'/%3E%3C/svg%3E"); }
+  .producto--modelo[data-estado='sin-stock'] { --icono-estado: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='M18 6 6 18M6 6l12 12'/%3E%3C/svg%3E"); }
+  .producto--modelo[data-estado='sin-dato'] { --icono-estado: var(--icono-info); }
+  .producto--modelo .stock-etiqueta::before,
+  .producto--modelo .producto__accion::before {
+    content: ''; flex: none; width: 14px; height: 14px; background: currentColor;
+    -webkit-mask: var(--icono-estado) center / contain no-repeat; mask: var(--icono-estado) center / contain no-repeat;
+  }
+  .producto--modelo .producto__accion::before { width: 17px; height: 17px; -webkit-mask-image: var(--icono-info); mask-image: var(--icono-info); }
   .producto__detalle { margin-top: auto; }
   .producto__detalle > summary { list-style: none; width: fit-content; }
   .producto__detalle > summary::-webkit-details-marker { display: none; }
   .producto__detalle[open] > summary { margin-bottom: 10px; }
+  .producto__sin-js { display: grid; gap: 8px; justify-items: start; font-size: 0.875rem; color: var(--muted-foreground); }
 
-  /* Lista de colores (dentro de la tarjeta sin JS y dentro de la ficha con JS) */
+  /* Lista de colores de la ficha (la arma bazar.astro con los datos de la tarjeta) */
   .variantes { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
   .variante {
     display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; align-items: center;

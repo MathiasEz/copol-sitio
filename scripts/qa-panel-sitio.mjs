@@ -97,7 +97,7 @@ try {
   const tarjeta = () => sitio.$eval(`.producto[data-id="${elegido.id}"]`, (el) => {
     const et = el.querySelector('.stock-etiqueta');
     const img = el.querySelector('.producto__media img');
-    return { estado: el.dataset.estado, texto: et.textContent.trim(), fondo: getComputedStyle(et).backgroundColor, icono: Boolean(et.querySelector('svg')), gris: img ? getComputedStyle(img).filter : '' };
+    return { estado: el.dataset.estado, texto: et.textContent.trim(), fondo: getComputedStyle(et).backgroundColor, icono: Boolean(et.querySelector('svg')) || getComputedStyle(et, '::before').maskImage.startsWith('url('), gris: img ? getComputedStyle(img).filter : '' };
   });
   verificar((await tarjeta()).estado === 'con-stock', `Sitio · ${elegido.id} figura "Con stock" antes del cambio`);
 

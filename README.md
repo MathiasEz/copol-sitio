@@ -3,7 +3,7 @@
 Sitio institucional y comercial de la Cooperativa Policial, construido con [Astro](https://astro.build) y preparado para publicarse en **Vercel**. Incluye el **panel de stock del Bazar** en `/panel` (inventario, productos, novedades de la portada y usuarios).
 
 - Páginas institucionales: estáticas (rápidas, sin servidor).
-- Bazar, panel y las partes dinámicas de Inicio: se generan en cada visita leyendo la base de datos, así el stock y las novedades publicadas en el panel se ven al instante.
+- Bazar y las partes dinámicas de Inicio: se generan en el servidor leyendo la base de datos y la CDN de Vercel guarda una copia; el panel la borra al guardar un cambio, así el stock y las novedades publicadas se ven en la visita siguiente (docs/panel-stock.md). El panel se genera en cada visita.
 - Detalle técnico y de seguridad del panel: [docs/panel-stock.md](docs/panel-stock.md).
 
 ## Requisitos
@@ -116,7 +116,7 @@ Al terminar, borrar las variables de Turso del `.env` local (o el archivo) para 
 
 ```
 src/
-  pages/                 Rutas. hipermercado/bazar.astro y panel/[...ruta].ts se generan en cada visita
+  pages/                 Rutas. hipermercado/bazar.astro (con caché en la CDN) y el panel se generan en el servidor
   components/            Encabezado, Pie, TarjetaProducto, EstanteBazar y NovedadesInicio (server islands), BannerSeccion…
   lib/                   inventario.ts (catálogo y stock desde la base), datos.ts, imagenes.ts
   data/                  confirmado/ (datos verificados) · catalogo/ (catálogo importado e informe) · demo/

@@ -1,10 +1,12 @@
 ---
-// Estante de productos con stock (server island: se genera en cada visita con la base del panel,
-// dentro de una página estática). Usar con `server:defer` y un `slot="fallback"`.
+// Estante de productos con stock (server island: se genera en el servidor con la base del panel, dentro
+// de una página estática, y la CDN lo guarda hasta el próximo cambio; ver src/lib/cache-publica.ts).
+// Usar con `server:defer` y un `slot="fallback"`.
 import TarjetaProducto from './TarjetaProducto.astro';
 import Button from './ui/Button.astro';
 import Icono from './Icono.astro';
 import { destacados, obtenerCatalogo } from '../lib/inventario';
+import { cachearEnCdn, ETIQUETAS_WEB, sinCache } from '../lib/cache-publica';
 
 interface Props {
   cantidad?: number;
@@ -12,8 +14,9 @@ interface Props {
   completo?: boolean;
 }
 const { cantidad = 10, completo = true } = Astro.props;
-Astro.response.headers.set('Cache-Control', 'no-store, max-age=0');
 const catalogo = await obtenerCatalogo();
+if (catalogo.enVivo) cachearEnCdn(Astro.response.headers, ETIQUETAS_WEB.bazar);
+else sinCache(Astro.response.headers);
 const lista = destacados(catalogo, cantidad);
 const chips = [...catalogo.categorias].filter((c) => c.id !== 'destacados').sort((a, b) => b.conStock - a.conStock).slice(0, 8);
 ---

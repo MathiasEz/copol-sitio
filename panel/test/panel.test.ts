@@ -219,6 +219,32 @@ describe('stock: guardado verificado', () => {
     assert.equal((await n.post(`${RUTA}/productos/estufa-2/stock`, { estado: 'con-stock', version: String(v) }, json)).status, 409);
     assert.equal((await n.post(`${RUTA}/productos/estufa-2/stock`, { estado: 'con-stock', cantidad: '-3' }, json)).status, 400);
   });
+  it('al guardar renueva la copia de la web pública en la CDN (solo lo que cambió)', async () => {
+    // Contexto de una función de Vercel simulado: registra los borrados por etiqueta que pide el panel.
+    const borradas: string[][] = [];
+    const contexto = Symbol.for('@vercel/request-context');
+    const g = globalThis as unknown as Record<symbol, unknown>;
+    g[contexto] = { get: () => ({ purge: { dangerouslyDeleteByTag: async (t: string | string[]) => { borradas.push([t].flat()); } } }) };
+    process.env.VERCEL = '1';
+    try {
+      const n = new Navegador();
+      await n.ingresar('editor');
+      assert.deepEqual(borradas, [], 'ingresar no toca la web pública');
+      await n.pedir(`${RUTA}/productos`);
+      const v = (await fila<{ version: number }>("SELECT version FROM productos WHERE id = 'parlante-1'"))!.version;
+      const d = await (await n.post(`${RUTA}/productos/parlante-1/stock`, { estado: 'sin-stock', cantidad: '', version: String(v) }, json)).json();
+      assert.equal(d.verificado, true);
+      assert.deepEqual(borradas, [['bazar']]);
+      // Guardar sin cambios no renueva nada.
+      const igual = await (await n.post(`${RUTA}/productos/parlante-1/stock`, { estado: 'sin-stock', cantidad: '', version: String(d.version) }, json)).json();
+      assert.deepEqual(borradas, [['bazar']]);
+      await n.post(`${RUTA}/productos/parlante-1/stock`, { estado: 'con-stock', version: String(igual.version) }, json);
+      assert.deepEqual(borradas, [['bazar'], ['bazar']]);
+    } finally {
+      delete g[contexto];
+      delete process.env.VERCEL;
+    }
+  });
   it('sin JavaScript también guarda y redirige con la confirmación', async () => {
     const n = new Navegador();
     await n.ingresar('editor');

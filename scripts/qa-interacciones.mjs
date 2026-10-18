@@ -46,7 +46,7 @@ const VIEWPORTS = { movil: { width: 375, height: 812 }, escritorio: { width: 136
   // Estado de stock visible y no solo por color
   const etiquetas = await page.$$eval('.producto', (els) => els.map((el) => {
     const et = el.querySelector('.stock-etiqueta');
-    return { estado: el.dataset.estado, texto: et?.textContent.trim(), icono: Boolean(et?.querySelector('svg')), fondo: et ? getComputedStyle(et).backgroundColor : '' };
+    return { estado: el.dataset.estado, texto: et?.textContent.trim(), icono: Boolean(et?.querySelector('svg')) || (et ? getComputedStyle(et, '::before').maskImage.startsWith('url(') : false), fondo: et ? getComputedStyle(et).backgroundColor : '' };
   }));
   const conTexto = etiquetas.filter((x) => x.texto && x.icono).length;
   verificar(conTexto === etiquetas.length, `Bazar · cada tarjeta muestra estado con ícono y texto (${conTexto}/${etiquetas.length})`);

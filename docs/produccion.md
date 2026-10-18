@@ -33,7 +33,7 @@ Pasos: (1) elegir opción; (2) crear `.env` con `PUBLIC_FORM_ENDPOINT=…` o def
 - **Google Search Console**: verificar el dominio y enviar `https://cooperativapolicial.com.uy/sitemap-index.xml`.
 - **Contenido**: resolver los ítems de [pendientes.md](pendientes.md).
 - **Proceso de actualización**: el stock, los productos nuevos y las novedades se cambian desde el panel y se ven al instante. Los demás contenidos (textos, locales, convenios) siguen en archivos del proyecto: cada cambio se publica solo al hacer un commit en el repositorio conectado a Vercel.
-- **Catálogo y stock del Bazar**: el catálogo está guardado en el proyecto (no depende de Google Sites); el stock vigente se lee de la base del panel en cada visita.
+- **Catálogo y stock del Bazar**: el catálogo está guardado en el proyecto (no depende de Google Sites); el stock vigente se lee de la base del panel; la CDN de Vercel guarda la página y el panel la renueva al guardar un cambio (docs/panel-stock.md).
 
 ## 4. Lista de verificación de lanzamiento
 
