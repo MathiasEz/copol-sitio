@@ -75,6 +75,7 @@ export const ACCIONES: Record<string, string> = {
   'novedad.orden': 'Reordenó las novedades',
   'novedad.baja': 'Eliminó una novedad',
   'empleados.edicion': 'Editó la información para empleados',
+  'producto.retiro': 'Retiró un producto de la web (repetido)',
   'usuario.alta': 'Creó un usuario',
   'usuario.edicion': 'Editó un usuario',
   'usuario.clave': 'Restableció la contraseña de un usuario',
