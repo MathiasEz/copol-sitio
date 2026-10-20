@@ -343,6 +343,10 @@ describe('información empleados', () => {
       assert.match(html, /href="https:\/\/docs\.google\.com\/forms\/d\/e\/1FAIpQLSeDHOygPj5L5LANRDR1ZcVKAYNSGGDfv0rl9x3R1j1AK3bMmw\/viewform"/);
       assert.match(html, /href="https:\/\/149508\.asset\.memtas\.com\/[^"]+\.pdf/);
       assert.match(html, /href="https:\/\/www\.copol\.com\.uy\/Copolrecibos\/"/);
+      assert.match(html, /aria-label="Código QR: Reglamento Interno del Personal"/);
+      assert.match(html, /href="https:\/\/docs\.google\.com\/document\/d\/1Og20fKBJAvWLXgwGErY8JNF49a0IKNjk\/edit/);
+      assert.match(html, /Ciudad del Plata abre pronto/);
+      assert.match(html, /En obras · cooperativapolicial\.com\.uy/);
       const piezas = [...html.matchAll(/\/panel-recursos\/empleados\/([a-z-]+)\.webp/g)].map((m) => m[1]);
       assert.deepEqual(piezas.slice(0, 7), ['hacete-socio', 'parques-y-locales', 'servicios-salud-mental', 'servicios-salud-bucal', 'locales-del-interior', 'garantia-alquiler', 'claro-socios-nuevos']);
       assert.doesNotMatch(html, /empleados\/editar/, `${usuario}: sin botón Editar`);

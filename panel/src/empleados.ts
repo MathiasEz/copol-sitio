@@ -1,6 +1,7 @@
 // "Información empleados": página interna del panel para todo el personal (cualquier rol).
-// Estructura según el boceto del 15/10/2026: Acoso laboral (QR), ¿Cómo te sentís hoy? (QR), Tu cooperativa
-// (carrusel), Próximamente Ciudad del Plata, Pinecoop Chuy (en obras) y Tus recibos.
+// Estructura según el boceto del 15/10/2026: Acoso laboral (QR), ¿Cómo te sentís hoy? (QR), Reglamento interno
+// (QR, 20/10/2026), Tu cooperativa (carrusel), Ciudad del Plata (abre pronto), Pinecoop Chuy (en obras) y Tus recibos.
+// La misma información se publica en la web en /portal-empleados/ (Acceso web → Portal de empleados).
 // Los enlaces y las imágenes los cargan los administradores desde el panel; se guardan como JSON en la
 // tabla `ajustes`. Los QR se generan en el servidor a partir de cada enlace (siempre nítidos).
 import * as ZX from '@zxing/library';
@@ -17,6 +18,8 @@ export interface Portal {
   animoUrl: string;
   /** Recibos de sueldo. */
   recibosUrl: string;
+  /** Reglamento interno del personal (documento de Google). */
+  reglamentoUrl: string;
   carrusel: ImagenPortal[];
   ciudadDelPlata: ImagenPortal[];
   chuy: ImagenPortal[];
@@ -38,6 +41,7 @@ export const PORTAL_INICIAL: Portal = {
   acosoUrl: 'https://149508.asset.memtas.com/storage/picture/608c53b1ff5b4a9801b35f37/6acf93c65d1e8d0323743295.pdf?utm_source=email_marketing&utm_admin=149508&utm_medium=email&utm_campaign=Protocolo_de_Acoso_y_Violencia_Laboral',
   animoUrl: 'https://docs.google.com/forms/d/e/1FAIpQLSeDHOygPj5L5LANRDR1ZcVKAYNSGGDfv0rl9x3R1j1AK3bMmw/viewform',
   recibosUrl: 'https://www.copol.com.uy/Copolrecibos/',
+  reglamentoUrl: 'https://docs.google.com/document/d/1Og20fKBJAvWLXgwGErY8JNF49a0IKNjk/edit?usp=sharing&ouid=106387702374856035616&rtpof=true&sd=true',
   carrusel: [
     FOTO('hacete-socio', 'Hacete socio. Conocé tus beneficios. Escribinos por WhatsApp al 098 631 414.'),
     FOTO('parques-y-locales', '2 parques vacacionales y más de 20 locales en todo el país. Próximamente: Parque vacacional Pinecoop Chuy. Parque vacacional Pinecoop Salinas, Canelones.'),
@@ -48,7 +52,7 @@ export const PORTAL_INICIAL: Portal = {
     FOTO('claro-socios-nuevos', 'Contrato especial Claro para socios nuevos en COPOL, $396: 100 GB de internet, WhatsApp gratis, 3000 minutos, 500 SMS, saldo incluido de $200, 1 mes de Prime Video y roaming en Europa y América.'),
   ],
   ciudadDelPlata: [],
-  chuy: [FOTO('pinecoop-chuy', 'Pinecoop Chuy en obras')],
+  chuy: [FOTO('pinecoop-chuy', 'Cartel de madera “El rincón de mi viejo” entre eucaliptos en el predio de Pinecoop Chuy, en obras')],
 };
 
 const lista = (v: unknown, max: number): ImagenPortal[] =>
@@ -65,6 +69,8 @@ export async function obtenerPortal(db: Db): Promise<Portal> {
   const texto = (v: unknown) => (typeof v === 'string' ? v : '');
   return {
     acosoUrl: texto(d.acosoUrl), animoUrl: texto(d.animoUrl), recibosUrl: texto(d.recibosUrl),
+    // Guardados antes de existir el reglamento: se usa el enlace entregado por la cooperativa.
+    reglamentoUrl: typeof d.reglamentoUrl === 'string' ? d.reglamentoUrl : PORTAL_INICIAL.reglamentoUrl,
     carrusel: lista(d.carrusel, GRUPOS.carrusel.max), ciudadDelPlata: lista(d.ciudadDelPlata, GRUPOS.ciudadDelPlata.max), chuy: lista(d.chuy, GRUPOS.chuy.max),
   };
 }

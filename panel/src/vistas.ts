@@ -49,6 +49,7 @@ const ICONOS: Record<string, string> = {
   ojo: '<path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/>',
   ojoNo: '<path d="M9.9 4.2A10 10 0 0 1 12 4c7 0 10 8 10 8a13 13 0 0 1-1.7 2.7M6.6 6.6A13 13 0 0 0 2 12s3 8 10 8a9.7 9.7 0 0 0 5.4-1.6M2 2l20 20"/>',
   deshacer: '<path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/>',
+  reloj: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
   chevron: '<path d="m6 9 6 6 6-6"/>',
   basura: '<path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/>',
   menu: '<path d="M4 7h16M4 12h16M4 17h16"/>',
@@ -778,6 +779,21 @@ export function vistaEmpleados(c: Contexto, p: Portal, editar: boolean) {
     ${tarjetaQr('¿Cómo te sentís hoy?', 'Bienestar', 'Contanos cómo estás: tu respuesta nos ayuda a cuidar el ambiente de trabajo.', p.animoUrl, 'Responder', 'Falta el enlace de la encuesta.')}
   </div>
 
+  <section class="portal-doc" aria-labelledby="portal-reglamento">
+    <div class="portal-doc__texto">
+      <span class="portal-doc__eyebrow">Documentos</span>
+      <h2 id="portal-reglamento">Reglamento Interno del Personal</h2>
+      <p>Consultá el reglamento interno: derechos, obligaciones, normas de conducta y procedimientos disciplinarios del personal de COPOL.</p>
+    </div>
+    ${p.reglamentoUrl
+      ? html`<div class="portal-doc__qr">
+        <div class="portal-doc__codigo">${raw(qrSvg(p.reglamentoUrl, 'Código QR: Reglamento Interno del Personal'))}</div>
+        <p>Escaneá el código con la cámara del celular o abrilo desde acá.</p>
+        <a class="btn portal-doc__boton" href="${p.reglamentoUrl}" target="_blank" rel="noopener noreferrer">Abrir el reglamento${icono('flecha-externa', 16)}</a>
+      </div>`
+      : pendiente(editar, 'Falta el enlace del reglamento.')}
+  </section>
+
   <section class="card portal__bloque" aria-labelledby="portal-coop">
     <h2 id="portal-coop" class="portal__titulo">Tu cooperativa</h2>
     ${p.carrusel.length
@@ -793,8 +809,12 @@ export function vistaEmpleados(c: Contexto, p: Portal, editar: boolean) {
   </section>
 
   <section class="card portal__bloque" aria-labelledby="portal-cdp">
-    <div><span class="portal__eyebrow">Próximamente</span><h2 id="portal-cdp" class="portal__titulo">Ciudad del Plata</h2></div>
-    ${p.ciudadDelPlata.length ? html`<div class="portal__foto">${fotoPortal(p.ciudadDelPlata[0], '(min-width: 900px) 760px, 92vw')}</div>` : editar ? pendiente(true, 'Falta la imagen.') : ''}
+    <div class="portal__pronto">
+      <h2 id="portal-cdp" class="portal__titulo">Ciudad del Plata abre pronto</h2>
+      <p class="muted">Estamos ultimando detalles de la nueva sede. En breve vas a encontrar acá fotos del espacio, servicios y horarios.</p>
+      <span class="portal__obras">${icono('reloj', 14)}En obras · cooperativapolicial.com.uy</span>
+    </div>
+    ${p.ciudadDelPlata.length ? html`<div class="portal__foto">${fotoPortal(p.ciudadDelPlata[0], '(min-width: 900px) 760px, 92vw')}</div>` : ''}
   </section>
 
   <section class="card portal__bloque" aria-labelledby="portal-chuy">
@@ -844,6 +864,7 @@ ${Object.keys(errores).length ? html`<div class="alert alert--error" role="alert
     <section class="card form"><h2 class="card__titulo">Enlaces</h2>
       ${enlace('acoso_url', 'Protocolo de acoso laboral (RR.HH.)', p.acosoUrl, 'El QR se genera solo con este enlace. Si es un archivo de Drive, compartilo como "Cualquier persona con el enlace".')}
       ${enlace('animo_url', '¿Cómo te sentís hoy?', p.animoUrl, 'Enlace de la encuesta (por ejemplo, un formulario de Google).')}
+      ${enlace('reglamento_url', 'Reglamento Interno del Personal', p.reglamentoUrl, 'Documento del reglamento. Si es de Google Docs, compartilo como "Cualquier persona con el enlace".')}
       ${enlace('recibos_url', 'Tus recibos', p.recibosUrl, 'Dirección donde cada empleado ve sus recibos (botón "Aquí").')}
     </section>
     ${grupo('carrusel')}

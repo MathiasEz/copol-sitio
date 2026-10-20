@@ -615,9 +615,9 @@ export function crearApp({ db: fuenteDb, config, almacen, asistente, correo }: O
     const b = await cuerpo(c);
     const actual = await E.obtenerPortal(db);
     const errores: Record<string, string> = {};
-    const enlaces = { acosoUrl: E.validarEnlace(b.acoso_url), animoUrl: E.validarEnlace(b.animo_url), recibosUrl: E.validarEnlace(b.recibos_url) };
-    for (const [k, campo] of [['acosoUrl', 'acoso_url'], ['animoUrl', 'animo_url'], ['recibosUrl', 'recibos_url']] as const) if (enlaces[k].error) errores[campo] = enlaces[k].error!;
-    const nuevo: E.Portal = { acosoUrl: enlaces.acosoUrl.url, animoUrl: enlaces.animoUrl.url, recibosUrl: enlaces.recibosUrl.url, carrusel: [], ciudadDelPlata: [], chuy: [] };
+    const enlaces = { acosoUrl: E.validarEnlace(b.acoso_url), animoUrl: E.validarEnlace(b.animo_url), recibosUrl: E.validarEnlace(b.recibos_url), reglamentoUrl: E.validarEnlace(b.reglamento_url) };
+    for (const [k, campo] of [['acosoUrl', 'acoso_url'], ['animoUrl', 'animo_url'], ['recibosUrl', 'recibos_url'], ['reglamentoUrl', 'reglamento_url']] as const) if (enlaces[k].error) errores[campo] = enlaces[k].error!;
+    const nuevo: E.Portal = { acosoUrl: enlaces.acosoUrl.url, animoUrl: enlaces.animoUrl.url, recibosUrl: enlaces.recibosUrl.url, reglamentoUrl: enlaces.reglamentoUrl.url, carrusel: [], ciudadDelPlata: [], chuy: [] };
     const archivos: Partial<Record<E.Grupo, File[]>> = {};
     for (const g of Object.keys(E.GRUPOS) as E.Grupo[]) {
       nuevo[g] = actual[g]
@@ -643,9 +643,9 @@ export function crearApp({ db: fuenteDb, config, almacen, asistente, correo }: O
         }
       }
     }
-    if (Object.keys(errores).length) return c.html(V.vistaFormEmpleados(ctx(c), { ...actual, acosoUrl: nuevo.acosoUrl, animoUrl: nuevo.animoUrl, recibosUrl: nuevo.recibosUrl }, errores), 400);
+    if (Object.keys(errores).length) return c.html(V.vistaFormEmpleados(ctx(c), { ...actual, acosoUrl: nuevo.acosoUrl, animoUrl: nuevo.animoUrl, recibosUrl: nuevo.recibosUrl, reglamentoUrl: nuevo.reglamentoUrl }, errores), 400);
     await E.guardarPortal(db, nuevo);
-    const resumen = (p: E.Portal) => ({ protocolo: p.acosoUrl, encuesta: p.animoUrl, recibos: p.recibosUrl, fotos: { carrusel: p.carrusel.length, ciudadDelPlata: p.ciudadDelPlata.length, chuy: p.chuy.length } });
+    const resumen = (p: E.Portal) => ({ protocolo: p.acosoUrl, encuesta: p.animoUrl, recibos: p.recibosUrl, reglamento: p.reglamentoUrl, fotos: { carrusel: p.carrusel.length, ciudadDelPlata: p.ciudadDelPlata.length, chuy: p.chuy.length } });
     await registrar(db, actor(c), 'empleados.edicion', 'empleados', null, { antes: resumen(actual), despues: resumen(nuevo) });
     return c.redirect(`${r('/empleados')}?aviso=empleados-guardado`);
   });

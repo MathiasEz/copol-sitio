@@ -10,7 +10,7 @@ import { BASE } from '../panel/src/config.ts';
 
 const DIST = path.resolve('.vercel/output/static');
 // Rutas que no son archivos estáticos: se generan en el servidor en cada visita.
-const DINAMICAS = ['/hipermercado/bazar', BASE];
+const DINAMICAS = ['/hipermercado/bazar', '/portal-empleados', BASE];
 const EXTERNOS = process.argv.includes('--externos');
 // Patrones con apariencia de precio (la cooperativa pidió no publicar precios del Hipermercado ni del Bazar).
 const PRECIO = /(\$|U\$S|USD|UYU)\s?\d[\d.,]*/;

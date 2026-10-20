@@ -7,11 +7,11 @@ import { ACCESO, CONTACTO, whatsapp } from '../data/confirmado/sitio';
 import Button from '../components/ui/Button.astro';
 import Badge from '../components/ui/Badge.astro';
 ---
-<Base titulo="Acceso web" descripcion="Acceso web de COPOL: ingresá a tu cuenta de socio, consultá recibos de funcionarios y la app para Android.">
+<Base titulo="Acceso web" descripcion="Acceso web de COPOL: ingresá a tu cuenta de socio, el portal de empleados (recibos, reglamento y protocolos) y la app para Android.">
   <EncabezadoPagina
     titulo="Acceso web"
     antetitulo="Autogestión"
-    bajada="Accedé de forma segura a tu cuenta de socio y a tus recibos. Los enlaces abren los portales oficiales de COPOL."
+    bajada="Accedé de forma segura a tu cuenta de socio o al portal de empleados de COPOL."
     migas={[{ texto: 'Acceso web' }]}
   />
 
@@ -32,16 +32,16 @@ import Badge from '../components/ui/Badge.astro';
         </a>
       </li>
       <li>
-        <a href={ACCESO.funcionarios} class="acceso" rel="noopener">
+        <a href="/portal-empleados/" class="acceso">
           <span class="acceso__badge acceso__badge--claro">Para funcionarios</span>
-          <span class="acceso__icono"><Icono nombre="documento" tamano={28} /></span>
-          <h3>Mis recibos</h3>
+          <span class="acceso__icono"><Icono nombre="usuarios" tamano={28} /></span>
+          <h3>Portal de empleados</h3>
           <ul class="acceso__lista">
-            <li>Recibos de sueldo mensuales</li>
-            <li>Detalle de retenciones</li>
-            <li>Datos personales actualizados</li>
+            <li>Tus recibos de sueldo</li>
+            <li>Reglamento interno y protocolo de acoso laboral</li>
+            <li>Novedades de la cooperativa y nuevas sedes</li>
           </ul>
-          <span class="acceso__cta">Ingresar <Icono nombre="externo" tamano={18} /><span class="visualmente-oculto"> (portal externo de COPOL)</span></span>
+          <span class="acceso__cta">Entrar <Icono nombre="flecha" tamano={18} /></span>
         </a>
       </li>
       <li>

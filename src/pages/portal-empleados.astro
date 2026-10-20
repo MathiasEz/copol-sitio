@@ -1,0 +1,207 @@
+---
+// Portal de empleados (Acceso web → Portal de empleados): la misma información que "Información empleados"
+// del panel de stock, que es donde se edita. Se genera en el servidor con los datos de la base y la CDN la
+// guarda hasta el próximo cambio en el panel (etiqueta "empleados", ver src/lib/cache-publica.ts).
+import Base from '../layouts/Base.astro';
+import EncabezadoPagina from '../components/EncabezadoPagina.astro';
+import Icono from '../components/Icono.astro';
+import Button from '../components/ui/Button.astro';
+import { imagenPortal, obtenerPortalPublico, qrSvg, type ImagenPortal } from '../lib/portal';
+import { cachearEnCdn, ETIQUETAS_WEB, sinCache } from '../lib/cache-publica';
+
+export const prerender = false;
+
+const { portal: p, enVivo } = await obtenerPortalPublico();
+if (enVivo) cachearEnCdn(Astro.response.headers, ETIQUETAS_WEB.empleados);
+else sinCache(Astro.response.headers);
+
+const QRS = [
+  { id: 'acoso', ante: 'RR.HH.', titulo: 'Acoso laboral', texto: 'Protocolo de prevención y erradicación del acoso en cualquiera de sus modalidades, violencia laboral y discriminación en el ambiente de trabajo.', url: p.acosoUrl, boton: 'Abrir el protocolo' },
+  { id: 'animo', ante: 'Bienestar', titulo: '¿Cómo te sentís hoy?', texto: 'Contanos cómo estás: tu respuesta nos ayuda a cuidar el ambiente de trabajo.', url: p.animoUrl, boton: 'Responder' },
+].filter((q) => q.url);
+const foto = (i: ImagenPortal) => imagenPortal(i.src);
+---
+<Base titulo="Portal de empleados" descripcion="Portal de empleados de COPOL: recibos de sueldo, reglamento interno, protocolo de acoso laboral, encuesta de bienestar y novedades de la cooperativa.">
+  <EncabezadoPagina
+    titulo="Portal de empleados"
+    antetitulo="Para funcionarios"
+    bajada="Todo lo que necesitás como funcionario de COPOL en un solo lugar: tus recibos, el reglamento interno, los protocolos y las novedades de la cooperativa."
+    migas={[{ texto: 'Acceso web', href: '/acceso-web/' }, { texto: 'Portal de empleados' }]}
+  >
+    {p.recibosUrl && <Button href={p.recibosUrl}><Icono nombre="documento" tamano={18} /> Ver mis recibos</Button>}
+  </EncabezadoPagina>
+
+  <div class="contenedor portal">
+    {QRS.length > 0 && (
+      <div class="portal__qrs">
+        {QRS.map((q) => (
+          <section class="card qr-tarjeta" aria-labelledby={`qr-${q.id}`}>
+            <div class="qr-tarjeta__texto">
+              <span class="qr-tarjeta__ante">{q.ante}</span>
+              <h2 id={`qr-${q.id}`}>{q.titulo}</h2>
+              <p>{q.texto}</p>
+            </div>
+            <div class="qr-tarjeta__codigo" set:html={qrSvg(q.url, `Código QR: ${q.titulo}`)} />
+            <p class="qr-tarjeta__ayuda">Escaneá el código con la cámara del celular o abrilo desde acá.</p>
+            <Button href={q.url} target="_blank">{q.boton} <Icono nombre="externo" tamano={16} /></Button>
+          </section>
+        ))}
+      </div>
+    )}
+
+    {p.reglamentoUrl && (
+      <section class="documento sobre-verde" aria-labelledby="reglamento-titulo">
+        <div class="documento__texto">
+          <span class="documento__ante">Documentos</span>
+          <h2 id="reglamento-titulo">Reglamento Interno del Personal</h2>
+          <p>Consultá el reglamento interno: derechos, obligaciones, normas de conducta y procedimientos disciplinarios del personal de COPOL.</p>
+        </div>
+        <div class="documento__qr">
+          <div class="documento__codigo" set:html={qrSvg(p.reglamentoUrl, 'Código QR: Reglamento Interno del Personal')} />
+          <p>Escaneá el código con la cámara del celular o abrilo desde acá.</p>
+          <Button href={p.reglamentoUrl} variant="accent" target="_blank">Abrir el reglamento <Icono nombre="externo" tamano={16} /></Button>
+        </div>
+      </section>
+    )}
+
+    {p.carrusel.length > 0 && (
+      <section class="card bloque-portal" aria-labelledby="coop-titulo">
+        <div class="bloque-portal__cabecera">
+          <h2 id="coop-titulo">Tu cooperativa</h2>
+          {p.carrusel.length > 1 && (
+            <button type="button" class="btn btn--outline btn--sm cinta__pausa" data-cinta-pausa aria-pressed="false">
+              <Icono nombre="pausa" tamano={14} /><span data-cinta-texto>Pausar</span>
+            </button>
+          )}
+        </div>
+        <div class="cinta" data-cinta style={`--piezas: ${p.carrusel.length}`}>
+          <ul class="cinta__pista" tabindex="0" aria-label="Piezas de la cooperativa (se desplazan solas; pasá el mouse o tocá Pausar para detenerlas)">
+            {[...p.carrusel, ...(p.carrusel.length > 1 ? p.carrusel : [])].map((i, k) => (
+              <li class="cinta__item" aria-hidden={k >= p.carrusel.length ? 'true' : undefined}>
+                <img src={foto(i).src} srcset={foto(i).srcset} sizes="(min-width: 900px) 320px, 70vw" alt={k >= p.carrusel.length ? '' : i.alt} width="1080" height="1350" loading="lazy" decoding="async" />
+              </li>
+            ))}
+          </ul>
+        </div>
+      </section>
+    )}
+
+    <div class="portal__sedes">
+      <section class="card bloque-portal" aria-labelledby="cdp-titulo">
+        <h2 id="cdp-titulo">Ciudad del Plata abre pronto</h2>
+        <p>Estamos ultimando detalles de la nueva sede. En breve vas a encontrar acá fotos del espacio, servicios y horarios.</p>
+        <span class="obras"><Icono nombre="reloj" tamano={14} /> En obras · cooperativapolicial.com.uy</span>
+        {p.ciudadDelPlata[0] && (
+          <img class="bloque-portal__foto" src={foto(p.ciudadDelPlata[0]).src} srcset={foto(p.ciudadDelPlata[0]).srcset} sizes="(min-width: 900px) 600px, 92vw" alt={p.ciudadDelPlata[0].alt} loading="lazy" decoding="async" />
+        )}
+      </section>
+
+      <section class="card bloque-portal" aria-labelledby="chuy-titulo">
+        <h2 id="chuy-titulo">Pinecoop Chuy</h2>
+        <p>En obras para que puedas disfrutarlo.</p>
+        {p.chuy.map((i) => (
+          <img class="bloque-portal__foto" src={foto(i).src} srcset={foto(i).srcset} sizes="(min-width: 900px) 600px, 92vw" alt={i.alt} loading="lazy" decoding="async" />
+        ))}
+      </section>
+    </div>
+
+    {p.recibosUrl && (
+      <section class="recibos sobre-verde" aria-labelledby="recibos-titulo">
+        <span class="recibos__icono" aria-hidden="true"><Icono nombre="documento" tamano={30} /></span>
+        <div class="recibos__texto">
+          <span class="recibos__ante">Funcionarios</span>
+          <h2 id="recibos-titulo">Tus recibos</h2>
+          <p>Consultá tus recibos de sueldo en el portal oficial de COPOL.</p>
+        </div>
+        <Button href={p.recibosUrl} variant="accent" size="lg" class="recibos__boton">Aquí<span class="visualmente-oculto">: ver tus recibos</span> <Icono nombre="externo" tamano={20} /></Button>
+      </section>
+    )}
+  </div>
+</Base>
+
+<script>
+  // Cinta continua (~1,5 s por pieza, con CSS). Se detiene al pasar el mouse, al enfocarla o con "Pausar".
+  const cinta = document.querySelector<HTMLElement>('[data-cinta]');
+  const boton = document.querySelector<HTMLButtonElement>('[data-cinta-pausa]');
+  const texto = boton?.querySelector<HTMLElement>('[data-cinta-texto]');
+  boton?.addEventListener('click', () => {
+    const pausada = !cinta!.classList.contains('cinta--pausada');
+    cinta!.classList.toggle('cinta--pausada', pausada);
+    boton.setAttribute('aria-pressed', String(pausada));
+    if (texto) texto.textContent = pausada ? 'Reanudar' : 'Pausar';
+  });
+</script>
+
+<style>
+  .portal { display: grid; gap: clamp(20px, 3vw, 28px); padding-block: clamp(32px, 5vw, 56px) var(--seccion); }
+  .portal h2 { font-size: clamp(1.375rem, 2.4vw, 1.75rem); }
+
+  .portal__qrs { display: grid; gap: clamp(20px, 3vw, 28px); }
+  @media (min-width: 760px) { .portal__qrs { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  .qr-tarjeta { display: grid; gap: 14px; justify-items: center; text-align: center; padding: clamp(22px, 3vw, 32px); }
+  .qr-tarjeta__texto { display: grid; gap: 8px; justify-items: center; }
+  .qr-tarjeta__texto p { color: var(--tinta-suave); max-width: 46ch; }
+  .qr-tarjeta__ante, .documento__ante, .recibos__ante { font-size: 0.75rem; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; }
+  .qr-tarjeta__ante { color: var(--verde-copol); }
+  .qr-tarjeta__codigo { width: min(220px, 70%); padding: 14px; border-radius: var(--radio-md); background: var(--blanco); box-shadow: inset 0 0 0 3px var(--amarillo-copol); }
+  .qr-tarjeta__codigo :global(.qr), .documento__codigo :global(.qr) { display: block; width: 100%; height: auto; }
+  .qr-tarjeta__ayuda { font-size: 0.875rem; color: var(--muted-foreground); }
+
+  .documento {
+    display: grid; gap: 20px 32px; align-items: center; padding: clamp(24px, 4vw, 44px); border-radius: var(--radio-xl);
+    background: radial-gradient(120% 140% at 0% 0%, #2f5a1f 0%, #1f3d14 55%, #142a0c 100%); color: var(--sobre-verde);
+    box-shadow: 0 24px 48px -20px rgb(20 42 12 / 0.55);
+  }
+  @media (min-width: 760px) { .documento { grid-template-columns: minmax(0, 1fr) auto; } }
+  .documento__texto { display: grid; gap: 10px; }
+  .documento__ante, .recibos__ante { color: var(--amarillo-copol); }
+  .documento h2 { color: var(--blanco); }
+  .documento__texto p { max-width: 58ch; }
+  .documento__qr { display: grid; gap: 10px; justify-items: center; text-align: center; }
+  .documento__codigo { width: 168px; padding: 12px; border-radius: 18px; background: var(--blanco); box-shadow: 0 10px 24px -10px rgb(0 0 0 / 0.5); }
+  .documento__qr p { max-width: 24ch; font-size: 0.8125rem; color: rgb(255 255 255 / 0.78); }
+
+  .bloque-portal { display: grid; gap: 12px; align-content: start; padding: clamp(22px, 3vw, 32px); }
+  .bloque-portal p { color: var(--tinta-suave); max-width: 62ch; }
+  .bloque-portal__cabecera { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; }
+  .bloque-portal__foto { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: cover; border-radius: var(--radio-md); margin-top: 6px; }
+  .portal__sedes { display: grid; gap: clamp(20px, 3vw, 28px); }
+  @media (min-width: 900px) { .portal__sedes { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  .obras {
+    justify-self: start; display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; border-radius: var(--radio-pill);
+    background: var(--muted); color: var(--verde-oscuro); font-size: 0.8125rem; font-weight: 700;
+  }
+
+  /* Cinta continua: la lista va dos veces y se desplaza la mitad de su ancho, en bucle y sin saltos. */
+  .cinta {
+    overflow: hidden; margin-inline: calc(-1 * clamp(22px, 3vw, 32px)); padding-block: 4px;
+    mask-image: linear-gradient(to right, transparent, #000 6%, #000 94%, transparent);
+  }
+  .cinta__pista { list-style: none; margin: 0; padding: 0; display: flex; width: max-content; }
+  .cinta__pista:focus-visible { outline: 3px solid var(--ring); outline-offset: -3px; }
+  .cinta__item { flex: none; width: clamp(220px, 26vw, 300px); margin-right: 16px; }
+  .cinta__item img { display: block; width: 100%; height: auto; aspect-ratio: 4 / 5; object-fit: contain; border-radius: var(--radio-md); background: var(--muted); }
+  @media (prefers-reduced-motion: no-preference) {
+    .cinta__pista { animation: cinta calc(var(--piezas) * 1.5s) linear infinite; }
+    .cinta:hover .cinta__pista, .cinta:focus-within .cinta__pista, .cinta--pausada .cinta__pista { animation-play-state: paused; }
+  }
+  @keyframes cinta { to { transform: translateX(-50%); } }
+  /* Con "reducir movimiento": sin desplazamiento automático; se recorre deslizando. */
+  @media (prefers-reduced-motion: reduce) {
+    .cinta { overflow-x: auto; scroll-snap-type: x mandatory; }
+    .cinta__item { scroll-snap-align: start; }
+    .cinta__item[aria-hidden='true'], .cinta__pausa { display: none; }
+  }
+
+  .recibos {
+    display: grid; gap: 16px 22px; align-items: center; grid-template-columns: auto minmax(0, 1fr);
+    padding: clamp(22px, 3.5vw, 36px); border-radius: var(--radio-xl); color: var(--blanco);
+    background: linear-gradient(135deg, var(--verde-oscuro) 0%, var(--verde-copol) 100%); box-shadow: 0 20px 40px -18px rgb(0 102 51 / 0.55);
+  }
+  @media (min-width: 680px) { .recibos { grid-template-columns: auto minmax(0, 1fr) auto; } }
+  .recibos__icono { display: grid; place-items: center; width: 64px; height: 64px; border-radius: 18px; background: rgb(255 255 255 / 0.16); }
+  .recibos__texto { display: grid; gap: 4px; }
+  .recibos h2 { color: var(--blanco); font-size: clamp(1.5rem, 3vw, 2rem); }
+  .recibos__texto p { color: rgb(255 255 255 / 0.88); }
+  @media (max-width: 679px) { .recibos :global(.recibos__boton) { grid-column: 1 / -1; width: 100%; justify-content: center; } }
+</style>
