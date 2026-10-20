@@ -732,6 +732,7 @@ describe('asistente', () => {
       assert.ok(pagina.includes(`/asistente/propuestas/${r.propuesta.id}/deshacer`), 'la flecha está en la respuesta');
       assert.match(pagina, /Aplicados<\/span>/, 'la tarjeta resuelta muestra su estado');
       assert.match(pagina, /data-conversacion="[^"]+" aria-current="page"/);
+      assert.equal(pagina.split(`/asistente/conversaciones/${conv}/eliminar`).length - 1, 2, 'se elimina desde la cabecera y desde la lista del historial');
       assert.equal((await otro.pedir(`${RUTA}/asistente?c=${conv}`)).status, 302, 'cada usuario ve solo sus conversaciones');
 
       // Deshacer: prepara la vuelta atrás (no aplica nada) y se confirma como cualquier propuesta

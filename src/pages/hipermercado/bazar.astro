@@ -39,6 +39,7 @@ const secciones = catalogo.categorias.map((c) => ({ ...c, modelos: MODELOS.filte
   <section class="contenedor catalogo" aria-labelledby="catalogo-titulo">
     <h2 id="catalogo-titulo" class="visualmente-oculto">Productos</h2>
 
+    <div class="barra-centinela" data-centinela aria-hidden="true"></div>
     <form class="barra" data-filtros-bazar role="search" aria-label="Filtrar productos del Bazar" onsubmit="return false">
       <div class="barra__fila">
         <Campo etiqueta="Buscar producto" name="q" type="search" icono="buscar" placeholder="Freidora, iPhone, bicicleta, código…" autocomplete="off" class="barra__busqueda" />
@@ -51,8 +52,10 @@ const secciones = catalogo.categorias.map((c) => ({ ...c, modelos: MODELOS.filte
       </div>
       <fieldset class="toggle-group barra__categorias">
         <legend class="label">Categoría</legend>
-        <Toggle name="categoria" value="" checked contador={MODELOS.length}>Todos los productos</Toggle>
-        {secciones.map((c) => <Toggle name="categoria" value={c.id} contador={c.total}>{c.nombre}</Toggle>)}
+        <div class="barra__chips">
+          <Toggle name="categoria" value="" checked contador={MODELOS.length}>Todos los productos</Toggle>
+          {secciones.map((c) => <Toggle name="categoria" value={c.id} contador={c.total}>{c.nombre}</Toggle>)}
+        </div>
       </fieldset>
     </form>
 
@@ -576,73 +579,137 @@ const secciones = catalogo.categorias.map((c) => ({ ...c, modelos: MODELOS.filte
   pintarCarrito();
 
   // ── Barra de filtros compacta al bajar ──
-  // Escritorio: se compacta al bajar y vuelve a su tamaño al subir. Móvil: queda compacta mientras se
-  // recorre la lista (completa ocuparía casi media pantalla) y vuelve al llegar arriba.
-  const angosta = window.matchMedia('(max-width: 899px)');
-  let umbral = form.getBoundingClientRect().top + window.scrollY + 40;
+  // Se compacta al bajar y vuelve a su tamaño al subir. La barra NUNCA cambia de alto: si cambiara, el
+  // navegador corregiría el scroll de golpe (el "tirón"). Al compactarse, sus piezas suben con transform,
+  // las etiquetas se desvanecen y el fondo se recorta con clip-path: todo animable sin recalcular la página.
+  // En teléfonos la versión compacta deja solo la búsqueda y las categorías.
+  const PAD = 8;
+  const telefono = window.matchMedia('(max-width: 559px)');
+  const piezas = {
+    busqueda: form.querySelector<HTMLElement>('.barra__busqueda')!,
+    stock: form.querySelector<HTMLElement>('.barra__stock')!,
+    categorias: form.querySelector<HTMLElement>('.barra__categorias')!,
+  };
+  const anclas = {
+    busqueda: piezas.busqueda.querySelector<HTMLElement>('.input-icono, .input')!,
+    stock: piezas.stock.querySelector<HTMLElement>('.toggle')!,
+    categorias: piezas.categorias.querySelector<HTMLElement>('.toggle')!,
+  };
+  // Medidas con la barra expandida (sin transformaciones): adónde sube cada pieza al compactarse.
+  const medir = () => {
+    const base = form.getBoundingClientRect().top;
+    const r = (el: HTMLElement) => { const b = el.getBoundingClientRect(); return { top: b.top - base, bottom: b.bottom - base }; };
+    const busq = r(anclas.busqueda);
+    const stk = r(anclas.stock);
+    const filaStock = r(piezas.stock);
+    const dyBusq = PAD - busq.top;
+    let dyStock = dyBusq;
+    let fin = PAD + (busq.bottom - busq.top);
+    if (!telefono.matches) {
+      if (stk.top < busq.bottom) { dyStock = PAD - stk.top; fin = Math.max(fin, PAD + filaStock.bottom - stk.top); } // misma fila
+      else { dyStock = fin + PAD - stk.top; fin += PAD + (filaStock.bottom - stk.top); }
+    }
+    const cat = r(anclas.categorias);
+    const dyCat = fin + PAD - cat.top;
+    const visible = fin + PAD + (r(piezas.categorias).bottom - cat.top) + PAD;
+    piezas.busqueda.style.setProperty('--dy', `${dyBusq}px`);
+    piezas.stock.style.setProperty('--dy', `${dyStock}px`);
+    piezas.categorias.style.setProperty('--dy', `${dyCat}px`);
+    form.style.setProperty('--recorte', `${Math.max(0, form.offsetHeight - visible)}px`);
+  };
+  // La barra se compacta recién cuando quedó pegada arriba (un centinela invisible marca su lugar original).
+  let pegada = false;
+  const centinela = document.querySelector<HTMLElement>('[data-centinela]')!;
+  new IntersectionObserver(([e]) => { pegada = !e.isIntersecting && e.boundingClientRect.top < 116; compactar(pegada); }, { rootMargin: '-116px 0px 0px 0px' }).observe(centinela);
   let ultimoY = window.scrollY;
+  let subida = 0;
   let pendiente = false;
-  let quietoHasta = 0;
+  let medido = false;
   const compactar = (si: boolean) => {
     if (form.classList.contains('barra--compacta') === si) return;
+    if (si && !medido) { medir(); medido = true; }
     form.classList.toggle('barra--compacta', si);
-    // Al cambiar de alto, el navegador corrige el scroll para no mover el contenido (scroll anchoring):
-    // ese salto no es un gesto del usuario y se ignora mientras dura la transición.
-    quietoHasta = performance.now() + 400;
-    window.setTimeout(() => { ultimoY = window.scrollY; }, 420);
   };
   window.addEventListener('scroll', () => {
     if (pendiente) return;
     pendiente = true;
     requestAnimationFrame(() => {
       pendiente = false;
-      if (performance.now() < quietoHasta) return;
       const y = window.scrollY;
       const dy = y - ultimoY;
-      if (y < umbral) compactar(false);
-      else if (angosta.matches || dy > 6) compactar(true);
-      else if (dy < -6 && !form.contains(document.activeElement)) compactar(false);
-      if (Math.abs(dy) > 6 || y < umbral) ultimoY = y;
+      ultimoY = y;
+      subida = dy < 0 ? subida - dy : 0;
+      if (!pegada) compactar(false);
+      else if (dy > 0) compactar(true);
+      // Vuelve a expandirse al subir un trecho (no con cualquier rebote del dedo).
+      else if (subida > (telefono.matches ? 120 : 40) && !form.contains(document.activeElement)) compactar(false);
     });
   }, { passive: true });
-  window.addEventListener('resize', () => { if (!form.classList.contains('barra--compacta')) umbral = form.getBoundingClientRect().top + window.scrollY + 40; });
+  const remedir = () => {
+    medido = false;
+    if (form.classList.contains('barra--compacta')) {
+      // Medir requiere la barra expandida: se mide sin transiciones y se vuelve a compactar.
+      form.classList.add('barra--sin-transicion');
+      form.classList.remove('barra--compacta');
+      medir(); medido = true;
+      form.classList.add('barra--compacta');
+      requestAnimationFrame(() => requestAnimationFrame(() => form.classList.remove('barra--sin-transicion')));
+    }
+  };
+  window.addEventListener('resize', remedir);
+  document.fonts?.ready.then(remedir);
 
 </script>
 
 <style>
+  .barra-centinela { height: 1px; margin-bottom: -1px; }
   .catalogo { padding-top: clamp(28px, 4vw, 48px); padding-bottom: var(--seccion); }
   .barra {
     position: sticky; top: 76px; z-index: 20;
-    display: grid;
+    display: grid; grid-template-columns: minmax(0, 1fr);
     gap: 14px;
     padding: 16px;
     margin-inline: -16px;
-    border-radius: 0 0 var(--radio-lg) var(--radio-lg);
+    /* Alto fijo en los dos estados; solo las piezas responden al puntero (el resto deja pasar los clics). */
+    pointer-events: none;
+    isolation: isolate;
+    --recorte: 0px;
+    --curva: cubic-bezier(0.32, 0.72, 0, 1);
+  }
+  .barra > * { pointer-events: auto; }
+  /* Fondo vidriado: al compactarse se recorta desde abajo hasta las piezas visibles. */
+  .barra::before {
+    content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none;
     background: color-mix(in srgb, var(--fondo-pagina) 94%, transparent);
     backdrop-filter: saturate(1.4) blur(12px);
-    box-shadow: 0 1px 0 var(--border);
-    transition: padding 280ms var(--ease-out-quart), gap 280ms var(--ease-out-quart), box-shadow 280ms var(--ease-out-quart);
+    box-shadow: inset 0 -1px 0 var(--border);
+    clip-path: inset(0 0 0 0 round 0 0 var(--radio-lg) var(--radio-lg));
+    transition: clip-path 380ms var(--curva);
   }
-  /* Compacta al bajar: sin etiquetas, controles más bajos y categorías en una fila deslizable. */
-  .barra--compacta { padding-block: 8px; gap: 8px; box-shadow: 0 1px 0 var(--border), 0 10px 22px -16px rgb(0 51 26 / 0.45); }
-  .barra.barra--compacta legend,
-  .barra.barra--compacta :global(.barra__busqueda .label) { position: absolute; left: 0; top: 0; width: 1px !important; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; float: none; margin: 0; }
-  .barra--compacta :global(.barra__busqueda .input) { min-height: 40px; padding-block: 6px; }
-  .barra--compacta :global(.toggle) { min-height: 34px; padding-block: 4px; font-size: 0.875rem; }
-  .barra--compacta .barra__fila { align-items: center; }
-  .barra { grid-template-columns: minmax(0, 1fr); }
-  .barra__categorias { min-width: 0; min-inline-size: 0; }
-  .barra--compacta .barra__categorias {
-    flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin-inline: -16px; padding-inline: 16px;
-    mask-image: linear-gradient(to right, transparent, #000 16px, #000 calc(100% - 24px), transparent);
+  /* Sombra del borde inferior: acompaña al recorte con transform. */
+  .barra::after {
+    content: ''; position: absolute; left: 24px; right: 24px; bottom: 0; height: 20px; z-index: -2; pointer-events: none;
+    border-radius: 50%; box-shadow: 0 12px 22px -12px rgb(0 51 26 / 0.4); opacity: 0;
+    transition: transform 380ms var(--curva), opacity 380ms var(--curva);
   }
-  .barra--compacta .barra__categorias::-webkit-scrollbar { display: none; }
-  .barra--compacta .barra__categorias :global(.toggle) { flex: none; }
-  .barra :global(.label),
-  .barra :global(.toggle),
-  .barra :global(.input) { transition: min-height 280ms var(--ease-out-quart), padding 280ms var(--ease-out-quart); }
+  .barra :global(.barra__busqueda), .barra__stock, .barra__categorias { transition: transform 380ms var(--curva), opacity 220ms ease; }
+  .barra :global(.barra__busqueda .label), .barra legend { transition: opacity 160ms ease; }
+  .barra--compacta::before { clip-path: inset(0 0 var(--recorte) 0 round 0 0 var(--radio-lg) var(--radio-lg)); }
+  .barra--compacta::after { transform: translateY(calc(-1 * var(--recorte))); opacity: 1; }
+  .barra--compacta :global(.barra__busqueda), .barra--compacta .barra__stock, .barra--compacta .barra__categorias { transform: translateY(var(--dy, 0px)); }
+  .barra--compacta :global(.barra__busqueda .label), .barra--compacta legend { opacity: 0; pointer-events: none; }
+  .barra--sin-transicion, .barra--sin-transicion *, .barra--sin-transicion::before, .barra--sin-transicion::after { transition: none !important; }
+  /* Categorías siempre en una fila deslizable (compacta o no): el alto de la barra no cambia al bajar. */
+  .barra__categorias { display: block; min-width: 0; min-inline-size: 0; }
+  .barra__chips {
+    display: flex; gap: 8px; flex-wrap: nowrap; scroll-padding-inline: 16px; overflow-x: auto; scrollbar-width: none; scroll-snap-type: x proximity;
+    margin-inline: -16px; padding: 2px 16px 4px;
+    mask-image: linear-gradient(to right, transparent, #000 16px, #000 calc(100% - 32px), transparent);
+  }
+  .barra__chips::-webkit-scrollbar { display: none; }
+  .barra__chips :global(.toggle) { flex: none; scroll-snap-align: start; }
   @media (prefers-reduced-motion: reduce) {
-    .barra, .barra :global(.label), .barra :global(.toggle), .barra :global(.input) { transition: none; }
+    .barra::before, .barra::after, .barra :global(.barra__busqueda), .barra__stock, .barra__categorias { transition-duration: 200ms; transition-timing-function: ease; }
   }
   .barra__fila { display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: flex-end; }
   .barra :global(.barra__busqueda) { flex: 1 1 320px; max-width: 560px; }
@@ -651,15 +718,6 @@ const secciones = catalogo.categorias.map((c) => ({ ...c, modelos: MODELOS.filte
   .punto { width: 9px; height: 9px; border-radius: 50%; display: inline-block; margin-right: 6px; vertical-align: 1px; box-shadow: 0 0 0 2px #fff; }
   .punto--con { background: #0f7a3a; }
   .punto--sin { background: #8a938f; }
-  @media (max-width: 899px) {
-    /* En móvil y tablet las categorías se desplazan en horizontal. */
-    .barra__categorias {
-      flex-wrap: nowrap; overflow-x: auto; scroll-snap-type: x proximity;
-      margin-inline: -16px; padding: 2px 16px 8px; scrollbar-width: thin;
-    }
-    .barra__categorias legend { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
-    .barra__categorias :global(.toggle) { flex: none; scroll-snap-align: start; }
-  }
   .barra__fila > * { min-width: 0; }
   @media (max-width: 559px) {
     /* Tres opciones del mismo ancho; el total de cada una se anuncia en el texto de resultados. */
@@ -668,7 +726,12 @@ const secciones = catalogo.categorias.map((c) => ({ ...c, modelos: MODELOS.filte
     .barra__stock legend { grid-column: 1 / -1; margin-bottom: 2px; }
     .barra__stock :global(.toggle) { min-width: 0; justify-content: center; padding-inline: 6px; font-size: 0.875rem; white-space: nowrap; }
     .barra__stock :global(.toggle__contador) { display: none; }
-    .barra--compacta .barra__stock :global(.toggle) { min-height: 32px; }
+    /* Teléfono: más bajo. La búsqueda se entiende por el ícono y el texto de ejemplo; la etiqueta queda para lectores de pantalla. */
+    .barra { gap: 10px; padding-block: 12px; }
+    .barra :global(.barra__busqueda .label) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+    .barra__categorias legend { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+    .barra__stock :global(.toggle), .barra__categorias :global(.toggle) { min-height: 38px; }
+    .barra--compacta .barra__stock { opacity: 0; pointer-events: none; }
   }
 
   .estado { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; justify-content: space-between; margin: 20px 0 8px; }

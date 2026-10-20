@@ -16,10 +16,7 @@ const externo = (url: string | null) => Boolean(url && /^https?:/.test(url));
 {novedades.length > 0 && (
   <section class="contenedor bloque" aria-labelledby="novedades-titulo">
     <div class="bloque__cabecera">
-      <div>
-        <span class="eyebrow">Últimas novedades</span>
-        <h2 id="novedades-titulo">Novedades COPOL</h2>
-      </div>
+      <h2 id="novedades-titulo">Novedades COPOL</h2>
       <a href="/hipermercado/promociones/" class="enlace-flecha">Ver promociones <Icono nombre="flecha" tamano={18} /></a>
     </div>
     <div class="novedades-lista">

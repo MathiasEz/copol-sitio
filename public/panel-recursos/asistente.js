@@ -78,6 +78,7 @@
   const SVG = {
     deshacer: '<path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/>',
     check: '<path d="M20 6 9 17l-5-5"/>',
+    basura: '<path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/>',
     editar: '<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/>',
   };
   const icono = (nombre, tam = 16) => {
@@ -200,7 +201,19 @@
       a.href = `${BASE}/asistente?c=${encodeURIComponent(cv.id)}`;
       a.dataset.conversacion = cv.id;
       a.append(crear('span', 'historial__titulo', cv.titulo), crear('span', 'historial__meta'));
-      li.append(a);
+      li.className = 'historial__fila';
+      const fb = crear('form', 'historial__borrar-form');
+      fb.method = 'post';
+      fb.action = `${BASE}/asistente/conversaciones/${encodeURIComponent(cv.id)}/eliminar`;
+      fb.dataset.eliminar = '';
+      fb.dataset.titulo = cv.titulo;
+      fb.append(...ocultos([['_csrf', csrf]]));
+      const bb = crear('button', 'historial__borrar');
+      bb.type = 'submit';
+      bb.title = 'Eliminar conversación';
+      bb.append(icono('basura', 15), crear('span', 'sr', `Eliminar conversación: ${cv.titulo}`));
+      fb.append(bb);
+      li.append(a, fb);
     }
     lista.querySelectorAll('[aria-current]').forEach((x) => x.removeAttribute('aria-current'));
     a.setAttribute('aria-current', 'page');
@@ -324,8 +337,36 @@
     campo.value = t;
     form.requestSubmit();
   });
-  caja.querySelector('form[data-eliminar]')?.addEventListener('submit', (e) => {
-    if (!confirm('¿Eliminar esta conversación del historial? Los cambios aplicados no se deshacen.')) e.preventDefault();
+  // Eliminar una conversación: desde su cabecera o desde la lista del historial (sin abrirla).
+  const actualizarCuenta = () => {
+    const n = document.querySelector('[data-historial-n]');
+    if (n && lista) n.textContent = String(lista.children.length);
+    document.querySelector('[data-historial-vacio]')?.toggleAttribute('hidden', Boolean(lista?.children.length));
+  };
+  document.addEventListener('submit', async (e) => {
+    const f = e.target.closest?.('form[data-eliminar]');
+    if (!f) return;
+    e.preventDefault();
+    const nombre = f.dataset.titulo || titulo?.textContent || 'esta conversación';
+    if (!confirm(`¿Eliminar «${nombre}» del historial? Los cambios que se aplicaron no se deshacen.`)) return;
+    const id = decodeURIComponent(f.action.match(/conversaciones\/([^/]+)\/eliminar/)?.[1] ?? '');
+    const boton = f.querySelector('button');
+    if (boton) boton.disabled = true;
+    try {
+      const r = await enviar(f);
+      if (!r) return;
+      if (!r.ok) throw new Error(r.mensaje || 'No se pudo eliminar.');
+      if (id === conversacion()) { location.href = `${BASE}/asistente`; return; }
+      const li = lista?.querySelector(`[data-conversacion="${CSS.escape(id)}"]`)?.closest('li');
+      if (li) {
+        li.classList.add('historial__fila--saliendo');
+        const quitar = () => { li.remove(); actualizarCuenta(); };
+        if (reducir.matches) quitar(); else setTimeout(quitar, 200);
+      }
+    } catch (err) {
+      if (boton) boton.disabled = false;
+      error(err instanceof TypeError ? 'Sin conexión. Probá de nuevo.' : err.message);
+    }
   });
   // El registro arranca mostrando lo último de la conversación.
   registro.scrollTop = registro.scrollHeight;

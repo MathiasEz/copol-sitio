@@ -698,10 +698,11 @@ const cuando = (iso: string) => {
   if (dia(d) === dia(new Date(hoy.getTime() - 86_400_000))) return 'ayer';
   return d.toLocaleDateString('es-UY', { weekday: 'short', day: 'numeric', month: 'numeric', timeZone: zona });
 };
-export const itemHistorial = (h: ResumenConversacion, actual: boolean) => html`<li><a class="historial__item" href="${r(`/asistente?c=${h.id}`)}" data-conversacion="${h.id}" ${si(actual, 'aria-current="page"')}>
+/** Fila del historial: enlace a la conversación y botón para eliminarla sin abrirla. */
+export const itemHistorial = (c: Contexto, h: ResumenConversacion, actual: boolean) => html`<li class="historial__fila"><a class="historial__item" href="${r(`/asistente?c=${h.id}`)}" data-conversacion="${h.id}" ${si(actual, 'aria-current="page"')}>
   <span class="historial__titulo">${h.titulo}</span>
   <span class="historial__meta"><span>${cuando(h.actualizada_en)}</span>${h.cambios ? html`<span class="historial__cambios">${icono('check', 12)}${h.cambios === 1 ? '1 cambio' : `${h.cambios} cambios`}</span>` : ''}</span>
-</a></li>`;
+</a><form class="historial__borrar-form" method="post" action="${r(`/asistente/conversaciones/${h.id}/eliminar`)}" data-eliminar data-titulo="${h.titulo}">${csrfCampo(c)}<button class="historial__borrar" type="submit" title="Eliminar conversación">${icono('basura', 15)}<span class="sr">Eliminar conversación: ${h.titulo}</span></button></form></li>`;
 
 export function vistaAsistente(c: Contexto, d: DatosAsistente) {
   const id = d.conversacionId;
@@ -711,7 +712,7 @@ export function vistaAsistente(c: Contexto, d: DatosAsistente) {
 <details class="card historial" data-historial open>
   <summary class="historial__cabecera"><span class="historial__nombre">${icono('registro', 16)}Historial <span class="historial__n" data-historial-n>${d.historial.length}</span></span>${icono('chevron', 16)}</summary>
   <a class="btn btn--outline btn--sm btn--bloque historial__nueva" href="${r('/asistente')}" ${si(!id, 'aria-current="page"')}>${icono('mas', 16)}Nueva conversación</a>
-  <ul class="historial__lista" data-historial-lista aria-label="Conversaciones anteriores">${d.historial.map((h) => itemHistorial(h, h.id === id))}</ul>
+  <ul class="historial__lista" data-historial-lista aria-label="Conversaciones anteriores">${d.historial.map((h) => itemHistorial(c, h, h.id === id))}</ul>
   <p class="muted historial__vacio" data-historial-vacio ${si(d.historial.length, 'hidden')}>Todavía no hay conversaciones. Las que tengas quedan guardadas acá.</p>
 </details>
 <section class="card asistente" data-asistente>

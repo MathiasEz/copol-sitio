@@ -6,7 +6,7 @@
 //   la página se desplaza hasta el mapa y este hace un acercamiento suave (flyTo) hasta el punto.
 // - Los filtros de la página avisan qué puntos quedan con `copol:mapa-filtrar` ({ ids }).
 // - `agrupar`: junta los puntos cercanos en burbujas con el número (para los ~160 convenios).
-// - Con "reducir movimiento" activado en el sistema, el mapa salta al punto sin animación.
+// - Con "reducir movimiento" activado en el sistema, el acercamiento es directo y más corto (sin arco), pero suave.
 export interface PuntoMapa {
   id: string;
   lat: number;
@@ -42,6 +42,7 @@ const datos = puntos.map((p) => [p.id, +p.lat.toFixed(5), +p.lng.toFixed(5), p.t
   const ESTILO = 'https://tiles.openfreemap.org/styles/positron';
   const URUGUAY: [[number, number], [number, number]] = [[-58.5, -35.05], [-53.1, -30.05]];
   const reducir = matchMedia('(prefers-reduced-motion: reduce)');
+  const suave = (t: number) => 1 - Math.pow(1 - t, 3);
 
   const raiz = document.querySelector<HTMLElement>('[data-mapa]');
   if (raiz) iniciar(raiz);
@@ -158,7 +159,7 @@ const datos = puntos.map((p) => [p.id, +p.lat.toFixed(5), +p.lng.toFixed(5), p.t
         if (!f) return;
         const fuente = m.getSource('puntos') as GeoJSONSource;
         const zoom = await fuente.getClusterExpansionZoom(f.properties.cluster_id as number);
-        m.easeTo({ center: (f.geometry as { coordinates: [number, number] }).coordinates, zoom, duration: reducir.matches ? 0 : 450 });
+        m.easeTo({ center: (f.geometry as { coordinates: [number, number] }).coordinates, zoom, duration: reducir.matches ? 300 : 450, essential: true });
       });
       m.on('click', 'sueltos', (e: MapLayerMouseEvent) => {
         const p = porId.get(String(e.features?.[0]?.properties.id));
@@ -211,14 +212,13 @@ const datos = puntos.map((p) => [p.id, +p.lat.toFixed(5), +p.lng.toFixed(5), p.t
       const m = mapa!;
       const zoom = Math.max(m.getZoom(), agrupar ? 16 : 15.5);
       botonTodo.hidden = false;
-      if (reducir.matches) {
-        m.jumpTo({ center: [p.lng, p.lat], zoom });
-        marcar(p);
-        return;
-      }
       ventana?.remove();
-      m.flyTo({ center: [p.lng, p.lat], zoom, speed: desdeTarjeta ? 0.9 : 1.2, curve: 1.42, maxDuration: 2800, essential: true });
+      m.stop();
       m.once('moveend', () => marcar(p));
+      // Con "reducir movimiento" en el sistema: acercamiento directo y más corto (sin el arco de alejarse
+      // y volver), pero igual suave; nunca un salto, que desorienta más que la animación.
+      if (reducir.matches) m.easeTo({ center: [p.lng, p.lat], zoom, duration: 900, easing: suave, essential: true });
+      else m.flyTo({ center: [p.lng, p.lat], zoom, speed: desdeTarjeta ? 0.9 : 1.2, curve: 1.42, maxDuration: 2800, essential: true });
     }
 
     const enVista = () => {
@@ -238,8 +238,8 @@ const datos = puntos.map((p) => [p.id, +p.lat.toFixed(5), +p.lng.toFixed(5), p.t
       if (!p) return;
       const carga = cargar();
       if (!enVista()) {
-        raiz.scrollIntoView({ behavior: reducir.matches ? 'auto' : 'smooth', block: 'center' });
-        if (!reducir.matches) await esperarDesplazamiento();
+        raiz.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        await esperarDesplazamiento();
       }
       await carga;
       enfocarEnMapa(p, true);
@@ -269,7 +269,7 @@ const datos = puntos.map((p) => [p.id, +p.lat.toFixed(5), +p.lng.toFixed(5), p.t
       if (!lista.length) return;
       const caja = new ml!.LngLatBounds();
       lista.forEach((p) => caja.extend([p.lng, p.lat]));
-      m.fitBounds(conFiltro ? caja : URUGUAY, { padding: 48, maxZoom: 14, duration: reducir.matches ? 0 : 700 });
+      m.fitBounds(conFiltro ? caja : URUGUAY, { padding: 48, maxZoom: 14, duration: reducir.matches ? 500 : 700, essential: true });
       botonTodo.hidden = !conFiltro;
     }
 

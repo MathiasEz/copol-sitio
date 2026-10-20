@@ -298,6 +298,22 @@ select.input { padding-right: 28px; }
 .historial__item { display: grid; gap: 2px; padding: 8px 10px; border-radius: var(--radius-sm); color: inherit; text-decoration: none; transition: background-color 150ms ease; }
 .historial__item:hover { background: var(--fila-hover); }
 .historial__item[aria-current] { background: var(--suave); box-shadow: inset 3px 0 0 var(--marca); }
+.historial__fila { position: relative; transition: opacity 180ms ease, transform 180ms cubic-bezier(.23, 1, .32, 1); }
+.historial__fila--saliendo { opacity: 0; transform: translateX(-8px); }
+.historial__fila .historial__item { padding-right: 40px; }
+.historial__borrar-form { position: absolute; top: 6px; right: 4px; margin: 0; }
+.historial__borrar {
+  display: grid; place-items: center; width: 30px; height: 30px; border: 0; border-radius: var(--radius-sm);
+  background: transparent; color: var(--muted-foreground); cursor: pointer;
+  transition: background-color 150ms ease, color 150ms ease, opacity 150ms ease;
+}
+.historial__borrar:hover { background: var(--suave); color: var(--destructive, #b3261e); }
+.historial__borrar:focus-visible { opacity: 1; }
+/* Con mouse aparece al pasar por la fila; en pantallas táctiles queda siempre visible. */
+@media (hover: hover) and (pointer: fine) {
+  .historial__borrar { opacity: 0; }
+  .historial__fila:hover .historial__borrar, .historial__fila:focus-within .historial__borrar { opacity: 1; }
+}
 .historial__titulo { font-size: .875rem; font-weight: 600; line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .historial__meta { display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: .75rem; color: var(--muted-foreground); }
 .historial__cambios { display: inline-flex; align-items: center; gap: 3px; color: var(--ok); font-weight: 600; }

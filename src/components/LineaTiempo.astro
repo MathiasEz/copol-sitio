@@ -135,7 +135,9 @@ const localesHoy = ['casa-central', 'salto', 'rocha'].map((id) => fotoLocal(id))
   .hito__figura { margin: 4px 0 0; display: grid; gap: 8px; }
   .hito__figura--ilustracion { width: min(100%, 260px); justify-self: center; }
   .hito__figura figcaption { font-size: 0.8125rem; color: var(--muted-foreground); }
-  .hito__cita { margin: 4px 0 0; padding: 16px 20px; border-left: 4px solid var(--amarillo-copol); border-radius: 0 var(--radio-md) var(--radio-md) 0; background: var(--muted); display: grid; gap: 6px; }
+  .hito__cita { margin: 4px 0 0; padding: 18px 20px 16px; border-radius: var(--radio-md); background: var(--muted); display: grid; gap: 6px; }
+  /* Comillas tipográficas grandes en lugar de una barra de color al costado. */
+  .hito__cita p::before { content: "“"; display: block; height: 0.55em; margin-bottom: 4px; font-size: 2.75rem; line-height: 1; font-weight: 800; color: var(--verde-copol); }
   .hito__cita p { font-size: 1.0625rem; font-weight: 600; color: var(--verde-oscuro); }
   .hito__cita footer { font-size: 0.875rem; color: var(--tinta-suave); }
   .hito__mosaico { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
