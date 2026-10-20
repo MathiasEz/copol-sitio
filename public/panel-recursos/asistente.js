@@ -1,23 +1,28 @@
-// Asistente del panel: conversación sin recargar la página. Sin JavaScript, el formulario se envía de
-// forma normal y el servidor devuelve la respuesta en la misma página. La conversación se guarda solo
-// en esta pestaña (sessionStorage) y se borra con "Nueva conversación" o al cerrar la pestaña.
+// Asistente del panel: conversación sin recargar la página. Sin JavaScript, cada formulario se envía de
+// forma normal y el servidor devuelve la página con la conversación actualizada. Las conversaciones se
+// guardan en el servidor (Historial); cada respuesta que aplicó cambios tiene una flecha para deshacerlos.
 (() => {
   const caja = document.querySelector('[data-asistente]');
   const form = caja?.querySelector('[data-asistente-form]');
   if (!caja || !form) return;
   const registro = caja.querySelector('[data-registro]');
-  const vacio = caja.querySelector('[data-vacio]');
   const campo = form.querySelector('textarea[name="pregunta"]');
-  const historialCampo = form.querySelector('[data-historial]');
-  const modelo = form.querySelector('[data-modelo]');
-  const nueva = form.querySelector('[data-nueva]');
+  const idCampo = form.querySelector('[data-conversacion-id]');
   const boton = form.querySelector('button[type="submit"]');
   const errorCaja = caja.querySelector('[data-error]');
   const restantes = form.querySelector('[data-restantes]');
-  const CLAVE = 'copol-asistente';
+  const titulo = caja.querySelector('[data-titulo]');
+  const historial = document.querySelector('[data-historial]');
+  const lista = historial?.querySelector('[data-historial-lista]');
   const BASE = document.documentElement.dataset.base || '';
-  let conversacion = [];
+  const csrf = form.querySelector('[name="_csrf"]')?.value ?? '';
+  const reducir = matchMedia('(prefers-reduced-motion: reduce)');
   let ocupado = false;
+
+  // En pantallas angostas el historial arranca plegado (en escritorio es una columna fija).
+  const angosta = matchMedia('(max-width: 1199px)');
+  if (historial && angosta.matches) historial.open = false;
+  historial?.addEventListener('toggle', () => { if (!angosta.matches && !historial.open) historial.open = true; });
 
   // ── Texto con formato mínimo y seguro (sin innerHTML): **negrita**, `código`, listas y rutas del sitio ──
   const enlinea = (padre, texto) => {
@@ -54,58 +59,86 @@
       }
       lista = null;
       if (!linea.trim()) continue;
-      const titulo = linea.match(/^#{1,4}\s+(.*)$/);
+      const t = linea.match(/^#{1,4}\s+(.*)$/);
       const p = document.createElement('p');
-      if (titulo) { const b = document.createElement('strong'); b.textContent = titulo[1]; p.append(b); } else enlinea(p, linea);
+      if (t) { const b = document.createElement('strong'); b.textContent = t[1]; p.append(b); } else enlinea(p, linea);
       frag.append(p);
     }
     return frag;
   };
+  // Las respuestas que vienen del servidor (historial) llegan como texto plano: se les da formato.
+  registro.querySelectorAll('[data-formato]').forEach((el) => { el.replaceChildren(formatear(el.textContent)); });
 
-  const burbuja = (rol, texto, pendiente = false) => {
-    vacio?.remove();
-    const div = document.createElement('div');
-    div.className = `msj msj--${rol}${pendiente ? ' msj--pendiente' : ''}`;
-    const autor = document.createElement('span');
-    autor.className = 'msj__autor';
-    autor.textContent = rol === 'usuario' ? 'Vos' : 'Asistente';
-    const cuerpo = document.createElement('div');
-    cuerpo.className = 'msj__texto';
-    if (pendiente) cuerpo.textContent = 'Consultando…';
-    else if (rol === 'asistente') cuerpo.append(formatear(texto));
-    else cuerpo.textContent = texto;
-    div.append(autor, cuerpo);
-    registro.append(div);
-    div.scrollIntoView({ block: 'nearest', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
-    return div;
-  };
-  // ── Tarjeta de cambios propuestos (misma estructura que la del servidor) ──
-  const csrf = form.querySelector('[name="_csrf"]')?.value ?? '';
   const crear = (tag, clase, texto) => {
     const n = document.createElement(tag);
     if (clase) n.className = clase;
     if (texto != null) n.textContent = texto;
     return n;
   };
-  const formAccion = (id, accion, etiqueta, clase) => {
-    const f = crear('form');
+  const SVG = {
+    deshacer: '<path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/>',
+    check: '<path d="M20 6 9 17l-5-5"/>',
+    editar: '<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/>',
+  };
+  const icono = (nombre, tam = 16) => {
+    const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    for (const [k, v] of Object.entries({ class: 'i', width: tam, height: tam, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': 2, 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'aria-hidden': 'true' })) s.setAttribute(k, v);
+    s.innerHTML = SVG[nombre]; // trazos fijos de este archivo
+    return s;
+  };
+  const ocultos = (pares) => pares.map(([k, v]) => { const i = crear('input'); i.type = 'hidden'; i.name = k; i.value = v; return i; });
+  const conversacion = () => idCampo?.value ?? '';
+  const desplazar = (el) => el.scrollIntoView({ block: 'nearest', behavior: reducir.matches ? 'auto' : 'smooth' });
+
+  const formDeshacer = (id) => {
+    const f = crear('form', 'msj__deshacer-form');
     f.method = 'post';
-    f.action = `${BASE}/asistente/propuestas/${encodeURIComponent(id)}`;
-    for (const [k, v] of [['_csrf', csrf], ['accion', accion]]) {
-      const i = crear('input');
-      i.type = 'hidden'; i.name = k; i.value = v;
-      f.append(i);
-    }
-    const b = crear('button', clase, etiqueta);
+    f.action = `${BASE}/asistente/propuestas/${encodeURIComponent(id)}/deshacer`;
+    f.dataset.deshacer = id;
+    f.append(...ocultos([['_csrf', csrf], ['conversacion', conversacion()]]));
+    const b = crear('button', 'msj__deshacer');
     b.type = 'submit';
+    b.title = 'Deshacer estos cambios';
+    b.append(icono('deshacer'), crear('span', '', 'Deshacer'), crear('span', 'sr', ' estos cambios'));
     f.append(b);
     return f;
   };
-  const tarjeta = (p) => {
+
+  const burbuja = (rol, texto, { pendiente = false, deshacer = null } = {}) => {
+    registro.querySelector('[data-vacio]')?.remove();
+    const div = crear('div', `msj msj--${rol}${pendiente ? ' msj--pendiente' : ''}`);
+    const cuerpo = crear('div', 'msj__texto');
+    if (pendiente) cuerpo.textContent = 'Consultando…';
+    else if (rol === 'asistente') cuerpo.append(formatear(texto));
+    else cuerpo.textContent = texto;
+    div.append(crear('span', 'msj__autor', rol === 'usuario' ? 'Vos' : 'Asistente'), cuerpo);
+    if (deshacer) { div.dataset.deshacerDe = deshacer; div.append(formDeshacer(deshacer)); }
+    registro.append(div);
+    desplazar(div);
+    return div;
+  };
+
+  // ── Tarjeta de cambios propuestos (misma estructura que la del servidor) ──
+  const formAccion = (id, accion, etiqueta, clase, conIcono) => {
+    const f = crear('form');
+    f.method = 'post';
+    f.action = `${BASE}/asistente/propuestas/${encodeURIComponent(id)}`;
+    f.append(...ocultos([['_csrf', csrf], ['conversacion', conversacion()], ['accion', accion]]));
+    const b = crear('button', clase);
+    b.type = 'submit';
+    if (conIcono) b.append(icono(conIcono));
+    b.append(etiqueta);
+    f.append(b);
+    return f;
+  };
+  const tarjeta = (p, revierte = false) => {
+    registro.querySelectorAll('[data-propuesta]:not([class*="propuesta--"])').forEach((t) => marcarTarjeta(t, 'reemplazada'));
     const s = crear('section', 'propuesta');
     s.dataset.propuesta = '';
-    s.setAttribute('aria-label', 'Cambios para confirmar');
-    s.append(crear('h2', 'propuesta__titulo', `Cambios para confirmar (${p.items.length})`));
+    s.setAttribute('aria-label', revierte ? 'Vuelta atrás para confirmar' : 'Cambios para confirmar');
+    const h = crear('h2', 'propuesta__titulo');
+    h.append(icono(revierte ? 'deshacer' : 'editar'), `${revierte ? 'Deshacer' : 'Cambios para confirmar'} (${p.items.length})`);
+    s.append(h);
     const ul = crear('ul', 'propuesta__lista');
     for (const i of p.items) {
       const li = crear('li');
@@ -129,61 +162,115 @@
       s.append(e);
     }
     const acciones = crear('div', 'propuesta__acciones');
-    acciones.append(formAccion(p.id, 'cancelar', 'Cancelar', 'btn btn--ghost btn--sm'), formAccion(p.id, 'confirmar', 'Confirmar cambios', 'btn btn--sm'));
+    acciones.append(formAccion(p.id, 'cancelar', 'Cancelar', 'btn btn--ghost btn--sm'), formAccion(p.id, 'confirmar', 'Confirmar cambios', 'btn btn--sm', 'check'));
     s.append(acciones, crear('p', 'muted propuesta__nota', 'Nada se modifica hasta que confirmes. La propuesta vence en 15 minutos.'));
     registro.append(s);
-    s.scrollIntoView({ block: 'nearest' });
+    desplazar(s);
   };
-  caja.addEventListener('submit', async (e) => {
-    const f = e.target.closest?.('[data-propuesta] form');
-    if (!f) return;
-    e.preventDefault();
-    const card = f.closest('[data-propuesta]');
-    const botones = card.querySelectorAll('button');
-    botones.forEach((b) => { b.disabled = true; });
-    f.querySelector('button')?.setAttribute('aria-busy', 'true');
-    error('');
-    try {
-      const res = await fetch(f.action, { method: 'POST', body: new FormData(f), headers: { Accept: 'application/json' }, credentials: 'same-origin' });
-      if (res.redirected) { location.href = `${BASE}/ingresar?aviso=sesion-vencida`; return; }
-      const r = await res.json().catch(() => ({ ok: false, mensaje: 'Respuesta inesperada del servidor.' }));
-      if (!r.ok) throw new Error(r.mensaje || 'No se pudo completar.');
-      card.querySelector('.propuesta__acciones')?.remove();
-      card.querySelector('.propuesta__nota')?.remove();
-      card.classList.add(new FormData(f).get('accion') === 'confirmar' ? 'propuesta--aplicada' : 'propuesta--cancelada');
-      burbuja('asistente', r.mensaje);
-      conversacion.push({ rol: 'asistente', texto: r.mensaje });
-      guardar();
-    } catch (err) {
-      botones.forEach((b) => { b.disabled = false; });
-      error(err instanceof TypeError ? 'Sin conexión. Probá de nuevo.' : err.message);
-    } finally {
-      f.querySelector('button')?.removeAttribute('aria-busy');
-    }
-  });
+  const ETIQUETAS = { aplicada: 'Aplicados', cancelada: 'Cancelados', reemplazada: 'Sin efecto' };
+  function marcarTarjeta(card, estado) {
+    card.querySelector('.propuesta__acciones')?.remove();
+    card.querySelector('.propuesta__nota')?.remove();
+    card.classList.add(`propuesta--${estado}`);
+    const h = card.querySelector('.propuesta__titulo');
+    if (h && !h.querySelector('.propuesta__estado')) h.append(crear('span', 'propuesta__estado', ETIQUETAS[estado]));
+  }
 
-  const guardar = () => {
-    try { sessionStorage.setItem(CLAVE, JSON.stringify({ conversacion, modelo: modelo?.value })); } catch { /* sin almacenamiento */ }
-    if (nueva) nueva.hidden = conversacion.length === 0;
+  // ── Historial: la conversación actual sube arriba de la lista ──
+  const cuando = (iso) => {
+    const d = new Date(iso);
+    return `hoy ${d.toLocaleTimeString('es-UY', { hour: '2-digit', minute: '2-digit' })}`;
   };
+  const actualizarConversacion = (cv) => {
+    if (!cv) return;
+    const nueva = !conversacion();
+    if (idCampo) idCampo.value = cv.id;
+    // Los formularios ya dibujados (tarjetas, flechas) se envían con la conversación.
+    caja.querySelectorAll('input[name="conversacion"]').forEach((i) => { i.value = cv.id; });
+    if (nueva) {
+      history.replaceState(null, '', `${BASE}/asistente?c=${encodeURIComponent(cv.id)}`);
+      if (titulo) titulo.textContent = cv.titulo;
+      document.querySelector('.historial__nueva')?.removeAttribute('aria-current');
+    }
+    if (!lista) return;
+    let a = lista.querySelector(`[data-conversacion="${CSS.escape(cv.id)}"]`);
+    if (!a) {
+      const li = crear('li');
+      a = crear('a', 'historial__item');
+      a.href = `${BASE}/asistente?c=${encodeURIComponent(cv.id)}`;
+      a.dataset.conversacion = cv.id;
+      a.append(crear('span', 'historial__titulo', cv.titulo), crear('span', 'historial__meta'));
+      li.append(a);
+    }
+    lista.querySelectorAll('[aria-current]').forEach((x) => x.removeAttribute('aria-current'));
+    a.setAttribute('aria-current', 'page');
+    const meta = a.querySelector('.historial__meta');
+    meta.replaceChildren(crear('span', '', cuando(cv.actualizada_en)));
+    if (cv.cambios) {
+      const c = crear('span', 'historial__cambios');
+      c.append(icono('check', 12), cv.cambios === 1 ? '1 cambio' : `${cv.cambios} cambios`);
+      meta.append(c);
+    }
+    lista.prepend(a.closest('li'));
+    const n = document.querySelector('[data-historial-n]');
+    if (n) n.textContent = String(lista.children.length);
+    document.querySelector('[data-historial-vacio]')?.setAttribute('hidden', '');
+  };
+
   const error = (texto) => {
     errorCaja.textContent = texto ?? '';
     errorCaja.hidden = !texto;
   };
+  const enviar = async (f) => {
+    const res = await fetch(f.action, { method: 'POST', body: new FormData(f), headers: { Accept: 'application/json' }, credentials: 'same-origin' });
+    if (res.redirected) { location.href = `${BASE}/ingresar?aviso=sesion-vencida`; return null; }
+    return res.json().catch(() => ({ ok: false, mensaje: 'Respuesta inesperada del servidor.' }));
+  };
 
-  // Conversación previa de esta pestaña (las respuestas del servidor sin JS ya vienen en la página).
-  try {
-    const previo = JSON.parse(sessionStorage.getItem(CLAVE) ?? 'null');
-    if (previo && !registro.querySelector('.msj')) {
-      conversacion = Array.isArray(previo.conversacion) ? previo.conversacion : [];
-      conversacion.forEach((m) => burbuja(m.rol, m.texto));
-      if (modelo && previo.modelo) modelo.value = previo.modelo;
+  // Confirmar / cancelar una tarjeta y la flecha "Deshacer" de una respuesta.
+  caja.addEventListener('submit', async (e) => {
+    const f = e.target.closest?.('[data-propuesta] form, form[data-deshacer]');
+    if (!f) return;
+    e.preventDefault();
+    if (ocupado) return;
+    ocupado = true;
+    const card = f.closest('[data-propuesta]');
+    const botones = (card ?? f).querySelectorAll('button');
+    botones.forEach((b) => { b.disabled = true; });
+    f.querySelector('button')?.setAttribute('aria-busy', 'true');
+    error('');
+    try {
+      const r = await enviar(f);
+      if (!r) return;
+      if (!r.ok) throw new Error(r.mensaje || 'No se pudo completar.');
+      actualizarConversacion(r.conversacion);
+      if (f.dataset.deshacer) {
+        burbuja('usuario', 'Deshacer estos cambios');
+        burbuja('asistente', r.mensaje);
+        if (r.propuesta) tarjeta(r.propuesta, true);
+        botones.forEach((b) => { b.disabled = false; });
+      } else {
+        marcarTarjeta(card, new FormData(f).get('accion') === 'confirmar' ? 'aplicada' : 'cancelada');
+        burbuja('asistente', r.mensaje, { deshacer: r.deshacer ?? null });
+        // Se aplicó una vuelta atrás: la respuesta original queda marcada como deshecha.
+        if (r.deshecho) {
+          const original = registro.querySelector(`[data-deshacer-de="${CSS.escape(r.deshecho)}"]`);
+          const fo = original?.querySelector('form[data-deshacer]');
+          if (fo) {
+            const marca = crear('span', 'msj__deshecho');
+            marca.append(icono('deshacer', 14), 'Cambios deshechos');
+            fo.replaceWith(marca);
+          }
+        }
+      }
+    } catch (err) {
+      botones.forEach((b) => { b.disabled = false; });
+      error(err instanceof TypeError ? 'Sin conexión. Probá de nuevo.' : err.message);
+    } finally {
+      ocupado = false;
+      f.querySelector('button')?.removeAttribute('aria-busy');
     }
-  } catch { /* sin almacenamiento */ }
-  if (!conversacion.length) {
-    try { conversacion = JSON.parse(historialCampo?.value || '[]'); } catch { conversacion = []; }
-  }
-  if (nueva) nueva.hidden = conversacion.length === 0;
+  });
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -192,9 +279,8 @@
     ocupado = true;
     error('');
     const datos = new FormData(form);
-    datos.set('historial', JSON.stringify(conversacion));
     burbuja('usuario', pregunta);
-    const espera = burbuja('asistente', '', true);
+    const espera = burbuja('asistente', '', { pendiente: true });
     campo.value = '';
     boton.setAttribute('aria-busy', 'true');
     boton.disabled = true;
@@ -204,12 +290,10 @@
       const r = await res.json().catch(() => ({ ok: false, error: 'Respuesta inesperada del servidor.' }));
       if (!r.ok) throw new Error(r.error || 'No se pudo responder.');
       espera.remove();
+      actualizarConversacion(r.conversacion);
       burbuja('asistente', r.respuesta);
-      registro.querySelectorAll('[data-propuesta] .propuesta__acciones').forEach((a) => a.closest('[data-propuesta]').classList.add('propuesta--reemplazada'));
       if (r.propuesta) tarjeta(r.propuesta);
-      conversacion.push({ rol: 'usuario', texto: pregunta }, { rol: 'asistente', texto: r.respuesta });
       if (restantes && typeof r.restantes === 'number') restantes.textContent = r.restantes > 0 ? `Te quedan ${r.restantes} consultas hoy.` : 'Llegaste al límite de consultas de hoy.';
-      guardar();
     } catch (err) {
       espera.remove();
       registro.lastElementChild?.remove(); // la pregunta sin respuesta vuelve al campo
@@ -240,10 +324,9 @@
     campo.value = t;
     form.requestSubmit();
   });
-  modelo?.addEventListener('change', guardar);
-  nueva?.addEventListener('click', () => {
-    conversacion = [];
-    guardar();
-    location.href = form.action; // vuelve a la pantalla inicial con las sugerencias
+  caja.querySelector('form[data-eliminar]')?.addEventListener('submit', (e) => {
+    if (!confirm('¿Eliminar esta conversación del historial? Los cambios aplicados no se deshacen.')) e.preventDefault();
   });
+  // El registro arranca mostrando lo último de la conversación.
+  registro.scrollTop = registro.scrollHeight;
 })();

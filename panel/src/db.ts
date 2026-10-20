@@ -124,6 +124,13 @@ const MIGRACIONES: string[] = [
   CREATE TABLE intentos (clave TEXT NOT NULL, fecha TEXT NOT NULL);
   CREATE INDEX intentos_clave ON intentos(clave, fecha)
   `,
+  /* 6 · historial de conversaciones con el asistente (cada usuario ve solo las suyas) */ `
+  CREATE TABLE conversaciones (
+    id TEXT PRIMARY KEY, usuario_id INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE, titulo TEXT NOT NULL,
+    creada_en TEXT NOT NULL, actualizada_en TEXT NOT NULL, cambios INTEGER NOT NULL DEFAULT 0, mensajes TEXT NOT NULL
+  );
+  CREATE INDEX conversaciones_usuario ON conversaciones(usuario_id, actualizada_en)
+  `,
 ];
 
 /** Versión del esquema en una tabla propia (PRAGMA user_version no se conserva igual en todos los destinos). */

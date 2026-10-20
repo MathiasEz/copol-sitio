@@ -713,6 +713,43 @@ describe('asistente', () => {
       assert.match(html, /name="accion" value="confirmar"/);
       assert.match(html, /name="accion" value="cancelar"/);
     });
+    it('guarda el historial y la flecha de cada respuesta deshace esos cambios', async () => {
+      const n = await admin();
+      const otro = await admin('admin2');
+      const antes = await estufa();
+      const r = await proponer(n, [{ codigo: '100002', estado: 'sin-stock' }]);
+      const conv = r.conversacion.id as string;
+      assert.match(r.conversacion.titulo, /^proponer:/);
+      // La conversación sigue: el contexto sale de lo guardado y queda en el historial
+      const seguida = await (await preguntar(n, 'hola', { conversacion: conv, historial: '' })).json();
+      assert.equal(seguida.conversacion.id, conv);
+      const ok = await (await n.post(`${RUTA}/asistente/propuestas/${r.propuesta.id}`, { accion: 'confirmar', conversacion: conv }, json)).json();
+      assert.equal(ok.deshacer, r.propuesta.id, 'la respuesta de cambios aplicados trae la flecha');
+      assert.equal(ok.conversacion.cambios, 1);
+      assert.equal((await estufa())!.stock_estado, 'sin-stock');
+
+      const pagina = await (await n.pedir(`${RUTA}/asistente?c=${conv}`)).text();
+      assert.ok(pagina.includes(`/asistente/propuestas/${r.propuesta.id}/deshacer`), 'la flecha está en la respuesta');
+      assert.match(pagina, /Aplicados<\/span>/, 'la tarjeta resuelta muestra su estado');
+      assert.match(pagina, /data-conversacion="[^"]+" aria-current="page"/);
+      assert.equal((await otro.pedir(`${RUTA}/asistente?c=${conv}`)).status, 302, 'cada usuario ve solo sus conversaciones');
+
+      // Deshacer: prepara la vuelta atrás (no aplica nada) y se confirma como cualquier propuesta
+      const d = await (await n.post(`${RUTA}/asistente/propuestas/${r.propuesta.id}/deshacer`, { conversacion: conv }, json)).json();
+      assert.equal(d.propuesta.items.length, 1);
+      assert.equal((await estufa())!.stock_estado, 'sin-stock', 'deshacer primero muestra la tarjeta');
+      const v = await (await n.post(`${RUTA}/asistente/propuestas/${d.propuesta.id}`, { accion: 'confirmar', conversacion: conv }, json)).json();
+      assert.equal(v.deshecho, r.propuesta.id, 'la respuesta original queda marcada como deshecha');
+      assert.equal((await estufa())!.stock_estado, antes!.stock_estado);
+      const final = await (await n.pedir(`${RUTA}/asistente?c=${conv}`)).text();
+      assert.match(final, /Cambios deshechos/);
+      // Otra persona no puede deshacer cambios ajenos
+      const ajeno = await (await otro.post(`${RUTA}/asistente/propuestas/${r.propuesta.id}/deshacer`, {}, json)).json();
+      assert.equal(ajeno.propuesta, null);
+
+      assert.equal((await n.post(`${RUTA}/asistente/conversaciones/${conv}/eliminar`, {}, json)).status, 200);
+      assert.equal((await n.pedir(`${RUTA}/asistente?c=${conv}`)).status, 302);
+    });
     it('los scripts arman las direcciones con la dirección real del panel (no /panel)', async () => {
       const n = await admin();
       const html = await (await n.pedir(`${RUTA}/asistente`)).text();

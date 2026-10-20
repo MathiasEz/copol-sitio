@@ -165,20 +165,28 @@ export async function prepararGrupo(db: Db, usuarioId: number, ped: PedidoGrupo)
   return { ...(await guardar(db, usuarioId, items, errores)), seleccionados: lista.length, sinCambios };
 }
 
-export type PropuestaReversion = Propuesta & { revertida?: { creada: string; productos: number } };
+export type PropuestaReversion = Propuesta & { revertida?: { id: string; creada: string; productos: number } };
 
 /**
  * Prepara la vuelta atrás de una propuesta ya aplicada por el mismo usuario (atras = 1: la última, 2: la
  * anterior…). Devuelve cada producto a los valores que tenía antes; si un producto se volvió a modificar
  * después (por el panel o por otra propuesta), se omite para no pisar ese cambio. Se confirma igual que
  * cualquier propuesta, y como también queda aplicada, se puede revertir a su vez.
+ * `cual` también puede ser el id de una propuesta concreta (la flecha "Deshacer" de cada respuesta).
  */
-export async function prepararReversion(db: Db, usuarioId: number, atras = 1): Promise<PropuestaReversion> {
-  const n = Math.min(Math.max(1, Math.trunc(Number(atras)) || 1), 20);
+export async function prepararReversion(db: Db, usuarioId: number, cual: number | { propuesta: string } = 1): Promise<PropuestaReversion> {
   const vacia = (errores: string[]): PropuestaReversion => ({ id: '', items: [], errores, expira: '' });
-  const prop = (await todas<{ id: string; creada_en: string; items: string; resultado: string }>(db,
-    "SELECT id, creada_en, items, resultado FROM propuestas WHERE usuario_id = ? AND estado = 'aplicada' AND resultado IS NOT NULL ORDER BY creada_en DESC LIMIT 1 OFFSET ?", [usuarioId, n - 1]))[0];
-  if (!prop) return vacia([n === 1 ? 'No hay cambios aplicados con el asistente para revertir.' : `No hay una ${n}.ª propuesta aplicada para revertir.`]);
+  type FilaAplicada = { id: string; creada_en: string; items: string; resultado: string };
+  let prop: FilaAplicada | undefined;
+  if (typeof cual === 'object') {
+    prop = await una<FilaAplicada>(db, "SELECT id, creada_en, items, resultado FROM propuestas WHERE id = ? AND usuario_id = ? AND estado = 'aplicada' AND resultado IS NOT NULL", [cual.propuesta, usuarioId]);
+    if (!prop) return vacia(['No se encontraron esos cambios aplicados.']);
+  } else {
+    const n = Math.min(Math.max(1, Math.trunc(Number(cual)) || 1), 20);
+    prop = (await todas<FilaAplicada>(db,
+      "SELECT id, creada_en, items, resultado FROM propuestas WHERE usuario_id = ? AND estado = 'aplicada' AND resultado IS NOT NULL ORDER BY creada_en DESC LIMIT 1 OFFSET ?", [usuarioId, n - 1]))[0];
+    if (!prop) return vacia([n === 1 ? 'No hay cambios aplicados con el asistente para revertir.' : `No hay una ${n}.ª propuesta aplicada para revertir.`]);
+  }
 
   const items = JSON.parse(prop.items) as ItemPropuesta[];
   const resultados = JSON.parse(prop.resultado) as ResultadoGuardado[];
@@ -220,7 +228,7 @@ export async function prepararReversion(db: Db, usuarioId: number, atras = 1): P
     });
   }
   if (omitidos.length) errores.unshift(`${omitidos.length} producto(s) se modificaron después y no se revierten (para no pisar ese cambio): ${omitidos.slice(0, 10).join('; ')}${omitidos.length > 10 ? '…' : ''}.`);
-  const revertida = { creada: prop.creada_en, productos: aplicados.length };
+  const revertida = { id: prop.id, creada: prop.creada_en, productos: aplicados.length };
   if (!nuevos.length) return { ...vacia([...errores, 'No queda nada para revertir de esa propuesta.']), revertida };
   return { ...(await guardar(db, usuarioId, nuevos, errores)), revertida };
 }

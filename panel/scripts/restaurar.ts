@@ -25,8 +25,8 @@ if (!values.confirmar) {
 const db = await conectar();
 // Los respaldos anteriores al correo de verificación no lo traen: se conserva el que ya tiene cada usuario.
 const correos = (await db.execute('SELECT usuario, correo FROM usuarios WHERE correo IS NOT NULL')).rows.map((f) => [String(f.correo), String(f.usuario)]);
-// Sesiones, propuestas y conexiones de Claude no viajan en el respaldo: se cierran (hay que reconectar).
-const lote: { sql: string; args: (string | number | null)[] }[] = ['sesiones', 'pases', 'verificaciones', 'propuestas', 'oauth_tokens', 'oauth_codigos', 'oauth_pedidos']
+// Sesiones, propuestas, conversaciones del asistente y conexiones de Claude no viajan en el respaldo: se cierran (hay que reconectar).
+const lote: { sql: string; args: (string | number | null)[] }[] = ['sesiones', 'pases', 'verificaciones', 'propuestas', 'conversaciones', 'oauth_tokens', 'oauth_codigos', 'oauth_pedidos']
   .map((t) => ({ sql: `DELETE FROM ${t}`, args: [] }));
 for (const t of [...ORDEN].reverse()) lote.push({ sql: `DELETE FROM ${t}`, args: [] });
 for (const t of ORDEN) {

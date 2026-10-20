@@ -1,0 +1,357 @@
+---
+// Mapa interactivo con puntos (locales de COPOL o comercios con convenio).
+// - MapLibre + mapa base de OpenFreeMap (gratis, sin clave). La librería (~250 kB) se descarga recién
+//   cuando el mapa se acerca a la pantalla o cuando alguien pide ver un punto.
+// - Las tarjetas de la página piden enfocar un punto con el evento `copol:mapa-enfocar` ({ id }):
+//   la página se desplaza hasta el mapa y este hace un acercamiento suave (flyTo) hasta el punto.
+// - Los filtros de la página avisan qué puntos quedan con `copol:mapa-filtrar` ({ ids }).
+// - `agrupar`: junta los puntos cercanos en burbujas con el número (para los ~160 convenios).
+// - Con "reducir movimiento" activado en el sistema, el mapa salta al punto sin animación.
+export interface PuntoMapa {
+  id: string;
+  lat: number;
+  lng: number;
+  titulo: string;
+  detalle: string;
+  /** Texto chico arriba del título en la ventanita (tipo de local, rubro). */
+  antetitulo?: string;
+  destacado?: boolean;
+}
+
+interface Props {
+  puntos: PuntoMapa[];
+  etiqueta: string;
+  agrupar?: boolean;
+}
+const { puntos, etiqueta, agrupar = false } = Astro.props;
+const datos = puntos.map((p) => [p.id, +p.lat.toFixed(5), +p.lng.toFixed(5), p.titulo, p.detalle, p.antetitulo ?? '', p.destacado ? 1 : 0]);
+---
+<div class="mapa" data-mapa data-agrupar={agrupar ? '' : undefined} data-puntos={JSON.stringify(datos)}>
+  <div class="mapa__lienzo" data-mapa-lienzo role="region" aria-label={etiqueta}></div>
+  <div class="mapa__estado" data-mapa-estado aria-hidden="true">
+    <span class="mapa__pulso"></span> Cargando mapa…
+  </div>
+  <button type="button" class="mapa__todo" data-mapa-todo hidden>Ver todos</button>
+</div>
+
+<script>
+  import type { Map as MapaML, Marker, Popup, GeoJSONSource, MapLayerMouseEvent } from 'maplibre-gl';
+
+  type Punto = { id: string; lat: number; lng: number; titulo: string; detalle: string; antetitulo: string; destacado: boolean };
+
+  const ESTILO = 'https://tiles.openfreemap.org/styles/positron';
+  const URUGUAY: [[number, number], [number, number]] = [[-58.5, -35.05], [-53.1, -30.05]];
+  const reducir = matchMedia('(prefers-reduced-motion: reduce)');
+
+  const raiz = document.querySelector<HTMLElement>('[data-mapa]');
+  if (raiz) iniciar(raiz);
+
+  function iniciar(raiz: HTMLElement) {
+    const lienzo = raiz.querySelector<HTMLElement>('[data-mapa-lienzo]')!;
+    const estado = raiz.querySelector<HTMLElement>('[data-mapa-estado]')!;
+    const botonTodo = raiz.querySelector<HTMLButtonElement>('[data-mapa-todo]')!;
+    const agrupar = raiz.hasAttribute('data-agrupar');
+    const puntos: Punto[] = JSON.parse(raiz.dataset.puntos!).map(
+      ([id, lat, lng, titulo, detalle, antetitulo, destacado]: [string, number, number, string, string, string, number]) =>
+        ({ id, lat, lng, titulo, detalle, antetitulo, destacado: destacado === 1 }),
+    );
+    const porId = new Map(puntos.map((p) => [p.id, p]));
+    let visibles = new Set(puntos.map((p) => p.id));
+
+    let mapa: MapaML | null = null;
+    let ml: typeof import('maplibre-gl') | null = null;
+    let cargando: Promise<void> | null = null;
+    let ventana: Popup | null = null;
+    let seleccion: Marker | null = null;
+    const marcadores = new Map<string, Marker>();
+
+    const cargar = () => (cargando ??= crear());
+
+    async function crear() {
+      const [modulo] = await Promise.all([import('maplibre-gl'), import('maplibre-gl/dist/maplibre-gl.css')]);
+      ml = modulo;
+      mapa = new ml.Map({
+        container: lienzo,
+        style: ESTILO,
+        bounds: URUGUAY,
+        fitBoundsOptions: { padding: 24 },
+        cooperativeGestures: true,
+        attributionControl: { compact: true },
+        dragRotate: false,
+        pitchWithRotate: false,
+        touchPitch: false,
+        maxZoom: 18,
+        locale: {
+          'NavigationControl.ZoomIn': 'Acercar',
+          'NavigationControl.ZoomOut': 'Alejar',
+          'CooperativeGesturesHandler.WindowsHelpText': 'Usá Ctrl + rueda del mouse para acercar o alejar el mapa',
+          'CooperativeGesturesHandler.MacHelpText': 'Usá ⌘ + rueda del mouse para acercar o alejar el mapa',
+          'CooperativeGesturesHandler.MobileHelpText': 'Usá dos dedos para mover el mapa',
+          'AttributionControl.ToggleAttribution': 'Mostrar u ocultar atribución',
+          'Popup.Close': 'Cerrar',
+        },
+      });
+      mapa.touchZoomRotate.disableRotation();
+      mapa.addControl(new ml.NavigationControl({ showCompass: false }), 'top-right');
+      await new Promise<void>((ok) => mapa!.once('load', () => ok()));
+      if (agrupar) agregarCapas();
+      else puntos.forEach(agregarMarcador);
+      if (visibles.size < puntos.length) encuadrar(1); // la página filtró antes de que el mapa terminara de cargar
+      // Atribución plegada en el botón "i" (sigue visible y accesible, sin tapar el mapa).
+      lienzo.querySelector('.maplibregl-ctrl-attrib')?.classList.remove('maplibregl-compact-show');
+      raiz.classList.add('mapa--listo');
+      estado.hidden = true;
+    }
+
+    // ---- Puntos como alfileres (pocos puntos: locales) ----
+    function alfiler(destacado: boolean) {
+      const el = document.createElement('div');
+      el.className = `mapa-pin${destacado ? ' mapa-pin--destacado' : ''}`;
+      el.innerHTML = '<span class="mapa-pin__forma"><svg viewBox="0 0 30 40" aria-hidden="true"><path d="M15 39s13-12.4 13-23.5A13 13 0 0 0 2 15.5C2 26.6 15 39 15 39z"/><circle cx="15" cy="15.5" r="5"/></svg></span>';
+      return el;
+    }
+
+    function agregarMarcador(p: Punto) {
+      const el = alfiler(p.destacado);
+      el.setAttribute('role', 'button');
+      el.tabIndex = 0;
+      el.setAttribute('aria-label', `${p.titulo}: ${p.detalle}`);
+      const abrir = (e: Event) => { e.stopPropagation(); enfocarEnMapa(p, false); };
+      el.addEventListener('click', abrir);
+      el.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); abrir(e); } });
+      marcadores.set(p.id, new ml!.Marker({ element: el, anchor: 'bottom' }).setLngLat([p.lng, p.lat]).addTo(mapa!));
+    }
+
+    // ---- Puntos agrupados (muchos puntos: convenios) ----
+    const coleccion = () => ({
+      type: 'FeatureCollection' as const,
+      features: puntos.filter((p) => visibles.has(p.id)).map((p) => ({
+        type: 'Feature' as const,
+        properties: { id: p.id },
+        geometry: { type: 'Point' as const, coordinates: [p.lng, p.lat] },
+      })),
+    });
+
+    function agregarCapas() {
+      const m = mapa!;
+      m.addSource('puntos', { type: 'geojson', data: coleccion(), cluster: true, clusterRadius: 44, clusterMaxZoom: 14 });
+      m.addLayer({
+        id: 'grupos', type: 'circle', source: 'puntos', filter: ['has', 'point_count'],
+        paint: {
+          'circle-color': '#006633',
+          'circle-radius': ['step', ['get', 'point_count'], 15, 10, 19, 30, 24],
+          'circle-stroke-width': 3,
+          'circle-stroke-color': '#f8ea39',
+        },
+      });
+      m.addLayer({
+        id: 'grupos-numero', type: 'symbol', source: 'puntos', filter: ['has', 'point_count'],
+        layout: { 'text-field': ['get', 'point_count_abbreviated'], 'text-font': ['Noto Sans Bold'], 'text-size': 13, 'text-allow-overlap': true },
+        paint: { 'text-color': '#ffffff' },
+      });
+      m.addLayer({
+        id: 'sueltos', type: 'circle', source: 'puntos', filter: ['!', ['has', 'point_count']],
+        paint: { 'circle-color': '#008d36', 'circle-radius': 7, 'circle-stroke-width': 2.5, 'circle-stroke-color': '#ffffff' },
+      });
+      m.on('click', 'grupos', async (e: MapLayerMouseEvent) => {
+        const f = e.features?.[0];
+        if (!f) return;
+        const fuente = m.getSource('puntos') as GeoJSONSource;
+        const zoom = await fuente.getClusterExpansionZoom(f.properties.cluster_id as number);
+        m.easeTo({ center: (f.geometry as { coordinates: [number, number] }).coordinates, zoom, duration: reducir.matches ? 0 : 450 });
+      });
+      m.on('click', 'sueltos', (e: MapLayerMouseEvent) => {
+        const p = porId.get(String(e.features?.[0]?.properties.id));
+        if (p) enfocarEnMapa(p, false);
+      });
+      for (const capa of ['grupos', 'sueltos']) {
+        m.on('mouseenter', capa, () => { m.getCanvas().style.cursor = 'pointer'; });
+        m.on('mouseleave', capa, () => { m.getCanvas().style.cursor = ''; });
+      }
+    }
+
+    // ---- Ventanita con los datos del punto ----
+    function contenido(p: Punto) {
+      const div = document.createElement('div');
+      div.className = 'mapa-ventana';
+      if (p.antetitulo) div.append(Object.assign(document.createElement('span'), { className: 'mapa-ventana__ante', textContent: p.antetitulo }));
+      div.append(Object.assign(document.createElement('strong'), { className: 'mapa-ventana__titulo', textContent: p.titulo }));
+      div.append(Object.assign(document.createElement('span'), { className: 'mapa-ventana__detalle', textContent: p.detalle }));
+      const ir = Object.assign(document.createElement('a'), {
+        className: 'mapa-ventana__ir',
+        href: `https://www.google.com/maps/dir/?api=1&destination=${p.lat},${p.lng}`,
+        rel: 'noopener',
+        target: '_blank',
+        textContent: 'Cómo llegar',
+      });
+      div.append(ir);
+      return div;
+    }
+
+    function marcar(p: Punto) {
+      ventana?.remove();
+      seleccion?.remove();
+      seleccion = null;
+      marcadores.forEach((mk, id) => mk.getElement().classList.toggle('mapa-pin--activo', id === p.id));
+      if (agrupar) {
+        mapa!.setFilter('sueltos', ['all', ['!', ['has', 'point_count']], ['!=', ['get', 'id'], p.id]]);
+        // Alfiler sobre el punto elegido: se distingue aunque haya otros comercios muy cerca.
+        seleccion = new ml!.Marker({ element: alfiler(true), anchor: 'bottom' }).setLngLat([p.lng, p.lat]).addTo(mapa!);
+        seleccion.getElement().classList.add('mapa-pin--activo');
+      }
+      ventana = new ml!.Popup({ offset: 50, maxWidth: '280px', focusAfterOpen: false })
+        .setLngLat([p.lng, p.lat])
+        .setDOMContent(contenido(p))
+        .addTo(mapa!);
+      document.dispatchEvent(new CustomEvent('copol:mapa-elegido', { detail: { id: p.id } }));
+    }
+
+    // Acercamiento suave: flyTo aleja y vuelve a acercar en una sola curva cuando el punto está lejos.
+    function enfocarEnMapa(p: Punto, desdeTarjeta: boolean) {
+      const m = mapa!;
+      const zoom = Math.max(m.getZoom(), agrupar ? 16 : 15.5);
+      botonTodo.hidden = false;
+      if (reducir.matches) {
+        m.jumpTo({ center: [p.lng, p.lat], zoom });
+        marcar(p);
+        return;
+      }
+      ventana?.remove();
+      m.flyTo({ center: [p.lng, p.lat], zoom, speed: desdeTarjeta ? 0.9 : 1.2, curve: 1.42, maxDuration: 2800, essential: true });
+      m.once('moveend', () => marcar(p));
+    }
+
+    const enVista = () => {
+      const r = raiz.getBoundingClientRect();
+      return r.top >= 0 && r.bottom <= innerHeight;
+    };
+    const esperarDesplazamiento = () =>
+      new Promise<void>((ok) => {
+        let listo = false;
+        const fin = () => { if (!listo) { listo = true; ok(); } };
+        if ('onscrollend' in window) addEventListener('scrollend', fin, { once: true });
+        setTimeout(fin, 900);
+      });
+
+    document.addEventListener('copol:mapa-enfocar', async (e) => {
+      const p = porId.get((e as CustomEvent<{ id: string }>).detail.id);
+      if (!p) return;
+      const carga = cargar();
+      if (!enVista()) {
+        raiz.scrollIntoView({ behavior: reducir.matches ? 'auto' : 'smooth', block: 'center' });
+        if (!reducir.matches) await esperarDesplazamiento();
+      }
+      await carga;
+      enfocarEnMapa(p, true);
+    });
+
+    // Filtros de la página: muestra solo los puntos que quedan y encuadra el mapa sobre ellos.
+    document.addEventListener('copol:mapa-filtrar', (e) => {
+      visibles = new Set((e as CustomEvent<{ ids: string[] }>).detail.ids);
+      if (!mapa) return;
+      encuadrar(visibles.size === puntos.length ? 0 : 1);
+    });
+
+    function encuadrar(conFiltro: number) {
+      const m = mapa!;
+      ventana?.remove();
+      seleccion?.remove();
+      marcadores.forEach((mk, id) => {
+        const el = mk.getElement();
+        el.hidden = !visibles.has(id);
+        el.classList.remove('mapa-pin--activo');
+      });
+      if (agrupar) {
+        m.setFilter('sueltos', ['!', ['has', 'point_count']]);
+        (m.getSource('puntos') as GeoJSONSource).setData(coleccion());
+      }
+      const lista = puntos.filter((p) => visibles.has(p.id));
+      if (!lista.length) return;
+      const caja = new ml!.LngLatBounds();
+      lista.forEach((p) => caja.extend([p.lng, p.lat]));
+      m.fitBounds(conFiltro ? caja : URUGUAY, { padding: 48, maxZoom: 14, duration: reducir.matches ? 0 : 700 });
+      botonTodo.hidden = !conFiltro;
+    }
+
+    botonTodo.addEventListener('click', () => {
+      if (!mapa) return;
+      encuadrar(visibles.size === puntos.length ? 0 : 1);
+      botonTodo.hidden = visibles.size === puntos.length;
+    });
+
+    const vigia = new IntersectionObserver((entradas) => {
+      if (entradas.some((e) => e.isIntersecting)) { vigia.disconnect(); cargar(); }
+    }, { rootMargin: '300px' });
+    vigia.observe(raiz);
+  }
+</script>
+
+<style is:global>
+  .mapa {
+    position: relative; isolation: isolate; overflow: hidden;
+    height: clamp(340px, 56vh, 540px); border-radius: var(--radio-xl);
+    background: #eef1ee; box-shadow: var(--anillo), var(--sombra-suave);
+  }
+  .mapa__lienzo { width: 100%; height: 100%; }
+  .mapa__estado {
+    position: absolute; inset: 0; display: grid; place-content: center; grid-auto-flow: column; gap: 10px; align-items: center;
+    color: var(--tinta-suave); font-weight: 600; font-size: 0.9375rem;
+    background: radial-gradient(circle at 50% 45%, #f6f8f6, #e7ece8);
+    transition: opacity 300ms var(--ease-out-quart);
+  }
+  .mapa__estado[hidden] { display: grid; opacity: 0; pointer-events: none; }
+  .mapa__pulso { width: 10px; height: 10px; border-radius: 50%; background: var(--verde-copol); }
+  @media (prefers-reduced-motion: no-preference) {
+    .mapa__pulso { animation: mapa-pulso 1.2s ease-in-out infinite; }
+  }
+  @keyframes mapa-pulso { 50% { opacity: 0.25; } }
+
+  .mapa__todo {
+    position: absolute; left: 12px; top: 12px; z-index: 2; min-height: 40px; padding: 0 16px;
+    border: 0; border-radius: var(--radio-pill); background: var(--blanco); color: var(--verde-oscuro);
+    font: inherit; font-weight: 700; font-size: 0.875rem; cursor: pointer;
+    box-shadow: 0 2px 10px rgb(0 51 26 / 0.18), var(--anillo);
+    transition: transform 160ms var(--ease-out-quart);
+  }
+  .mapa__todo:active { transform: scale(0.97); }
+  .mapa__todo[hidden] { display: none; }
+
+  /* Alfileres */
+  .mapa-pin { width: 30px; height: 40px; cursor: pointer; }
+  .mapa-pin[hidden] { display: none; }
+  .mapa-pin__forma { display: block; width: 100%; height: 100%; transform-origin: 50% 100%; transition: transform 220ms var(--ease-out-quart); }
+  .mapa-pin svg { display: block; width: 100%; height: 100%; overflow: visible; filter: drop-shadow(0 3px 4px rgb(0 51 26 / 0.35)); }
+  .mapa-pin path { fill: var(--verde-copol); stroke: var(--blanco); stroke-width: 2; }
+  .mapa-pin circle { fill: var(--blanco); }
+  .mapa-pin--destacado path { fill: var(--verde-oscuro); stroke: var(--amarillo-copol); }
+  .mapa-pin--destacado circle { fill: var(--amarillo-copol); }
+  .mapa-pin--destacado { z-index: 2; }
+  .mapa-pin--activo { z-index: 3; }
+  .mapa-pin--activo .mapa-pin__forma { transform: scale(1.3); }
+  .mapa-pin:focus-visible { outline: none; }
+  .mapa-pin:focus-visible .mapa-pin__forma { transform: scale(1.2); }
+  .mapa-pin:focus-visible path { stroke: var(--tinta); stroke-width: 3; }
+  @media (hover: hover) and (pointer: fine) {
+    .mapa-pin:hover .mapa-pin__forma { transform: scale(1.15); }
+    .mapa-pin--activo:hover .mapa-pin__forma { transform: scale(1.3); }
+  }
+
+  /* Ventanita */
+  .mapa .maplibregl-popup-content {
+    padding: 14px 16px 14px; border-radius: 16px; font-family: var(--fuente);
+    box-shadow: 0 12px 32px -8px rgb(0 51 26 / 0.3), var(--anillo);
+  }
+  .mapa .maplibregl-popup-close-button { width: 32px; height: 32px; font-size: 20px; color: var(--tinta-suave); border-radius: 0 16px 0 10px; }
+  .mapa-ventana { display: grid; gap: 4px; padding-right: 18px; }
+  .mapa-ventana__ante { font-size: 0.6875rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--verde-oscuro); }
+  .mapa-ventana__titulo { font-size: 1rem; color: var(--tinta); line-height: 1.25; }
+  .mapa-ventana__detalle { font-size: 0.875rem; color: var(--tinta-suave); line-height: 1.35; }
+  .mapa-ventana__ir { margin-top: 6px; justify-self: start; font-weight: 700; font-size: 0.875rem; color: var(--verde-oscuro); }
+  @media (prefers-reduced-motion: no-preference) {
+    .mapa .maplibregl-popup { animation: mapa-ventana 200ms cubic-bezier(0.23, 1, 0.32, 1); }
+  }
+  @keyframes mapa-ventana { from { opacity: 0; } }
+  .mapa .maplibregl-ctrl-group { border-radius: 12px; box-shadow: 0 2px 10px rgb(0 51 26 / 0.16); }
+  .mapa .maplibregl-ctrl-group button { width: 36px; height: 36px; }
+  .mapa .maplibregl-cooperative-gesture-screen { font-family: var(--fuente); font-weight: 600; }
+</style>

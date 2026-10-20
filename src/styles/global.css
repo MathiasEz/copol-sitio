@@ -245,8 +245,7 @@ button { font: inherit; }
   text-decoration: none;
   min-height: 44px;
 }
-.enlace-flecha svg { transition: transform 300ms var(--resorte); }
-.enlace-flecha:hover svg { transform: translateX(4px); }
+/* La flecha del enlace empuja hacia la derecha con el gesto del ícono (sección "Íconos animados"). */
 
 /* ══ Componentes (anatomía shadcn/ui) ══════════════════════════════════════ */
 
@@ -600,3 +599,68 @@ a:hover > .media::after { box-shadow: var(--anillo-fuerte); }
   .bloque__acciones { width: 100%; }
   .bloque__acciones > .btn { flex: 1 1 100%; }
 }
+
+/* ══ Íconos animados ═══════════════════════════════════════════════════════
+   Al estilo de animate-ui (https://animate-ui.com/docs/icons), con CSS puro: el ícono hace su gesto una
+   vez cuando el puntero entra al enlace o botón que lo contiene (o al enfocarlo con teclado). Se anima el
+   grupo interno <g class="icono__g"> (o una parte), nunca el <svg>, para no chocar con otras
+   transformaciones. Cada gesto define su animación en --icono-anim / --icono-parte. Con "reducir
+   movimiento" no hay gestos. Componente: src/components/Icono.astro. */
+.icono__g, .icono__parte { transform-box: view-box; transform-origin: 12px 12px; }
+.icono--empuje-der    { --icono-anim: icono-empuje-der 520ms var(--ease-in-out); }
+.icono--empuje-izq    { --icono-anim: icono-empuje-izq 520ms var(--ease-in-out); }
+.icono--empuje-abajo  { --icono-anim: icono-empuje-abajo 560ms var(--ease-in-out); }
+.icono--salto-diagonal{ --icono-anim: icono-salto-diagonal 520ms var(--ease-in-out); }
+.icono--timbre        { --icono-anim: icono-timbre 650ms var(--ease-in-out); }
+.icono--alfiler       { --icono-anim: icono-alfiler 700ms var(--ease-in-out); }
+.icono--alfiler .icono__g { transform-origin: 12px 22px; }
+.icono--latido        { --icono-anim: icono-latido 700ms var(--ease-in-out); }
+.icono--giro          { --icono-anim: icono-giro 600ms var(--ease-out-quart); }
+.icono--giro-cuarto   { --icono-anim: icono-giro-cuarto 380ms var(--ease-out-quart); }
+.icono--lupa          { --icono-anim: icono-lupa 700ms var(--ease-in-out); }
+.icono--rodar         { --icono-anim: icono-rodar 650ms var(--ease-in-out); }
+.icono--rodar .icono__g { transform-origin: 12px 20px; }
+.icono--sobre         { --icono-anim: icono-sobre 560ms var(--ease-in-out); }
+.icono--columpio      { --icono-anim: icono-columpio 700ms var(--ease-in-out); }
+.icono--columpio .icono__g { transform-origin: 4px 4px; }
+.icono--saludo        { --icono-anim: icono-saludo 560ms var(--ease-in-out); }
+.icono--hoja          { --icono-anim: icono-hoja 560ms var(--ease-in-out); }
+.icono--apreton       { --icono-anim: icono-apreton 600ms var(--ease-in-out); }
+.icono--pop           { --icono-anim: icono-pop 420ms var(--ease-out-quart); }
+.icono--ninguno       { --icono-anim: none; }
+.icono--agujas        { --icono-anim: none; --icono-parte: icono-agujas 800ms var(--ease-in-out); }
+.icono--candado       { --icono-anim: none; --icono-parte: icono-candado 600ms var(--ease-in-out); }
+.icono--trazo         { --icono-anim: none; --icono-parte: icono-trazo 420ms var(--ease-out-quart); }
+.icono--trazo .icono__parte { stroke-dasharray: 1; }
+
+@media (prefers-reduced-motion: no-preference) {
+  :is(a, button, summary, label):focus-visible .icono__g { animation: var(--icono-anim); }
+  :is(a, button, summary, label):focus-visible .icono__parte { animation: var(--icono-parte, none); }
+}
+@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  :is(a, button, summary, label):hover .icono__g { animation: var(--icono-anim); }
+  :is(a, button, summary, label):hover .icono__parte { animation: var(--icono-parte, none); }
+}
+@keyframes icono-empuje-der { 40% { transform: translateX(3px); } 70% { transform: translateX(-1px); } }
+@keyframes icono-empuje-izq { 40% { transform: translateX(-3px); } 70% { transform: translateX(1px); } }
+@keyframes icono-empuje-abajo { 40% { transform: translateY(3px); } 70% { transform: translateY(-1px); } }
+@keyframes icono-salto-diagonal { 40% { transform: translate(2px, -2px); } 70% { transform: translate(-0.5px, 0.5px); } }
+@keyframes icono-timbre {
+  15% { transform: rotate(-12deg) scale(0.9); } 30% { transform: rotate(12deg) scale(0.9); }
+  45% { transform: rotate(-9deg) scale(0.9); } 60% { transform: rotate(7deg) scale(0.92); } 80% { transform: rotate(0) scale(1); }
+}
+@keyframes icono-alfiler { 30% { transform: translateY(-4px) scale(0.85) rotate(18deg); } 60% { transform: translateY(0) rotate(-10deg); } 80% { transform: rotate(3deg); } }
+@keyframes icono-latido { 20% { transform: scale(1.18); } 40% { transform: scale(0.96); } 60% { transform: scale(1.1); } 80% { transform: scale(1); } }
+@keyframes icono-giro { to { transform: rotate(72deg); } 50% { transform: rotate(36deg) scale(1.15); } }
+@keyframes icono-giro-cuarto { to { transform: rotate(90deg); } }
+@keyframes icono-lupa { 25% { transform: translate(-1.5px, -1.5px); } 50% { transform: translate(1.5px, -1px); } 75% { transform: translate(-1px, 1px); } }
+@keyframes icono-rodar { 30% { transform: translateX(-2px) rotate(-6deg); } 65% { transform: translateX(2px) rotate(4deg); } }
+@keyframes icono-sobre { 40% { transform: translateY(-2.5px) rotate(-4deg); } 70% { transform: translateY(0.5px) rotate(1deg); } }
+@keyframes icono-columpio { 30% { transform: rotate(14deg); } 60% { transform: rotate(-8deg); } 80% { transform: rotate(3deg); } }
+@keyframes icono-saludo { 40% { transform: translateY(-2.5px); } 70% { transform: translateY(0.5px); } }
+@keyframes icono-hoja { 35% { transform: rotate(-9deg) scale(1.05); } 70% { transform: rotate(4deg); } }
+@keyframes icono-apreton { 25% { transform: rotate(-8deg); } 50% { transform: rotate(8deg) scale(1.05); } 75% { transform: rotate(-3deg); } }
+@keyframes icono-pop { 40% { transform: scale(1.16); } }
+@keyframes icono-agujas { to { transform: rotate(360deg); } }
+@keyframes icono-candado { 40% { transform: translateY(-2.5px); } 70% { transform: translateY(0.5px); } }
+@keyframes icono-trazo { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }

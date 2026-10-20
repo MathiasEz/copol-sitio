@@ -9,6 +9,7 @@ import { variante } from './imagenes.ts';
 import { GRUPOS, qrSvg, type Grupo, type ImagenPortal, type Portal } from './empleados.ts';
 import { PLANTILLAS, type Novedad, type Plantilla } from './novedades.ts';
 import type * as AC from './acceso.ts';
+import type { MensajeGuardado, ResumenConversacion, TarjetaGuardada } from './conversaciones.ts';
 import { describirEquipo } from './acceso.ts';
 import type { Conexion } from './oauth.ts';
 import { ESTADOS, miniatura, type Categoria, type EstadoStock, type Producto } from './productos.ts';
@@ -47,6 +48,8 @@ const ICONOS: Record<string, string> = {
   abajo: '<path d="m6 9 6 6 6-6"/>',
   ojo: '<path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/>',
   ojoNo: '<path d="M9.9 4.2A10 10 0 0 1 12 4c7 0 10 8 10 8a13 13 0 0 1-1.7 2.7M6.6 6.6A13 13 0 0 0 2 12s3 8 10 8a9.7 9.7 0 0 0 5.4-1.6M2 2l20 20"/>',
+  deshacer: '<path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/>',
+  chevron: '<path d="m6 9 6 6 6-6"/>',
   basura: '<path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/>',
   menu: '<path d="M4 7h16M4 12h16M4 17h16"/>',
   llave: '<circle cx="7.5" cy="15.5" r="5.5"/><path d="m21 2-9.6 9.6M15.5 7.5l3 3L22 7l-3-3"/>',
@@ -628,18 +631,40 @@ export interface PropuestaVisible {
   errores: string[];
   items: { codigo: string | null; nombre: string; cambios: { campo: string; antes: string; despues: string }[] }[];
 }
-/** Tarjeta "antes → después" con Confirmar y Cancelar (el JavaScript del asistente arma la misma tarjeta). */
-const tarjetaPropuesta = (c: Contexto, p: PropuestaVisible) => html`<section class="propuesta" data-propuesta aria-label="Cambios para confirmar">
-  <h2 class="propuesta__titulo">${icono('editar', 16)}Cambios para confirmar (${p.items.length})</h2>
+/** Campo oculto con la conversación a la que pertenece cada acción (confirmar, cancelar, deshacer). */
+const campoConversacion = (id: string) => (id ? html`<input type="hidden" name="conversacion" value="${id}">` : '');
+const ESTADO_TARJETA: Record<Exclude<TarjetaGuardada['estado'], 'pendiente'>, string> = {
+  aplicada: 'Aplicados', cancelada: 'Cancelados', reemplazada: 'Sin efecto',
+};
+/**
+ * Tarjeta "antes → después". Pendiente y vigente: con Confirmar y Cancelar. En el historial, las ya
+ * resueltas se muestran con su estado (el JavaScript del asistente arma la misma tarjeta).
+ */
+const tarjetaPropuesta = (c: Contexto, p: PropuestaVisible & { estado?: TarjetaGuardada['estado']; revierte?: string }, conversacionId: string, activa: boolean) => {
+  const estado = p.estado === 'pendiente' && !activa ? 'reemplazada' : p.estado ?? 'pendiente';
+  return html`<section class="propuesta ${estado === 'pendiente' ? '' : `propuesta--${estado}`}" data-propuesta aria-label="${p.revierte ? 'Vuelta atrás para confirmar' : 'Cambios para confirmar'}">
+  <h2 class="propuesta__titulo">${icono(p.revierte ? 'deshacer' : 'editar', 16)}${p.revierte ? 'Deshacer' : estado === 'pendiente' ? 'Cambios para confirmar' : 'Cambios propuestos'} (${p.items.length})${estado !== 'pendiente' ? html`<span class="propuesta__estado">${ESTADO_TARJETA[estado]}</span>` : ''}</h2>
   <ul class="propuesta__lista">${p.items.map((i) => html`<li><strong>${i.nombre}</strong> <span class="muted">· ${etiquetaCodigo} ${i.codigo ?? '—'}</span>
     <ul>${i.cambios.map((x) => html`<li>${x.campo}: <span class="propuesta__antes">${x.antes}</span> → <strong>${x.despues}</strong></li>`)}</ul></li>`)}</ul>
   ${p.errores.length ? html`<div class="propuesta__errores"><strong>No incluidos:</strong><ul>${p.errores.map((e) => html`<li>${e}</li>`)}</ul></div>` : ''}
-  <div class="propuesta__acciones">
-    <form method="post" action="${r(`/asistente/propuestas/${p.id}`)}">${csrfCampo(c)}<input type="hidden" name="accion" value="cancelar"><button class="btn btn--ghost btn--sm" type="submit">Cancelar</button></form>
-    <form method="post" action="${r(`/asistente/propuestas/${p.id}`)}">${csrfCampo(c)}<input type="hidden" name="accion" value="confirmar"><button class="btn btn--sm" type="submit">${icono('check', 16)}Confirmar cambios</button></form>
+  ${estado === 'pendiente' ? html`<div class="propuesta__acciones">
+    <form method="post" action="${r(`/asistente/propuestas/${p.id}`)}">${csrfCampo(c)}${campoConversacion(conversacionId)}<input type="hidden" name="accion" value="cancelar"><button class="btn btn--ghost btn--sm" type="submit">Cancelar</button></form>
+    <form method="post" action="${r(`/asistente/propuestas/${p.id}`)}">${csrfCampo(c)}${campoConversacion(conversacionId)}<input type="hidden" name="accion" value="confirmar"><button class="btn btn--sm" type="submit">${icono('check', 16)}Confirmar cambios</button></form>
   </div>
-  <p class="muted propuesta__nota">Nada se modifica hasta que confirmes. La propuesta vence en 15 minutos.</p>
+  <p class="muted propuesta__nota">Nada se modifica hasta que confirmes. La propuesta vence en 15 minutos.</p>` : ''}
 </section>`;
+};
+
+/** Flecha para deshacer los cambios que aplicó una respuesta (o la marca de que ya se deshicieron). */
+const botonDeshacer = (c: Contexto, m: MensajeGuardado, conversacionId: string, puedeCambiar: boolean) => {
+  if (!m.deshacer) return '';
+  if (m.deshecho) return html`<span class="msj__deshecho">${icono('deshacer', 14)}Cambios deshechos</span>`;
+  if (!puedeCambiar) return '';
+  return html`<form class="msj__deshacer-form" method="post" action="${r(`/asistente/propuestas/${m.deshacer}/deshacer`)}" data-deshacer="${m.deshacer}">
+    ${csrfCampo(c)}${campoConversacion(conversacionId)}
+    <button class="msj__deshacer" type="submit" title="Deshacer estos cambios">${icono('deshacer', 16)}<span>Deshacer</span><span class="sr"> estos cambios</span></button>
+  </form>`;
+};
 
 export interface DatosAsistente {
   disponible: boolean;
@@ -648,9 +673,13 @@ export interface DatosAsistente {
   restantes: number;
   modelos: { valor: string; nombre: string }[];
   modelo: string;
-  /** Conversación ya respondida (solo sin JavaScript: el formulario se envía de forma normal). */
-  conversacion: { rol: 'usuario' | 'asistente'; texto: string }[];
-  propuesta?: PropuestaVisible | null;
+  /** Conversaciones anteriores del usuario (más recientes primero). */
+  historial: ResumenConversacion[];
+  /** Conversación abierta ('' = nueva). */
+  conversacionId: string;
+  mensajes: MensajeGuardado[];
+  /** Única propuesta todavía confirmable del usuario (las demás tarjetas pendientes quedaron sin efecto). */
+  pendienteId: string | null;
   error?: string | null;
 }
 const SUGERENCIAS = [
@@ -659,37 +688,65 @@ const SUGERENCIAS = [
   '¿Qué horarios y teléfono tiene la Casa Central?',
   'Poné sin stock el producto con código …',
 ];
+/** "hoy 14:05", "ayer", "lun 12/10"… para la lista del historial. */
+const cuando = (iso: string) => {
+  const zona = 'America/Montevideo';
+  const dia = (d: Date) => d.toLocaleDateString('en-CA', { timeZone: zona });
+  const d = new Date(iso);
+  const hoy = new Date();
+  if (dia(d) === dia(hoy)) return `hoy ${d.toLocaleTimeString('es-UY', { hour: '2-digit', minute: '2-digit', timeZone: zona })}`;
+  if (dia(d) === dia(new Date(hoy.getTime() - 86_400_000))) return 'ayer';
+  return d.toLocaleDateString('es-UY', { weekday: 'short', day: 'numeric', month: 'numeric', timeZone: zona });
+};
+export const itemHistorial = (h: ResumenConversacion, actual: boolean) => html`<li><a class="historial__item" href="${r(`/asistente?c=${h.id}`)}" data-conversacion="${h.id}" ${si(actual, 'aria-current="page"')}>
+  <span class="historial__titulo">${h.titulo}</span>
+  <span class="historial__meta"><span>${cuando(h.actualizada_en)}</span>${h.cambios ? html`<span class="historial__cambios">${icono('check', 12)}${h.cambios === 1 ? '1 cambio' : `${h.cambios} cambios`}</span>` : ''}</span>
+</a></li>`;
+
 export function vistaAsistente(c: Contexto, d: DatosAsistente) {
+  const id = d.conversacionId;
+  const actual = d.historial.find((h) => h.id === id);
   return layout(c, 'Asistente', html`
+<div class="asistente-app">
+<details class="card historial" data-historial open>
+  <summary class="historial__cabecera"><span class="historial__nombre">${icono('registro', 16)}Historial <span class="historial__n" data-historial-n>${d.historial.length}</span></span>${icono('chevron', 16)}</summary>
+  <a class="btn btn--outline btn--sm btn--bloque historial__nueva" href="${r('/asistente')}" ${si(!id, 'aria-current="page"')}>${icono('mas', 16)}Nueva conversación</a>
+  <ul class="historial__lista" data-historial-lista aria-label="Conversaciones anteriores">${d.historial.map((h) => itemHistorial(h, h.id === id))}</ul>
+  <p class="muted historial__vacio" data-historial-vacio ${si(d.historial.length, 'hidden')}>Todavía no hay conversaciones. Las que tengas quedan guardadas acá.</p>
+</details>
 <section class="card asistente" data-asistente>
   ${d.disponible ? '' : html`<div class="alert alert--error" role="alert">${icono('info')}<p>El asistente funciona en la web publicada en Vercel (usa Vercel AI Gateway). En este equipo no está configurado.</p></div>`}
+  <div class="asistente__cabeza">
+    <h2 class="asistente__titulo" data-titulo>${actual?.titulo ?? 'Nueva conversación'}</h2>
+    ${id ? html`<form method="post" action="${r(`/asistente/conversaciones/${id}/eliminar`)}" data-eliminar>${csrfCampo(c)}<button class="btn btn--ghost btn--sm" type="submit">${icono('basura', 16)}<span>Eliminar</span><span class="sr"> esta conversación</span></button></form>` : ''}
+  </div>
   <div class="asistente__registro" data-registro role="log" aria-live="polite" aria-label="Conversación con el asistente">
-    ${d.conversacion.length ? d.conversacion.map((m) => html`<div class="msj msj--${m.rol}"><span class="msj__autor">${m.rol === 'usuario' ? 'Vos' : 'Asistente'}</span><div class="msj__texto">${m.texto}</div></div>`) : html`
+    ${d.mensajes.length ? d.mensajes.map((m) => html`<div class="msj msj--${m.rol}"${m.deshacer ? raw(` data-deshacer-de="${m.deshacer}"`) : ''}><span class="msj__autor">${m.rol === 'usuario' ? 'Vos' : 'Asistente'}</span><div class="msj__texto" ${si(m.rol === 'asistente', 'data-formato')}>${m.texto}</div>${botonDeshacer(c, m, id, d.puedeCambiar)}</div>
+    ${m.propuesta ? tarjetaPropuesta(c, m.propuesta, id, m.propuesta.id === d.pendienteId) : ''}`) : html`
     <div class="asistente__vacio" data-vacio>
       ${d.puedeCambiar
-        ? html`<p>Preguntame sobre la web pública, el stock del Bazar o cómo usar el panel. También puedo preparar cambios de stock, cantidades o datos de productos: <strong>nada se aplica hasta que lo confirmes.</strong></p>`
+        ? html`<p>Preguntame sobre la web pública, el stock del Bazar o cómo usar el panel. También puedo preparar cambios de stock, cantidades o datos de productos: <strong>nada se aplica hasta que lo confirmes.</strong> Cada cambio aplicado se puede deshacer con la flecha ${icono('deshacer', 14)} de su respuesta.</p>`
         : html`<p>Preguntame sobre la web pública, el stock del Bazar o cómo usar el panel. <strong>Tu rol es de solo consulta: no puedo hacer cambios.</strong></p>`}
       <ul class="asistente__sugerencias">${SUGERENCIAS.filter((s) => d.puedeCambiar || !s.startsWith('Poné')).map((s) => html`<li><button class="btn btn--outline btn--sm" type="button" data-sugerencia>${s}</button></li>`)}</ul>
     </div>`}
-    ${d.propuesta ? tarjetaPropuesta(c, d.propuesta) : ''}
   </div>
   ${d.error ? html`<div class="alert alert--error" role="alert">${icono('info')}<p>${d.error}</p></div>` : ''}
   <p class="asistente__error alert alert--error" role="alert" data-error hidden></p>
   <form class="asistente__form" method="post" action="${r('/asistente')}" data-asistente-form>
     ${csrfCampo(c)}
-    <input type="hidden" name="historial" value="${JSON.stringify(d.conversacion)}" data-historial>
+    <input type="hidden" name="conversacion" value="${id}" data-conversacion-id>
     <label class="sr" for="pregunta">Tu pregunta</label>
     <textarea class="input" id="pregunta" name="pregunta" rows="2" maxlength="1000" required placeholder="Escribí tu pregunta…" ${si(!d.disponible || d.restantes <= 0, 'disabled')}></textarea>
     <div class="asistente__acciones">
       ${d.modelos.length > 1
         ? html`<label class="asistente__modelo"><span class="sr">Modelo</span><select class="input" name="modelo" data-modelo>${d.modelos.map((m) => html`<option value="${m.valor}" ${si(m.valor === d.modelo, 'selected')}>${m.nombre}</option>`)}</select></label>`
         : html`<input type="hidden" name="modelo" value="${d.modelo}"><span class="asistente__modelo muted">${d.modelos[0]?.nombre ?? ''}</span>`}
-      <button class="btn btn--ghost btn--sm" type="button" data-nueva hidden>Nueva conversación</button>
       <button class="btn" type="submit" ${si(!d.disponible || d.restantes <= 0, 'disabled')}>${icono('enviar', 16)}Enviar</button>
     </div>
     <p class="asistente__nota muted"><span data-restantes>${d.restantes <= 0 ? 'Llegaste al límite de consultas de hoy.' : `Te quedan ${d.restantes} consultas hoy.`}</span> Usa Gemini 2.5 Flash (Google) a través de Vercel AI Gateway. Las respuestas pueden tener errores: confirmá los datos importantes.</p>
   </form>
 </section>
+</div>
 <script src="/panel-recursos/asistente.js" defer></script>`);
 }
 

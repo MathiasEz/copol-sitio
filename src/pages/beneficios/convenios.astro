@@ -8,11 +8,14 @@ import { CONTACTO, whatsapp } from '../../data/confirmado/sitio';
 import Button from '../../components/ui/Button.astro';
 import Badge from '../../components/ui/Badge.astro';
 import Campo from '../../components/ui/Campo.astro';
+import MapaPuntos from '../../components/MapaPuntos.astro';
 
 const departamentos = [...new Set(CONVENIOS.map((c) => c.departamento))].sort((a, b) => a.localeCompare(b, 'es'));
 const rubros = Object.entries(
   CONVENIOS.reduce<Record<string, number>>((acc, c) => ((acc[c.rubro] = (acc[c.rubro] ?? 0) + 1), acc), {}),
 ).sort((a, b) => b[1] - a[1]);
+const lugar = (c: (typeof CONVENIOS)[number]) => [c.direccion, c.localidad !== c.departamento ? c.localidad : null, c.departamento].filter(Boolean).join(', ');
+const PUNTOS = CONVENIOS.filter((c) => c.lat && c.lng).map((c) => ({ id: c.id, lat: c.lat!, lng: c.lng!, titulo: c.nombre, detalle: lugar(c), antetitulo: c.rubro }));
 const normalizar = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 ---
 <Base titulo="Convenios" descripcion={`Convenios de COPOL: ${CONVENIOS.length} comercios adheridos en ${departamentos.length} departamentos. Buscá por departamento, rubro o nombre.`}>
@@ -22,6 +25,12 @@ const normalizar = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toL
     bajada={`${CONVENIOS.length} comercios, servicios y profesionales adheridos en ${departamentos.length} departamentos, para que disfrutes beneficios exclusivos como socio.`}
     migas={[{ texto: 'Beneficios', href: '/beneficios/' }, { texto: 'Convenios' }]}
   />
+
+  <section class="contenedor mapa-convenios" aria-labelledby="mapa-titulo">
+    <h2 id="mapa-titulo" class="visualmente-oculto">Mapa de convenios</h2>
+    <MapaPuntos puntos={PUNTOS} etiqueta={`Mapa con ${PUNTOS.length} comercios con convenio`} agrupar />
+    <p class="mapa-convenios__ayuda">Tocá un número para acercarte o un convenio de la lista para verlo en el mapa.</p>
+  </section>
 
   <section class="contenedor" aria-labelledby="nuevo-convenio">
     <div class="card nuevo aparecer">
@@ -52,16 +61,16 @@ const normalizar = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toL
 
     <ul class="convenios" data-convenios>
       {CONVENIOS.map((c) => (
-        <li class="card convenio" data-departamento={c.departamento} data-rubro={c.rubro} data-texto={normalizar(`${c.nombre} ${c.rubro} ${c.localidad} ${c.departamento} ${c.direccion ?? ''}`)}>
+        <li class="card convenio" data-punto={c.lat && c.lng ? c.id : undefined} data-departamento={c.departamento} data-rubro={c.rubro} data-texto={normalizar(`${c.nombre} ${c.rubro} ${c.localidad} ${c.departamento} ${c.direccion ?? ''}`)}>
           <span class="convenio__rubro">{c.rubro}</span>
           <h3>{c.nombre}</h3>
-          <p class="convenio__lugar"><Icono nombre="ubicacion" tamano={16} /> {[c.direccion, c.localidad !== c.departamento ? c.localidad : null, c.departamento].filter(Boolean).join(', ')}</p>
+          <p class="convenio__lugar"><Icono nombre="ubicacion" tamano={16} /> {lugar(c)}</p>
           <div class="convenio__acciones">
             {c.telefono && <a href={telHref(c.telefono)} class="convenio__tel"><Icono nombre="telefono" tamano={16} /> {c.telefono}</a>}
             {c.lat && c.lng && (
-              <a href={`https://www.google.com/maps/search/?api=1&query=${c.lat},${c.lng}`} rel="noopener" class="convenio__mapa">
-                Ver en el mapa<span class="visualmente-oculto">: {c.nombre}</span>
-              </a>
+              <button type="button" class="convenio__mapa" data-ver-mapa={c.id}>
+                <Icono nombre="mapa" tamano={16} /> Ver en el mapa<span class="visualmente-oculto">: {c.nombre}</span>
+              </button>
             )}
           </div>
         </li>
@@ -95,7 +104,27 @@ const normalizar = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toL
     });
     if (resultado) resultado.textContent = `Mostrando ${n} de ${items.length} convenios.`;
     if (vacio) vacio.hidden = n > 0;
+    clearTimeout(espera);
+    espera = setTimeout(() => {
+      const ids = items.filter((li) => !li.hidden && li.dataset.punto).map((li) => li.dataset.punto);
+      document.dispatchEvent(new CustomEvent('copol:mapa-filtrar', { detail: { ids } }));
+    }, 300);
   };
+  let espera: ReturnType<typeof setTimeout>;
+
+  // Tocar un convenio (fuera de sus enlaces) o "Ver en el mapa" lleva al mapa y acerca hasta el comercio.
+  document.addEventListener('click', (e) => {
+    const objetivo = e.target as HTMLElement;
+    const boton = objetivo.closest<HTMLElement>('[data-ver-mapa]');
+    const tarjeta = objetivo.closest<HTMLElement>('[data-punto]');
+    if (!boton && (!tarjeta || objetivo.closest('a, button'))) return;
+    if (!boton && getSelection()?.toString()) return;
+    document.dispatchEvent(new CustomEvent('copol:mapa-enfocar', { detail: { id: boton?.dataset.verMapa ?? tarjeta!.dataset.punto } }));
+  });
+  document.addEventListener('copol:mapa-elegido', (e) => {
+    const id = (e as CustomEvent<{ id: string }>).detail.id;
+    items.forEach((li) => li.toggleAttribute('data-elegido', li.dataset.punto === id));
+  });
   form?.addEventListener('input', filtrar);
   form?.addEventListener('change', filtrar);
   form?.addEventListener('reset', () => setTimeout(filtrar));
@@ -121,7 +150,12 @@ const normalizar = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toL
   .convenio__lugar { display: flex; gap: 6px; align-items: flex-start; font-size: 0.9rem; color: var(--tinta-suave); }
   .convenio__lugar :global(svg) { flex: none; margin-top: 3px; color: var(--verde-copol); }
   .convenio__acciones { display: flex; flex-wrap: wrap; gap: 4px 16px; margin-top: auto; padding-top: 4px; font-size: 0.9375rem; font-weight: 600; }
-  .convenio__acciones a { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; }
+  .convenio__acciones a, .convenio__mapa { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; }
+  .convenio__mapa { padding: 0; border: 0; background: none; font: inherit; color: var(--verde-oscuro); cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+  .convenio[data-punto] { cursor: pointer; transition: box-shadow 200ms var(--ease-out-quart); }
+  .convenio[data-elegido] { box-shadow: inset 0 0 0 2.5px var(--verde-copol), var(--sombra-suave); }
+  .mapa-convenios { padding-top: clamp(28px, 4vw, 48px); }
+  .mapa-convenios__ayuda { margin-top: 10px; font-size: 0.875rem; color: var(--muted-foreground); }
   .vacio { text-align: center; align-items: center; margin-top: 16px; }
   .nota { margin-top: 24px; color: var(--tinta-suave); }
 </style>

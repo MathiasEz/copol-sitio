@@ -6,6 +6,7 @@ import { Hono, type Context, type MiddlewareHandler } from 'hono';
 import { bodyLimit } from 'hono/body-limit';
 import { deleteCookie, getCookie, setCookie } from 'hono/cookie';
 import * as AC from './acceso.ts';
+import * as CV from './conversaciones.ts';
 import * as A from './asistente.ts';
 import { atenderMcp } from './mcp.ts';
 import * as O from './oauth.ts';
@@ -715,13 +716,14 @@ export function crearApp({ db: fuenteDb, config, almacen, asistente, correo }: O
     const o = await objetivo(c);
     if (!o.ok) return o.res;
     if (o.u.rol === 'administrador' && o.u.activo && (await U.contarAdminsActivos(db)) <= 1) return c.html(V.vistaError(ctx(c), 400, 'No permitido', 'Tiene que quedar al menos un administrador activo.'), 400);
-    await db.batch(['sesiones', 'pases', 'verificaciones', 'propuestas'].map((t) => ({ sql: `DELETE FROM ${t} WHERE usuario_id = ?`, args: [o.u.id] })), 'write');
+    await db.batch(['sesiones', 'pases', 'verificaciones', 'propuestas', 'conversaciones'].map((t) => ({ sql: `DELETE FROM ${t} WHERE usuario_id = ?`, args: [o.u.id] })), 'write');
     await ejecutar(db, 'DELETE FROM usuarios WHERE id = ?', [o.u.id]);
     await registrar(db, actor(c), 'usuario.baja', 'usuario', String(o.u.id), { usuario: o.u.usuario, rol: o.u.rol });
     return c.redirect(`${r('/usuarios')}?aviso=usuario-eliminado`);
   });
 
-  // ── Asistente (solo administradores; solo lectura) ──
+  // ── Asistente (solo administradores; los cambios se aplican solo al confirmarlos) ──
+  // Cada conversación queda en el historial del usuario (panel/src/conversaciones.ts).
   const tokenIA = (c: C) => (asistente && 'token' in asistente ? asistente.token ?? null : A.tokenGateway(c.req.header('x-vercel-oidc-token')));
   const consultasHoy = async (c: C) => {
     // Uruguay: UTC−3 todo el año.
@@ -729,43 +731,75 @@ export function crearApp({ db: fuenteDb, config, almacen, asistente, correo }: O
     const f = await una<{ n: number }>(c.get('db'), "SELECT COUNT(*) n FROM auditoria WHERE usuario_id = ? AND accion = 'asistente.consulta' AND fecha >= ?", [c.get('usuario')!.id, inicio]);
     return Number(f?.n ?? 0);
   };
-  const datosAsistente = async (c: C, extra: Partial<V.DatosAsistente> = {}): Promise<V.DatosAsistente> => ({
-    disponible: Boolean(tokenIA(c)),
-    puedeCambiar: puede(c.get('usuario')!.rol, 'stock'),
-    restantes: Math.max(0, config.asistenteLimiteDia - (await consultasHoy(c))),
-    modelos: (Object.keys(A.MODELOS) as A.Modelo[]).map((m) => ({ valor: m, nombre: A.MODELOS[m].nombre })),
-    modelo: 'rapido',
-    conversacion: [],
-    ...extra,
+  const datosAsistente = async (c: C, extra: Partial<V.DatosAsistente> = {}): Promise<V.DatosAsistente> => {
+    const db = c.get('db');
+    const uid = c.get('usuario')!.id;
+    const [historial, pendiente] = await Promise.all([
+      CV.listar(db, uid),
+      una<{ id: string }>(db, "SELECT id FROM propuestas WHERE usuario_id = ? AND estado = 'pendiente' AND expira_en > ?", [uid, ahora()]),
+    ]);
+    return {
+      disponible: Boolean(tokenIA(c)),
+      puedeCambiar: puede(c.get('usuario')!.rol, 'stock'),
+      restantes: Math.max(0, config.asistenteLimiteDia - (await consultasHoy(c))),
+      modelos: (Object.keys(A.MODELOS) as A.Modelo[]).map((m) => ({ valor: m, nombre: A.MODELOS[m].nombre })),
+      modelo: 'rapido',
+      historial,
+      conversacionId: '',
+      mensajes: [],
+      pendienteId: pendiente?.id ?? null,
+      ...extra,
+    };
+  };
+  const resumen = (cv: CV.Conversacion) => ({ id: cv.id, titulo: cv.titulo, actualizada_en: cv.actualizada_en, cambios: cv.cambios });
+  const conversacionDe = (c: C, id: unknown) => CV.obtener(c.get('db'), c.get('usuario')!.id, texto(id, 40));
+  const verConversacion = (c: C, cv: CV.Conversacion | null, extra: Partial<V.DatosAsistente> = {}, estado: 200 | 400 | 403 | 404 | 409 | 429 | 502 | 503 = 200) =>
+    datosAsistente(c, { conversacionId: cv?.id ?? '', mensajes: cv?.mensajes ?? [], ...extra }).then((d) => c.html(V.vistaAsistente(ctx(c), d), estado));
+
+  app.get('/asistente', requiere('asistente'), async (c) => {
+    const pedida = c.req.query('c');
+    const cv = pedida ? await conversacionDe(c, pedida) : null;
+    if (pedida && !cv) return c.redirect(r('/asistente'));
+    return verConversacion(c, cv);
   });
-  app.get('/asistente', requiere('asistente'), async (c) => c.html(V.vistaAsistente(ctx(c), await datosAsistente(c))));
   app.post('/asistente', requiere('asistente'), async (c) => {
     const b = await cuerpo(c);
+    const db = c.get('db');
+    const uid = c.get('usuario')!.id;
     const quiereJson = c.req.header('accept')?.includes('application/json');
     const modelo: A.Modelo = A.esModelo(b.modelo) ? b.modelo : 'rapido';
+    const cv = await conversacionDe(c, b.conversacion);
+    // La conversación guardada es la fuente del contexto; sin ella (pruebas, clientes viejos) se usa la que manda el navegador.
     let previo: unknown = [];
-    try { previo = typeof b.historial === 'string' ? JSON.parse(b.historial.slice(0, 60_000)) : []; } catch { /* historial inválido: se ignora */ }
+    if (cv) previo = cv.mensajes.map(({ rol, texto: t }) => ({ rol, texto: t }));
+    else try { previo = typeof b.historial === 'string' ? JSON.parse(b.historial.slice(0, 60_000)) : []; } catch { /* historial inválido: se ignora */ }
     const pregunta = texto(b.pregunta, 1000);
     const historial = pregunta ? A.limpiarHistorial([...(Array.isArray(previo) ? previo : []), { rol: 'usuario', texto: pregunta }]) : [];
     const fallar = async (estado: 400 | 429 | 502 | 503, error: string) =>
-      quiereJson ? c.json({ ok: false, error }, estado) : c.html(V.vistaAsistente(ctx(c), await datosAsistente(c, { modelo, error, conversacion: historial.slice(0, -1) })), estado);
+      quiereJson ? c.json({ ok: false, error }, estado) : verConversacion(c, cv, { modelo, error }, estado);
     if (!historial.length) return fallar(400, 'Escribí una pregunta.');
     const token = tokenIA(c);
     if (!token) return fallar(503, 'El asistente no está configurado en este entorno: funciona en la web publicada en Vercel.');
     if ((await consultasHoy(c)) >= config.asistenteLimiteDia) return fallar(429, `Llegaste al límite de ${config.asistenteLimiteDia} consultas por día. Mañana podés seguir.`);
     let res: A.Resultado;
     try {
-      res = await A.consultar({ historial, modelo, db: c.get('db'), origen: new URL(c.req.url).origin, token, usuarioId: c.get('usuario')!.id, rol: c.get('usuario')!.rol, fetch: asistente?.fetch });
+      res = await A.consultar({ historial, modelo, db, origen: new URL(c.req.url).origin, token, usuarioId: uid, rol: c.get('usuario')!.rol, fetch: asistente?.fetch });
     } catch (e) {
       if (e instanceof A.ErrorAsistente) return fallar(502, e.message);
       if ((e as Error).name === 'TimeoutError') return fallar(502, 'El asistente tardó demasiado en responder. Probá con una pregunta más concreta.');
       throw e;
     }
-    await registrar(c.get('db'), actor(c), 'asistente.consulta', 'asistente', null, { modelo: A.MODELOS[modelo].id, pregunta: historial.at(-1)!.texto.slice(0, 300), herramientas: res.herramientas, tokens: res.tokens, propuesta: res.propuesta?.items.length ?? 0 });
+    await registrar(db, actor(c), 'asistente.consulta', 'asistente', null, { modelo: A.MODELOS[modelo].id, pregunta: historial.at(-1)!.texto.slice(0, 300), herramientas: res.herramientas, tokens: res.tokens, propuesta: res.propuesta?.items.length ?? 0 });
     const restantes = Math.max(0, config.asistenteLimiteDia - (await consultasHoy(c)));
     const propuesta = propuestaVisible(res.propuesta);
-    if (quiereJson) return c.json({ ok: true, respuesta: res.texto, restantes, propuesta });
-    return c.html(V.vistaAsistente(ctx(c), await datosAsistente(c, { modelo, propuesta, conversacion: [...historial, { rol: 'asistente', texto: res.texto }] })));
+    const revierte = res.propuesta && 'revertida' in res.propuesta ? (res.propuesta as PR.PropuestaReversion).revertida?.id : undefined;
+    const t = ahora();
+    const guardada = await CV.guardar(db, uid, cv, [
+      { rol: 'usuario', texto: pregunta, fecha: t },
+      { rol: 'asistente', texto: res.texto, fecha: t, ...(propuesta ? { propuesta: { ...propuesta, estado: 'pendiente' as const, ...(revierte ? { revierte } : {}) } } : {}) },
+    ], propuesta ? CV.reemplazarPendientes : undefined);
+    if (quiereJson) return c.json({ ok: true, respuesta: res.texto, restantes, propuesta, conversacion: resumen(guardada) });
+    return verConversacion(c, guardada, { modelo });
   });
 
   // Cambios propuestos por el asistente: se aplican solo cuando el administrador los confirma.
@@ -783,23 +817,67 @@ export function crearApp({ db: fuenteDb, config, almacen, asistente, correo }: O
     const b = await cuerpo(c);
     const quiereJson = c.req.header('accept')?.includes('application/json');
     const id = texto(c.req.param('id'), 40);
-    const responder = async (estado: 200 | 403 | 404 | 409, ok: boolean, mensaje: string, extra: Record<string, unknown> = {}) =>
-      quiereJson ? c.json({ ok, mensaje, ...extra }, estado)
-        : c.html(V.vistaAsistente(ctx(c), await datosAsistente(c, ok ? { conversacion: [{ rol: 'asistente', texto: mensaje }] } : { error: mensaje })), estado);
+    const cv = await conversacionDe(c, b.conversacion);
+    type Extra = { deshacer?: string; estadoTarjeta?: CV.TarjetaGuardada['estado']; resultados?: unknown };
+    const responder = async (estado: 200 | 403 | 404 | 409, ok: boolean, mensaje: string, { deshacer, estadoTarjeta, ...resto }: Extra = {}) => {
+      let guardada = cv;
+      if (cv && (ok || estadoTarjeta)) {
+        // La tarjeta cambia de estado y la respuesta queda en la conversación (con la flecha para deshacer, si aplicó algo).
+        guardada = await CV.guardar(db, u.id, cv, ok ? [{ rol: 'asistente', texto: mensaje, fecha: ahora(), ...(deshacer ? { deshacer } : {}) }] : [],
+          (m) => { if (estadoTarjeta) CV.marcarPropuesta(m, id, estadoTarjeta); });
+      }
+      const deshecho = estadoTarjeta === 'aplicada' ? guardada?.mensajes.find((m) => m.propuesta?.id === id)?.propuesta?.revierte : undefined;
+      if (quiereJson) return c.json({ ok, mensaje, ...(deshacer ? { deshacer } : {}), ...(deshecho ? { deshecho } : {}), ...(guardada ? { conversacion: resumen(guardada) } : {}), ...resto }, estado);
+      if (!ok) return verConversacion(c, cv, { error: mensaje }, estado);
+      // Sin conversación guardada (enlace viejo): solo se muestra el resultado.
+      return guardada ? verConversacion(c, guardada) : datosAsistente(c, { mensajes: [{ rol: 'asistente', texto: mensaje, fecha: ahora() }] }).then((d) => c.html(V.vistaAsistente(ctx(c), d)));
+    };
     if (b.accion === 'cancelar') {
       await PR.cancelar(db, id, u.id);
-      return responder(200, true, 'Cambios cancelados: no se modificó nada.');
+      return responder(200, true, 'Cambios cancelados: no se modificó nada.', { estadoTarjeta: 'cancelada' });
     }
     if (!puede(u.rol, 'stock')) return responder(403, false, MOTIVOS['sin-permiso'][1]);
     const r = await PR.aplicar(db, id, { ...actor(c), id: u.id, usuario: u.usuario }, puede(u.rol, 'productos'));
-    if (r.estado !== 'ok') return responder(MOTIVOS[r.estado][0], false, MOTIVOS[r.estado][1]);
+    if (r.estado !== 'ok') return responder(MOTIVOS[r.estado][0], false, MOTIVOS[r.estado][1], r.estado === 'vencida' ? { estadoTarjeta: 'cancelada' } : {});
     const bien = r.resultados.filter((x) => x.ok);
     const mal = r.resultados.filter((x) => !x.ok);
     const mensaje = [
       `${bien.length} de ${r.resultados.length} ${r.resultados.length === 1 ? 'cambio aplicado' : 'cambios aplicados'} y verificados. La web pública ya los muestra.`,
       ...mal.map((x) => `- No se aplicó ${x.nombre} (${x.codigo ?? 'sin código'}): ${x.error}`),
     ].join('\n');
-    return responder(200, true, mensaje, { resultados: r.resultados });
+    return responder(200, true, mensaje, { resultados: r.resultados, estadoTarjeta: 'aplicada', ...(bien.length ? { deshacer: id } : {}) });
+  });
+
+  // Flecha "Deshacer" de una respuesta: prepara la vuelta atrás de esos cambios (se confirma como cualquier propuesta).
+  app.post('/asistente/propuestas/:id/deshacer', requiere('asistente'), async (c) => {
+    const db = c.get('db');
+    const u = c.get('usuario')!;
+    const b = await cuerpo(c);
+    const quiereJson = c.req.header('accept')?.includes('application/json');
+    const cv = await conversacionDe(c, b.conversacion);
+    if (!puede(u.rol, 'stock')) {
+      const error = MOTIVOS['sin-permiso'][1];
+      return quiereJson ? c.json({ ok: false, mensaje: error }, 403) : verConversacion(c, cv, { error }, 403);
+    }
+    const id = texto(c.req.param('id'), 40);
+    const p = await PR.prepararReversion(db, u.id, { propuesta: id });
+    const propuesta = propuestaVisible(p);
+    const n = propuesta?.items.length ?? 0;
+    const mensaje = n
+      ? `Preparé la vuelta atrás de ${n === 1 ? 'ese cambio' : `esos ${n} cambios`}: cada producto vuelve a como estaba. Revisalo y tocá "Confirmar cambios" para deshacerlo.${p.errores.length ? '\n' + p.errores.map((e) => `- ${e}`).join('\n') : ''}`
+      : `No hay nada para deshacer: ${p.errores.join(' ')}`;
+    const t = ahora();
+    const guardada = await CV.guardar(db, u.id, cv, [
+      { rol: 'usuario', texto: 'Deshacer estos cambios', fecha: t },
+      { rol: 'asistente', texto: mensaje, fecha: t, ...(propuesta ? { propuesta: { ...propuesta, estado: 'pendiente' as const, revierte: id } } : {}) },
+    ], propuesta ? CV.reemplazarPendientes : undefined);
+    if (quiereJson) return c.json({ ok: true, mensaje, propuesta, conversacion: resumen(guardada) });
+    return verConversacion(c, guardada);
+  });
+
+  app.post('/asistente/conversaciones/:id/eliminar', requiere('asistente'), async (c) => {
+    await CV.eliminar(c.get('db'), c.get('usuario')!.id, texto(c.req.param('id'), 40));
+    return c.req.header('accept')?.includes('application/json') ? c.json({ ok: true }) : c.redirect(r('/asistente'));
   });
 
   // ── Conector para Claude (MCP + OAuth 2.1). Ver panel/src/oauth.ts y panel/src/mcp.ts ──

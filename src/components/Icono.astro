@@ -1,6 +1,9 @@
 ---
 // Íconos lineales (trazos estilo Lucide, licencia ISC, dibujados a mano para no sumar dependencias).
 // Decorativos por defecto (aria-hidden). Pasar `etiqueta` si el ícono transmite información por sí solo.
+// Animados al pasar el mouse (o al enfocar con teclado) por el enlace o botón que los contiene, al estilo
+// de animate-ui pero con CSS puro: cada ícono tiene su gesto (la flecha empuja, el teléfono suena, el
+// alfiler rebota, el corazón late…). Los gestos están en src/styles/global.css (sección "Íconos animados").
 interface Props {
   nombre: keyof typeof ICONOS;
   tamano?: number;
@@ -18,12 +21,13 @@ const ICONOS = {
   menos: '<path d="M5 12h14"/>',
   basura: '<path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/>',
   estrella:'<path d="M12 3l2.8 5.7 6.2.9-4.5 4.4 1.1 6.2L12 17.3l-5.6 2.9 1.1-6.2L3 9.6l6.2-.9z"/>',
-  candado: '<rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
+  candado: '<rect x="4" y="11" width="16" height="10" rx="2"/><path class="icono__parte" d="M8 11V7a4 4 0 0 1 8 0v4"/>',
   whatsapp: '<path d="M21 11.5a8.4 8.4 0 0 1-12.4 7.4L3 21l2.1-5.6A8.5 8.5 0 1 1 21 11.5z"/><path d="M9 9.5c0 3 2.5 5.5 5.5 5.5l1-1.5-2-1-1 .8a3.5 3.5 0 0 1-1.8-1.8l.8-1-1-2z"/>',
-  telefono: '<path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2z"/>',
+  telefono: '<path d="M13.8 16.6a1 1 0 0 0 1.2-.3l.4-.5A2 2 0 0 1 17 15h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2A18 18 0 0 1 2 4a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2v3a2 2 0 0 1-.8 1.6l-.5.4a1 1 0 0 0-.3 1.2 14 14 0 0 0 6.4 6.4"/>',
   correo: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/>',
-  ubicacion: '<path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0z"/><circle cx="12" cy="10" r="3"/>',
-  reloj: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+  mapa: '<path d="M14.1 5.6a2 2 0 0 0 1.8 0l3.6-1.8a1 1 0 0 1 1.5.8v12.8a1 1 0 0 1-.6.9l-4.5 2.3a2 2 0 0 1-1.8 0l-4.2-2.1a2 2 0 0 0-1.8 0l-3.6 1.8a1 1 0 0 1-1.5-.8V6.6a1 1 0 0 1 .6-.9l4.5-2.3a2 2 0 0 1 1.8 0z"/><path d="M15 5.8v15M9 3.2v15"/>',
+  ubicacion: '<path d="M20 10c0 5-5.5 10.2-7.4 11.8a1 1 0 0 1-1.2 0C9.5 20.2 4 15 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/>',
+  reloj: '<circle cx="12" cy="12" r="9"/><path class="icono__parte" d="M12 7v5l3 2"/>',
   calendario: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/>',
   celular: '<rect x="6" y="2" width="12" height="20" rx="2.5"/><path d="M11 18h2"/>',
   tienda: '<path d="M3 9 4.5 4h15L21 9"/><path d="M3 9h18v2a3 3 0 0 1-6 0 3 3 0 0 1-6 0 3 3 0 0 1-6 0z"/><path d="M5 13v8h14v-8"/><path d="M10 21v-5h4v5"/>',
@@ -36,7 +40,7 @@ const ICONOS = {
   pausa: '<rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/>',
   play: '<path d="M7 4v16l13-8z"/>',
   externo: '<path d="M14 4h6v6"/><path d="M20 4 10 14"/><path d="M19 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h5"/>',
-  check: '<path d="m5 12 4.5 4.5L19 7"/>',
+  check: '<path class="icono__parte" pathLength="1" d="m5 12 4.5 4.5L19 7"/>',
   mente: '<path d="M12 5a3 3 0 1 0-5.9.8A4 4 0 0 0 4 13a4 4 0 0 0 4 6h1"/><path d="M12 5a3 3 0 1 1 5.9.8A4 4 0 0 1 20 13a4 4 0 0 1-4 6h-1"/><path d="M12 5v15"/>',
   playa: '<path d="M2 21h20"/><path d="M12 21V9"/><path d="M4 9a8 8 0 0 1 16 0z"/><path d="M12 1v2"/>',
   apoyo: '<path d="M11 14h2a2 2 0 1 0 0-4h-3c-.6 0-1.1.2-1.4.6L3 16"/><path d="m7 20 1.6-1.4c.3-.4.8-.6 1.4-.6h4c1.1 0 2.1-.4 2.8-1.2l4.6-4.4a2 2 0 0 0-2.8-2.8l-4.2 3.9"/><path d="m2 15 6 6"/>',
@@ -58,10 +62,22 @@ const ICONOS = {
   alerta: '<path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/>',
 } as const;
 
+/** Gesto de cada ícono al pasar el mouse por su enlace o botón (los que no figuran hacen un "pop"). */
+const GESTOS: Partial<Record<keyof typeof ICONOS, string>> = {
+  flecha: 'empuje-der', 'chevron-der': 'empuje-der', 'flecha-izq': 'empuje-izq', 'chevron-izq': 'empuje-izq',
+  'chevron-abajo': 'empuje-abajo', descarga: 'empuje-abajo', externo: 'salto-diagonal',
+  telefono: 'timbre', whatsapp: 'timbre', celular: 'timbre',
+  ubicacion: 'alfiler', mapa: 'hoja', corazon: 'latido', estrella: 'giro', reloj: 'agujas', candado: 'candado', check: 'trazo',
+  buscar: 'lupa', carrito: 'rodar', correo: 'sobre', cerrar: 'giro-cuarto', mas: 'giro-cuarto', etiqueta: 'columpio',
+  usuario: 'saludo', usuarios: 'saludo', documento: 'hoja', libro: 'hoja', calendario: 'hoja', convenio: 'apreton',
+  pausa: 'ninguno', play: 'ninguno', menu: 'ninguno',
+};
+
 const { nombre, tamano = 20, etiqueta, clase } = Astro.props;
+const trazos = nombre === 'pausa' || nombre === 'play' ? ICONOS[nombre].replace(/<(rect|path)/g, '<$1 fill="currentColor" stroke="none"') : ICONOS[nombre];
 ---
 <svg
-  class={clase}
+  class:list={['icono', `icono--${GESTOS[nombre] ?? 'pop'}`, clase]}
   width={tamano}
   height={tamano}
   viewBox="0 0 24 24"
@@ -74,5 +90,5 @@ const { nombre, tamano = 20, etiqueta, clase } = Astro.props;
   role={etiqueta ? 'img' : undefined}
   aria-label={etiqueta}
   focusable="false"
-  set:html={nombre === 'pausa' || nombre === 'play' ? ICONOS[nombre].replace(/<(rect|path)/g, '<$1 fill="currentColor" stroke="none"') : ICONOS[nombre]}
+  set:html={`<g class="icono__g">${trazos}</g>`}
 />

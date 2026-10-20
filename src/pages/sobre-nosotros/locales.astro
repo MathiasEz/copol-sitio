@@ -7,6 +7,7 @@ import Badge from '../../components/ui/Badge.astro';
 import Campo from '../../components/ui/Campo.astro';
 import Toggle from '../../components/ui/Toggle.astro';
 import Media from '../../components/ui/Media.astro';
+import MapaPuntos from '../../components/MapaPuntos.astro';
 import { LOCALES, TIPO_LOCAL, telHref, type TipoLocal } from '../../lib/datos';
 import { fotoLocal } from '../../lib/imagenes';
 import { CONTACTO, HORARIOS, whatsapp } from '../../data/confirmado/sitio';
@@ -15,6 +16,11 @@ const departamentos = [...new Set(LOCALES.map((l) => l.departamento))].sort((a, 
 const conteo = (t: TipoLocal) => LOCALES.filter((l) => l.tipo === t).length;
 const varianteTipo = { 'casa-central': 'default', sucursal: 'accent', agencia: 'secondary' } as const;
 // Dos bloques: Casa Central y las sucursales juntas (una fila en escritorio) y, debajo, las agencias.
+const nombreLocal = (l: (typeof LOCALES)[number]) => (l.tipo === 'casa-central' ? 'Casa Central' : `${TIPO_LOCAL[l.tipo]} ${l.ciudad}`);
+const PUNTOS = LOCALES.map((l) => ({
+  id: l.id, lat: l.lat, lng: l.lng, titulo: nombreLocal(l), detalle: `${l.direccion}, ${l.ciudad}`,
+  antetitulo: l.tipo === 'casa-central' ? 'Sede principal' : l.departamento !== l.ciudad ? l.departamento : undefined, destacado: l.tipo === 'casa-central',
+}));
 const GRUPOS = [
   { id: 'principales', titulo: 'Casa Central y sucursales', locales: LOCALES.filter((l) => l.tipo !== 'agencia') },
   { id: 'agencias', titulo: 'Agencias', locales: LOCALES.filter((l) => l.tipo === 'agencia') },
@@ -31,7 +37,13 @@ const GRUPOS = [
     <Button href={whatsapp(CONTACTO.whatsappGeneral.numero)} variant="outline"><Icono nombre="whatsapp" tamano={18} /> {CONTACTO.whatsappGeneral.texto}</Button>
   </EncabezadoPagina>
 
-  <section class="contenedor seccion" aria-labelledby="listado-titulo">
+  <section class="contenedor mapa-locales" aria-labelledby="mapa-titulo">
+    <h2 id="mapa-titulo" class="visualmente-oculto">Mapa de locales</h2>
+    <MapaPuntos puntos={PUNTOS} etiqueta={`Mapa con los ${LOCALES.length} locales de COPOL`} />
+    <p class="mapa-locales__ayuda">Tocá una tarjeta para verla en el mapa.</p>
+  </section>
+
+  <section class="contenedor seccion seccion--tras-mapa" aria-labelledby="listado-titulo">
     <div class="encabezado-seccion">
       <div>
         <h2 id="listado-titulo"><span class="mascara"><span>Encontrá tu local</span></span></h2>
@@ -62,7 +74,7 @@ const GRUPOS = [
         const foto = fotoLocal(l.id);
         const nombre = l.tipo === 'casa-central' ? 'Casa Central' : `${TIPO_LOCAL[l.tipo]} ${l.ciudad}`;
         return (
-        <li class:list={['card', 'local', `local--${l.tipo}`]} data-tipo={l.tipo} data-departamento={l.departamento}>
+        <li class:list={['card', 'local', `local--${l.tipo}`]} data-tipo={l.tipo} data-departamento={l.departamento} data-punto={l.id}>
           {foto && (
             <figure class="local__foto">
               <Media
@@ -99,9 +111,14 @@ const GRUPOS = [
             {l.email && <li><Icono nombre="correo" tamano={18} /><a href={`mailto:${l.email}`} class="local__email">{l.email.split('@')[0]}@<wbr />{l.email.split('@')[1]}</a></li>}
             {l.tipo === 'casa-central' && <li><Icono nombre="reloj" tamano={18} /><span>{HORARIOS.casaCentral.map((h) => `${h.dias}: ${h.horas}`).join(' · ')}</span></li>}
           </ul>
-          <Button href={l.comoLlegar} variant={l.tipo === 'casa-central' ? 'default' : 'secondary'} size="sm" class="local__mapa">
-            <Icono nombre="ubicacion" tamano={17} /> Cómo llegar<span class="visualmente-oculto"> a {l.tipo === 'casa-central' ? 'Casa Central' : `${TIPO_LOCAL[l.tipo]} ${l.ciudad}`}</span>
-          </Button>
+          <div class="local__acciones">
+            <Button variant={l.tipo === 'casa-central' ? 'default' : 'secondary'} size="sm" data-ver-mapa={l.id}>
+              <Icono nombre="mapa" tamano={17} /> Ver en el mapa<span class="visualmente-oculto">: {nombreLocal(l)}</span>
+            </Button>
+            <Button href={l.comoLlegar} variant="ghost" size="sm" target="_blank">
+              <Icono nombre="ubicacion" tamano={17} /> Cómo llegar<span class="visualmente-oculto"> a {nombreLocal(l)}</span>
+            </Button>
+          </div>
         </li>
         );
       })}
@@ -133,6 +150,21 @@ const GRUPOS = [
     grupos.forEach((g) => { g.hidden = !g.querySelector('[data-locales] > li:not([hidden])'); });
     resultado.textContent = `Mostrando ${visibles} ${visibles === 1 ? 'local' : 'locales'}.`;
     vacio.hidden = visibles > 0;
+    document.dispatchEvent(new CustomEvent('copol:mapa-filtrar', { detail: { ids: items.filter((li) => !li.hidden).map((li) => li.dataset.punto) } }));
+  });
+
+  // Tocar una tarjeta (fuera de sus enlaces) o su botón "Ver en el mapa" lleva al mapa y acerca hasta el local.
+  document.addEventListener('click', (e) => {
+    const objetivo = e.target as HTMLElement;
+    const boton = objetivo.closest<HTMLElement>('[data-ver-mapa]');
+    const tarjeta = objetivo.closest<HTMLElement>('[data-punto]');
+    if (!boton && (!tarjeta || objetivo.closest('a, button, select, input'))) return;
+    if (!boton && getSelection()?.toString()) return; // estaba seleccionando texto (copiar una dirección)
+    document.dispatchEvent(new CustomEvent('copol:mapa-enfocar', { detail: { id: boton?.dataset.verMapa ?? tarjeta!.dataset.punto } }));
+  });
+  document.addEventListener('copol:mapa-elegido', (e) => {
+    const id = (e as CustomEvent<{ id: string }>).detail.id;
+    items.forEach((li) => li.toggleAttribute('data-elegido', li.dataset.punto === id));
   });
 </script>
 
@@ -187,6 +219,12 @@ const GRUPOS = [
   .local__datos small { display: block; color: var(--muted-foreground); }
   .local__datos :global(.local__pendiente) { display: flex; margin-top: 6px; white-space: normal; }
   .local__email { overflow-wrap: anywhere; }
-  .local :global(.local__mapa) { margin-top: auto; align-self: flex-start; }
+  .local { cursor: pointer; transition: box-shadow 200ms var(--ease-out-quart); }
+  .local[data-elegido] { box-shadow: inset 0 0 0 2.5px var(--verde-copol), 0 18px 40px -22px rgb(0 51 26 / 0.45); }
+  .local--casa-central[data-elegido] { box-shadow: inset 0 0 0 3.5px var(--verde-copol), 0 18px 40px -22px rgb(0 51 26 / 0.45); }
+  .local__acciones { margin-top: auto; display: flex; flex-wrap: wrap; gap: 8px; }
+  .mapa-locales { padding-top: clamp(28px, 4vw, 48px); }
+  .mapa-locales__ayuda { margin-top: 10px; font-size: 0.875rem; color: var(--muted-foreground); }
+  .seccion--tras-mapa { padding-top: clamp(32px, 5vw, 56px); }
   .vacio { margin-top: 16px; text-align: center; align-items: center; }
 </style>
