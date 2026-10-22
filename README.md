@@ -145,3 +145,15 @@ docs/                    decisiones, catálogo, panel, producción, activos y pe
 - Formulario de contacto sin backend configurado (modo demostración).
 - Catálogo del Hipermercado y ofertas semanales: contenido de demostración o pendiente.
 - Banner de Bazar: sus textos chicos no se leen en móvil; falta la versión móvil.
+
+## API para la app de celular
+
+La app (`../copol-sitio-app`) lee estos endpoints públicos de solo lectura (JSON, sin precios del Bazar ni datos del panel):
+
+| Ruta | Contenido | Caché |
+|---|---|---|
+| `/api/app/v1/inicio` | Banner, novedades, aperturas de crédito y ofertas vigentes | CDN con etiquetas `banner`, `novedades`, `creditos`, `ofertas` (se renueva al guardar en el panel) |
+| `/api/app/v1/bazar` | Modelos del Bazar con estado de stock por color | CDN con etiqueta `bazar` |
+| `/api/app/v1/contenido.json` | Servicios, locales, convenios, contacto, horarios e historia | Se genera en el build |
+
+Si se cambia el formato, subir `VERSION_API_APP` (`src/lib/api-app.ts`) y la versión que espera la app (`VERSION_API` en `copol-sitio-app/src/config.ts`).
