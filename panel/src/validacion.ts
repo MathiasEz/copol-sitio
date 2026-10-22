@@ -2,6 +2,7 @@
 import type { DatosProducto } from './productos.ts';
 import { esEstado } from './productos.ts';
 import { esPlantilla, PLANTILLAS, type DatosNovedad } from './novedades.ts';
+import { esDiseno, esFoco, type Boton, type Diapositiva } from './banner.ts';
 import { esRol, type Rol } from './seguridad.ts';
 import { BASE } from './config.ts';
 
@@ -98,6 +99,57 @@ export function validarNovedad(b: Campos, tieneImagen: boolean) {
   if (d.enlace_url && !enlaceValido(d.enlace_url)) errores.enlace_url = 'Usá una dirección https:// o una ruta del sitio (por ejemplo /hipermercado/bazar/).';
   if (d.enlace_url && !d.enlace_texto) errores.enlace_texto = 'Escribí el texto del botón.';
   if (d.enlace_texto && !d.enlace_url) errores.enlace_url = 'Falta la dirección del botón.';
+  return { datos: d, errores };
+}
+
+export type DatosDiapositiva = Omit<Diapositiva, 'id' | 'imagen' | 'imagenMovil' | 'actualizado_en' | 'actualizado_por'>;
+
+/** Diapositiva del banner de Inicio (Administración Página). */
+export function validarDiapositiva(b: Campos, tieneImagen: boolean) {
+  const errores: Record<string, string> = {};
+  const linea = (v: unknown, max: number) => texto(v, max).replace(/\s+/g, ' ');
+  const diseno = texto(b.diseno, 20);
+  const foco = texto(b.foco, 20);
+  const fecha = (v: unknown) => { const t = texto(v, 10); return /^\d{4}-\d{2}-\d{2}$/.test(t) && !Number.isNaN(Date.parse(t)) ? t : ''; };
+  const botonDe = (n: 1 | 2): Boton | null => {
+    const t = linea(b[`boton${n}_texto`], 30);
+    const url = texto(b[`boton${n}_url`], 500);
+    if (t.length > 30) errores[`boton${n}_texto`] = 'El texto del botón es demasiado largo (máx. 30).';
+    if (url && !enlaceValido(url)) errores[`boton${n}_url`] = 'Usá una dirección https:// o una ruta del sitio (por ejemplo /hipermercado/bazar/).';
+    if (url && !t) errores[`boton${n}_texto`] = 'Escribí el texto del botón.';
+    if (t && !url) errores[`boton${n}_url`] = 'Falta la dirección del botón.';
+    return t && url ? { texto: t, url } : null;
+  };
+  const d: DatosDiapositiva = {
+    antetitulo: linea(b.antetitulo, 50),
+    titulo: linea(b.titulo, 90),
+    resaltado: linea(b.resaltado, 40),
+    texto: linea(b.texto, 220),
+    etiqueta: linea(b.etiqueta, 40),
+    alt: linea(b.alt, 250),
+    diseno: esDiseno(diseno) ? diseno : 'lateral',
+    completa: b.completa === '1',
+    foco: esFoco(foco) ? foco : 'centro',
+    boton1: botonDe(1),
+    boton2: botonDe(2),
+    publicado: b.publicado === '1',
+    desde: fecha(b.desde),
+    hasta: fecha(b.hasta),
+  };
+  if (d.titulo.length < 3) errores.titulo = 'Escribí un título (mínimo 3 caracteres).';
+  if (d.titulo.length > 90) errores.titulo = 'El título es demasiado largo (máx. 90).';
+  if (d.antetitulo.length > 50) errores.antetitulo = 'El antetítulo es demasiado largo (máx. 50).';
+  if (d.resaltado.length > 40) errores.resaltado = 'La parte resaltada es demasiado larga (máx. 40).';
+  if (d.texto.length > 220) errores.texto = 'El texto es demasiado largo (máx. 220): en el banner se lee de un vistazo.';
+  if (d.etiqueta.length > 40) errores.etiqueta = 'La etiqueta es demasiado larga (máx. 40).';
+  if (d.alt.length > 250) errores.alt = 'La descripción es demasiado larga (máx. 250).';
+  if (PRECIO.test(`${d.antetitulo} ${d.titulo} ${d.resaltado} ${d.texto} ${d.etiqueta}`)) errores.texto = 'La web no publica precios: quitá el precio del texto.';
+  if (!esDiseno(diseno)) errores.diseno = 'Elegí dónde va el texto.';
+  if (!tieneImagen) errores.imagen = 'Subí la imagen del banner.';
+  if (d.diseno === 'solo-imagen' && d.alt.length < 10) errores.alt = 'Con "Solo imagen" la descripción es obligatoria: escribí lo que dice la pieza (la leen los lectores de pantalla y Google).';
+  if (texto(b.desde, 10) && !d.desde) errores.desde = 'Fecha inválida.';
+  if (texto(b.hasta, 10) && !d.hasta) errores.hasta = 'Fecha inválida.';
+  if (d.desde && d.hasta && d.hasta < d.desde) errores.hasta = 'La fecha de fin es anterior a la de inicio.';
   return { datos: d, errores };
 }
 

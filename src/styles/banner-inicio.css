@@ -1,0 +1,224 @@
+/* ==========================================================================
+   Banner de Inicio (<copol-banner>): diapositivas a todo el ancho con el texto en un lugar que no tapa
+   la imagen. HTML: panel/src/banner.ts (htmlBanner). Comportamiento: src/scripts/banner-inicio.js.
+   Lo usan la web (importado en src/pages/index.astro) y la vista previa del panel (copia en
+   public/panel-recursos/, generada en cada build por scripts/copiar-recursos.mjs): por eso no depende
+   de los tokens del sitio y usa consultas de contenedor (la vista "Celular" del panel es un recuadro
+   angosto dentro de una pantalla ancha).
+   Diseños: "lateral" (texto en una franja verde al costado), "tarjeta" (recuadro chico en la esquina
+   inferior de la foto) y "solo-imagen". En pantallas angostas el texto va siempre debajo de la imagen.
+   ========================================================================== */
+.bi {
+  --bi-verde: #006633;
+  --bi-verde-claro: #008d36;
+  --bi-verde-profundo: #00331a;
+  --bi-amarillo: #f8ea39;
+  --bi-tinta: #12261a;
+  --bi-tinta-suave: #3d5a49;
+  --bi-radio: 28px;
+  --bi-ease: cubic-bezier(0.25, 1, 0.5, 1);
+  --bi-resorte: linear(0, 0.22 6%, 0.6 14%, 0.86 22%, 1.02 32%, 1.03 40%, 1.008 54%, 1 70%, 1);
+  --bi-segundos: 6s;
+  container: bi / inline-size;
+  display: block;
+  position: relative;
+  font-family: inherit;
+  -webkit-tap-highlight-color: transparent;
+}
+.bi:focus-visible { outline: 3px solid var(--bi-verde); outline-offset: 4px; border-radius: var(--bi-radio); }
+.bi [hidden] { display: none !important; }
+
+/* Sin JS las diapositivas se muestran una debajo de otra; con JS se superponen y se alternan. */
+.bi__pista { display: grid; gap: 16px; }
+.bi--js .bi__pista { gap: 0; touch-action: pan-y; }
+.bi--js .bi__diapo { grid-area: 1 / 1; }
+
+.bi__diapo {
+  position: relative;
+  display: grid;
+  border-radius: var(--bi-radio);
+  overflow: hidden;
+  isolation: isolate;
+  color: #fff;
+  background:
+    radial-gradient(120% 90% at 0% 100%, rgb(0 141 54 / 0.55), transparent 62%),
+    radial-gradient(80% 70% at 100% 0%, rgb(248 234 57 / 0.08), transparent 60%),
+    var(--bi-verde);
+  box-shadow: 0 30px 60px -32px rgb(0 51 26 / 0.5);
+}
+
+/* ── Imagen ── */
+.bi__media { position: relative; overflow: hidden; min-height: 0; background: var(--bi-verde-profundo); user-select: none; }
+.bi__media picture { display: contents; }
+.bi__img, .bi__img-movil, .bi__fondo {
+  position: absolute; inset: 0; width: 100%; height: 100%; max-width: none; display: block;
+  object-fit: cover; object-position: var(--bi-foco, 50% 50%); -webkit-user-drag: none;
+}
+.bi__img-movil, .bi__fondo { display: none; }
+/* Imagen completa (piezas con texto): entera, sin recorte, sobre una copia difuminada de sí misma. */
+.bi__diapo--completa .bi__img { object-fit: contain; }
+.bi__diapo--completa .bi__fondo { display: block; filter: blur(26px) saturate(1.25); transform: scale(1.25); opacity: 0.85; }
+
+.bi__foco--arriba-izquierda { --bi-foco: 0% 0%; }
+.bi__foco--arriba { --bi-foco: 50% 0%; }
+.bi__foco--arriba-derecha { --bi-foco: 100% 0%; }
+.bi__foco--izquierda { --bi-foco: 0% 50%; }
+.bi__foco--centro { --bi-foco: 50% 50%; }
+.bi__foco--derecha { --bi-foco: 100% 50%; }
+.bi__foco--abajo-izquierda { --bi-foco: 0% 100%; }
+.bi__foco--abajo { --bi-foco: 50% 100%; }
+.bi__foco--abajo-derecha { --bi-foco: 100% 100%; }
+
+.bi__etiqueta {
+  position: absolute; z-index: 2; left: 16px; top: 16px;
+  padding: 7px 14px; border-radius: 999px;
+  background: var(--bi-verde); color: #fff; font-size: 0.8125rem; font-weight: 700; line-height: 1.2;
+  box-shadow: 0 6px 16px -8px rgb(0 0 0 / 0.45);
+}
+
+/* ── Texto ── */
+.bi__texto { position: relative; z-index: 1; display: grid; gap: 14px; justify-items: start; align-content: center; min-width: 0; }
+.bi__antetitulo {
+  font-size: 0.75rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; line-height: 1.3;
+  padding: 6px 12px; border-radius: 999px; color: #fff; background: rgb(255 255 255 / 0.12);
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.22);
+}
+.bi__titulo {
+  margin: 0; color: inherit; font-weight: 800; letter-spacing: -0.03em; line-height: 1.06;
+  font-size: clamp(1.625rem, 3.2cqi, 2.75rem); text-wrap: balance;
+}
+.bi__linea { display: block; }
+.bi__resaltado {
+  background: var(--bi-amarillo); color: var(--bi-tinta); padding: 0 0.14em; border-radius: 0.18em;
+  -webkit-box-decoration-break: clone; box-decoration-break: clone;
+}
+.bi__bajada { margin: 0; max-width: 46ch; font-size: clamp(0.9375rem, 1.3cqi, 1.0625rem); line-height: 1.55; color: rgb(255 255 255 / 0.84); }
+.bi__acciones { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 4px; }
+.bi__boton {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  min-height: 46px; padding: 0 20px; border-radius: 999px;
+  font-size: 0.9375rem; font-weight: 700; line-height: 1.2; text-decoration: none;
+  transition: background 180ms var(--bi-ease), box-shadow 180ms var(--bi-ease), transform 400ms var(--bi-resorte);
+}
+.bi__boton:active { transform: scale(0.97); }
+.bi__boton:focus-visible { outline: 3px solid var(--bi-amarillo); outline-offset: 3px; }
+.bi__boton--principal { background: var(--bi-amarillo); color: var(--bi-tinta); }
+.bi__boton--principal:hover { background: #fff36b; }
+.bi__boton--secundario { color: #fff; box-shadow: inset 0 0 0 1.5px rgb(255 255 255 / 0.55); }
+.bi__boton--secundario:hover { background: rgb(255 255 255 / 0.1); box-shadow: inset 0 0 0 1.5px #fff; }
+.bi__icono { flex: none; transition: transform 400ms var(--bi-resorte); }
+.bi__boton:hover .bi__icono { transform: translateX(3px); }
+
+/* Solo imagen: el texto queda para lectores de pantalla; toda la imagen es el enlace. */
+.bi__diapo--solo-imagen .bi__texto {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+.bi__enlace-total { position: absolute; inset: 0; z-index: 3; border-radius: inherit; }
+.bi__enlace-total:focus-visible { outline: 3px solid var(--bi-amarillo); outline-offset: -6px; }
+
+/* ── Pantallas anchas (el banner mide 720 px o más) ── */
+@container bi (min-width: 720px) {
+  .bi__diapo { min-height: 37.5cqi; } /* proporción 8:3 */
+  .bi__diapo--lateral { grid-template-columns: minmax(0, 38fr) minmax(0, 62fr); }
+  .bi__diapo--lateral .bi__media { grid-area: 1 / 2; }
+  .bi__diapo--lateral .bi__texto { grid-area: 1 / 1; padding: clamp(28px, 4.2cqi, 60px) clamp(24px, 3.6cqi, 52px); }
+  .bi__diapo--tarjeta .bi__media, .bi__diapo--solo-imagen .bi__media { grid-area: 1 / 1; }
+  /* Recuadro chico abajo a la izquierda: tapa una esquina, nunca el centro de la foto. */
+  .bi__diapo--tarjeta .bi__texto {
+    grid-area: 1 / 1; align-self: end; justify-self: start;
+    max-width: min(44%, 470px); margin: clamp(16px, 2.2cqi, 28px);
+    padding: clamp(18px, 2cqi, 26px) clamp(20px, 2.2cqi, 28px); gap: 10px;
+    border-radius: 22px; color: var(--bi-tinta);
+    background: rgb(255 255 255 / 0.9);
+    -webkit-backdrop-filter: blur(14px) saturate(1.4); backdrop-filter: blur(14px) saturate(1.4);
+    box-shadow: 0 18px 40px -20px rgb(0 0 0 / 0.5), inset 0 0 0 1px rgb(255 255 255 / 0.6);
+  }
+  .bi__diapo--tarjeta .bi__titulo { font-size: clamp(1.375rem, 2.3cqi, 2rem); }
+  .bi__diapo--tarjeta .bi__bajada { font-size: 0.9375rem; }
+  .bi__diapo--tarjeta .bi__etiqueta { left: auto; right: 16px; }
+}
+
+/* ── Pantallas angostas: imagen arriba, texto debajo (nunca encima) ── */
+@container bi (max-width: 719.98px) {
+  .bi { --bi-radio: 22px; }
+  .bi__diapo { grid-template-rows: auto 1fr; align-content: start; }
+  .bi__media { aspect-ratio: 16 / 10; }
+  .bi__texto { align-content: start; padding: 20px 20px 24px; gap: 12px; }
+  .bi__titulo { font-size: clamp(1.5rem, 7cqi, 2rem); }
+  .bi__acciones { width: 100%; }
+  .bi__boton { flex: 1 1 auto; }
+  /* Con imagen para celular: se muestra entera, en su proporción. */
+  .bi__diapo--con-movil .bi__media { aspect-ratio: auto; }
+  .bi__diapo--con-movil .bi__img { position: static; height: auto; object-fit: contain; }
+  .bi__diapo--con-movil .bi__fondo { display: none; }
+  .bi--editable .bi__diapo--con-movil .bi__img { display: none; }
+  .bi--editable .bi__diapo--con-movil .bi__img-movil { display: block; position: static; height: auto; }
+  /* Recuadro: en celular pasa debajo de la foto, sobre blanco. */
+  .bi__diapo--tarjeta { background: #fff; color: var(--bi-tinta); box-shadow: 0 20px 40px -28px rgb(0 51 26 / 0.5), inset 0 0 0 1px rgb(0 51 26 / 0.1); }
+  .bi__diapo--solo-imagen .bi__media { aspect-ratio: 16 / 9; }
+  .bi__diapo--solo-imagen.bi__diapo--con-movil .bi__media { aspect-ratio: auto; }
+}
+
+/* Recuadro (sobre blanco): colores oscuros. */
+.bi__diapo--tarjeta .bi__antetitulo { color: var(--bi-verde); background: #eaf4ee; box-shadow: none; }
+.bi__diapo--tarjeta .bi__bajada { color: var(--bi-tinta-suave); }
+.bi__diapo--tarjeta .bi__boton--principal { background: var(--bi-verde); color: #fff; }
+.bi__diapo--tarjeta .bi__boton--principal:hover { background: #004d26; }
+.bi__diapo--tarjeta .bi__boton--secundario { color: var(--bi-verde); box-shadow: inset 0 0 0 1.5px rgb(0 102 51 / 0.45); }
+.bi__diapo--tarjeta .bi__boton--secundario:hover { background: #eaf4ee; box-shadow: inset 0 0 0 1.5px var(--bi-verde); }
+.bi__diapo--tarjeta .bi__boton:focus-visible { outline-color: var(--bi-verde); }
+
+/* ── Controles: debajo del banner, discretos ── */
+.bi__controles { display: flex; align-items: center; justify-content: center; gap: 2px; margin-top: 8px; }
+.bi__indicadores { display: flex; align-items: center; gap: 2px; }
+.bi__flecha, .bi__indicador {
+  display: inline-grid; place-items: center; width: 44px; height: 44px; padding: 0; border: 0;
+  background: none; color: var(--bi-verde); cursor: pointer; border-radius: 999px; position: relative;
+}
+.bi__flecha::before {
+  content: ''; position: absolute; inset: 7px; border-radius: inherit;
+  box-shadow: inset 0 0 0 1px rgb(0 102 51 / 0.25); transition: background 180ms var(--bi-ease), box-shadow 180ms var(--bi-ease);
+}
+.bi__flecha svg { position: relative; opacity: 0.75; transition: opacity 180ms var(--bi-ease); }
+.bi__flecha:hover::before { background: rgb(0 102 51 / 0.07); box-shadow: inset 0 0 0 1px rgb(0 102 51 / 0.45); }
+.bi__flecha:hover svg { opacity: 1; }
+.bi__flecha:focus-visible, .bi__indicador:focus-visible { outline: 3px solid var(--bi-verde); outline-offset: -3px; }
+.bi__progreso {
+  position: relative; display: block; width: 26px; height: 4px; border-radius: 4px; overflow: hidden;
+  background: rgb(0 102 51 / 0.18); transition: width 400ms var(--bi-resorte);
+}
+.bi__progreso::after { content: ''; position: absolute; inset: 0; background: var(--bi-verde); transform-origin: left; transform: scaleX(0); }
+.bi__indicador:hover .bi__progreso { background: rgb(0 102 51 / 0.35); }
+.bi__indicador[aria-current='true'] .bi__progreso { width: 44px; }
+.bi__indicador[aria-current='true'] .bi__progreso::after { transform: scaleX(1); }
+.bi--auto .bi__indicador[aria-current='true'] .bi__progreso::after { animation: bi-progreso var(--bi-segundos) linear forwards; }
+.bi--auto.bi--pausado .bi__progreso::after { animation-play-state: paused; }
+@keyframes bi-progreso { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+
+/* ── Movimiento ── */
+.bi--js .bi__diapo:not(.activa) { visibility: hidden; opacity: 0; }
+.bi--js .bi__diapo.activa { z-index: 1; }
+@media (prefers-reduced-motion: no-preference) {
+  .bi--js .bi__diapo { transition: opacity 800ms var(--bi-ease), visibility 0s linear 800ms; }
+  .bi--js .bi__diapo.activa { transition-delay: 0s; }
+  /* Acercamiento lento de la foto mientras está visible (no en piezas completas). */
+  .bi--js .bi__diapo:not(.bi__diapo--completa) .bi__img { transform: scale(1.07); transition: transform calc(var(--bi-segundos) + 2.5s) cubic-bezier(0.2, 0.6, 0.3, 1); }
+  .bi--js .bi__diapo.activa:not(.bi__diapo--completa) .bi__img { transform: scale(1); }
+  .bi--js .bi__diapo:not(.activa) .bi__img { transition-duration: 0s; transition-delay: 800ms; }
+  /* El texto entra escalonado; el título sube desde una línea de máscara. */
+  .bi--js .bi__texto > * { transition: opacity 500ms var(--bi-ease), transform 800ms var(--bi-resorte); }
+  .bi--js .bi__diapo:not(.activa) .bi__texto > * { opacity: 0; transform: translateY(14px); }
+  .bi--js .bi__diapo.activa .bi__texto > :nth-child(2) { transition-delay: 70ms; }
+  .bi--js .bi__diapo.activa .bi__texto > :nth-child(3) { transition-delay: 140ms; }
+  .bi--js .bi__diapo.activa .bi__texto > :nth-child(4) { transition-delay: 210ms; }
+  .bi--js .bi__titulo { overflow: hidden; padding-bottom: 0.14em; margin-bottom: -0.14em; }
+  .bi--js .bi__linea { transition: transform 900ms var(--bi-ease); }
+  .bi--js .bi__diapo:not(.activa) .bi__linea { transform: translateY(110%); }
+  .bi--js .bi__diapo:not(.activa) .bi__titulo { opacity: 1; transform: none; }
+  @container bi (min-width: 720px) {
+    .bi--js .bi__diapo--tarjeta .bi__texto { transition: opacity 600ms var(--bi-ease), transform 900ms var(--bi-resorte); }
+    .bi--js .bi__diapo--tarjeta:not(.activa) .bi__texto { opacity: 0; transform: translateY(18px); }
+  }
+  .bi__etiqueta { transition: opacity 500ms var(--bi-ease) 300ms, transform 700ms var(--bi-resorte) 300ms; }
+  .bi--js .bi__diapo:not(.activa) .bi__etiqueta { opacity: 0; transform: translateY(-6px); transition-delay: 0s; }
+}

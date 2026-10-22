@@ -44,7 +44,7 @@ Cargados en `src/data/confirmado/historia.ts` con `pendiente`; se publican cuand
 | Cantidad de locales | 19 | Lista de /locales: 19 · Inicio, Historia, Acceso web y Contacto: "+20" | **19** (confirmado por la cooperativa). |
 | Sucursales / agencias | 3 sucursales + 15 agencias (según tipos de la lista) | Historia: "4 Sucursales y 14 Agencias" | Se calcula desde la lista de locales. **A confirmar** (p. ej., Pando figura como sucursal con correo `agepando@`). |
 | Convenios | 160 (cantidad de registros) | Texto de /convenios: "152 convenios" | Se muestra la cantidad de registros publicados. **A confirmar.** |
-| Socios activos | "+35.000" | Coincide en todo el sitio anterior | Publicado en Sobre nosotros y Hacete socio. **A confirmar** si está vigente. |
+| Socios activos | "+36.000" (actualizado a pedido de la cooperativa el 22/10/2026) | Coincide en todo el sitio anterior | Publicado en Sobre nosotros y Hacete socio. **A confirmar** si está vigente. |
 | Empleados | "+150" (no publicado en el MVP) | Sitio anterior | No se usa. |
 | "+150 beneficios" | No publicado | Hacete socio (sitio anterior) | No se usa: posible confusión con empleados. |
 | Años de historia | Se usa "Desde 1917" y "más de un siglo" | Historia: "108 años" (desactualizado) | No se publica un número fijo. |

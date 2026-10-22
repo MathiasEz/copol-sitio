@@ -2,7 +2,8 @@
 // Requiere el sitio corriendo (npm run dev o npm run preview).
 //   node scripts/qa-interacciones.mjs [urlBase] [--capturas carpeta]
 // Comprueba: Bazar (estado inicial, "Todos los productos", cada categoría, búsqueda y estado vacío),
-// carrusel de Inicio (sin botones de control, teclado, gesto, movimiento reducido) y recorte de imágenes.
+// banner de Inicio (sin botón de pausa, teclado, gesto, texto que no tapa la imagen, movimiento reducido),
+// cinta de ofertas de Promociones y recorte de imágenes.
 import fs from 'node:fs';
 import path from 'node:path';
 import { chromium } from 'playwright-core';
@@ -155,44 +156,63 @@ const VIEWPORTS = { movil: { width: 375, height: 812 }, escritorio: { width: 136
   await p2.close();
 }
 
-// ── Promociones: carrusel de ofertas del supermercado ──
+// ── Promociones: cinta continua de ofertas del supermercado ──
 {
   const page = await browser.newPage({ viewport: VIEWPORTS.escritorio });
   await page.goto(`${BASE}/hipermercado/promociones/`, { waitUntil: 'networkidle' });
-  const pos = () => page.$eval('[data-pista]', (p) => Math.round(p.scrollLeft));
-  const piezas = await page.$$eval('[data-ofertas] .oferta img', (is) => is.map((i) => i.alt));
+  // Posición de la cinta (desplazamiento horizontal aplicado con transform).
+  const pos = () => page.$eval('[data-pista]', (p) => Math.round(-new DOMMatrix(getComputedStyle(p).transform).m41));
+  const piezas = await page.$$eval('[data-ofertas] .oferta:not([aria-hidden]) img', (is) => is.map((i) => i.alt));
   verificar(piezas.length === 29 && piezas.every((a) => /^Oferta de octubre: .+, a .+ pesos\.$/.test(a)), `Promociones · 29 ofertas con texto alternativo de producto y precio (${piezas.length})`);
+  const copias = await page.$$eval('[data-ofertas] .oferta[aria-hidden="true"] img', (is) => is.map((i) => i.alt));
+  verificar(copias.length === 58 && copias.every((a) => a === ''), `Promociones · copias del bucle ocultas para lectores de pantalla (${copias.length})`);
   const orden = await page.$$eval('main h2', (hs) => hs.map((h) => h.textContent.trim()));
   verificar(orden.indexOf('Ofertas de octubre') > -1 && orden.indexOf('Ofertas de octubre') < orden.indexOf('Campañas vigentes'), `Promociones · la sección de ofertas va antes de "Campañas vigentes" (${orden.join(' → ')})`);
   const campanas = await page.$$eval('.campana h3', (hs) => hs.map((h) => h.textContent.trim()));
   verificar(campanas.length === 2 && campanas.some((t) => /moto/i.test(t)) && campanas.some((t) => /alquiler/i.test(t)), `Promociones · "Campañas vigentes" solo con motos y Porto Seguro (${campanas.join(' / ')})`);
-  const botones = await page.$$eval('[data-ofertas] button', (bs) => bs.map((b) => b.getAttribute('aria-label') || '').filter((t) => /pausa|siguiente|anterior|avanzar/i.test(t)));
-  verificar(botones.length === 0, 'Promociones · sin botones grandes de avanzar/pausar/volver');
-  const p0 = await pos();
-  await page.waitForTimeout(4200);
-  const p1 = await pos();
-  verificar(p1 > p0, `Promociones · el carrusel avanza solo (${p0} → ${p1})`);
-  await page.hover('[data-ofertas]');
-  const p2 = await pos();
-  await page.waitForTimeout(4200);
-  verificar((await pos()) === p2, 'Promociones · se detiene con el puntero encima');
+  verificar((await page.$$('[data-ofertas] button')).length === 0, 'Promociones · sin botones de avanzar/pausar/volver');
+  await page.locator('[data-ofertas]').scrollIntoViewIfNeeded();
   await page.mouse.move(5, 5);
-  await page.waitForTimeout(4200);
+  const p0 = await pos();
+  await page.waitForTimeout(2500);
+  const p1 = await pos();
+  verificar(p1 > p0, `Promociones · la cinta avanza sola, de forma continua (${p0} → ${p1})`);
+  const caja = await page.locator('[data-ventana]').boundingBox();
+  await page.mouse.move(caja.x + caja.width / 2, caja.y + caja.height / 2);
+  await page.waitForTimeout(1500); // frena con suavidad
+  const p2 = await pos();
+  await page.waitForTimeout(2000);
+  verificar(Math.abs((await pos()) - p2) <= 1, 'Promociones · se detiene con el puntero encima');
+  await page.mouse.move(5, 5);
+  await page.waitForTimeout(2500);
   verificar((await pos()) !== p2, 'Promociones · continúa al retirar el puntero');
-  await page.focus('[data-ofertas] [data-pista]');
+  // Arrastrar con el mouse mueve la cinta.
+  await page.mouse.move(caja.x + caja.width * 0.7, caja.y + caja.height / 2);
+  await page.waitForTimeout(1500);
   const p3 = await pos();
-  await page.waitForTimeout(4200);
-  verificar((await pos()) === p3, 'Promociones · se detiene con el foco del teclado');
+  await page.mouse.down();
+  await page.mouse.move(caja.x + caja.width * 0.3, caja.y + caja.height / 2, { steps: 8 });
+  await page.mouse.up();
+  const p4 = await pos();
+  verificar(Math.abs(p4 - p3) > 150 || p4 < p3, `Promociones · se puede arrastrar (${p3} → ${p4})`);
+  await page.mouse.move(5, 5);
+  await page.keyboard.press('Tab'); // primer elemento enfocable de la página: deja el modo teclado activo
+  await page.focus('[data-ventana]');
+  await page.waitForTimeout(1500);
+  const p5 = await pos();
+  await page.waitForTimeout(2000);
+  verificar(Math.abs((await pos()) - p5) <= 1, 'Promociones · se detiene con el foco del teclado');
   await page.keyboard.press('ArrowRight');
-  await page.waitForTimeout(700);
-  verificar((await pos()) > p3 || p3 > 0, 'Promociones · flecha derecha avanza');
+  await page.waitForTimeout(900);
+  verificar((await pos()) !== p5, 'Promociones · flecha derecha avanza una pieza');
   await page.close();
   const ctxR = await browser.newContext({ reducedMotion: 'reduce', viewport: VIEWPORTS.escritorio });
   const pr = await ctxR.newPage();
   await pr.goto(`${BASE}/hipermercado/promociones/`, { waitUntil: 'networkidle' });
-  const r0 = await pr.$eval('[data-pista]', (p) => p.scrollLeft);
-  await pr.waitForTimeout(4200);
-  verificar((await pr.$eval('[data-pista]', (p) => p.scrollLeft)) === r0, 'Promociones · con movimiento reducido no avanza solo');
+  const posR = () => pr.$eval('[data-pista]', (p) => Math.round(-new DOMMatrix(getComputedStyle(p).transform).m41));
+  const r0 = await posR();
+  await pr.waitForTimeout(3000);
+  verificar((await posR()) === r0, 'Promociones · con movimiento reducido no avanza sola');
   await ctxR.close();
 }
 
@@ -228,61 +248,88 @@ for (const [nombre, vp] of Object.entries(VIEWPORTS)) {
   await page.close();
 }
 
-// ── Carrusel ───────────────────────────────────────────────────────────
+// ── Banner de Inicio (server island, editable desde el panel) ─────────────
+// Con el contenido inicial: 4 diapositivas, 6 s cada una. Si se editó en el panel local, ajustar.
 for (const [nombre, vp] of Object.entries(VIEWPORTS)) {
   const page = await browser.newPage({ viewport: vp, hasTouch: nombre === 'movil' });
   await page.goto(`${BASE}/`, { waitUntil: 'networkidle' });
-  const activa = () => page.evaluate(() => [...document.querySelectorAll('[data-panel]')].findIndex((p) => p.classList.contains('activa')));
-  const botonesControl = await page.$$eval('[data-carrusel] button', (bs) =>
-    bs.filter((b) => !b.hasAttribute('data-indicador')).map((b) => b.getAttribute('aria-label') || b.textContent.trim()),
+  await page.waitForSelector('copol-banner.bi--js');
+  const activa = () => page.evaluate(() => [...document.querySelectorAll('[data-bi-diapo]')].findIndex((p) => p.classList.contains('activa')));
+  const n = await page.$$eval('[data-bi-diapo]', (ds) => ds.length);
+  const botonesControl = await page.$$eval('copol-banner button', (bs) =>
+    bs.filter((b) => !b.hasAttribute('data-bi-indicador')).map((b) => b.getAttribute('aria-label') || b.textContent.trim()),
   );
-  verificar(botonesControl.length === 2 && botonesControl.join() === 'Novedad anterior,Novedad siguiente', `Carrusel (${nombre}) · solo dos flechas discretas, sin botón de pausa (${botonesControl.join(', ') || 'ninguna'})`);
-  const flechas = await page.$$eval('[data-anterior], [data-siguiente]', (bs) => bs.map((b) => { const r = b.getBoundingClientRect(); const v = b.querySelector('svg').getBoundingClientRect(); return { area: Math.min(r.width, r.height), icono: Math.max(v.width, v.height) }; }));
-  verificar(flechas.every((f) => f.area >= 44 && f.icono <= 20), `Carrusel (${nombre}) · flechas con ícono chico (≤ 20 px) y área táctil de 44 px`);
-  const indicadores = await page.$$eval('[data-indicador]', (bs) => bs.map((b) => b.getBoundingClientRect().height));
-  verificar(indicadores.length === 4 && indicadores.every((h) => h >= 24), `Carrusel (${nombre}) · 4 indicadores accesibles (≥ 24 px de área)`);
+  verificar(botonesControl.join() === 'Diapositiva anterior,Diapositiva siguiente', `Banner (${nombre}) · solo dos flechas discretas, sin botón de pausa (${botonesControl.join(', ') || 'ninguna'})`);
+  const flechas = await page.$$eval('[data-bi-anterior], [data-bi-siguiente]', (bs) => bs.map((b) => { const r = b.getBoundingClientRect(); const v = b.querySelector('svg').getBoundingClientRect(); return { area: Math.min(r.width, r.height), icono: Math.max(v.width, v.height) }; }));
+  verificar(flechas.every((f) => f.area >= 44 && f.icono <= 20), `Banner (${nombre}) · flechas con ícono chico (≤ 20 px) y área táctil de 44 px`);
+  const indicadores = await page.$$eval('[data-bi-indicador]', (bs) => bs.map((b) => b.getBoundingClientRect().height));
+  verificar(n >= 2 && indicadores.length === n && indicadores.every((h) => h >= 24), `Banner (${nombre}) · ${n} indicadores accesibles (≥ 24 px de área)`);
 
-  await page.focus('[data-carrusel]');
+  // El texto nunca tapa la imagen: al costado (computadora) o debajo (celular), salvo el recuadro chico.
+  const solapes = await page.$$eval('[data-bi-diapo]', (ds) => ds.map((d) => {
+    d.classList.add('activa');
+    const m = d.querySelector('.bi__media').getBoundingClientRect();
+    const t = d.querySelector('.bi__texto').getBoundingClientRect();
+    const ancho = Math.max(0, Math.min(m.right, t.right) - Math.max(m.left, t.left));
+    const alto = Math.max(0, Math.min(m.bottom, t.bottom) - Math.max(m.top, t.top));
+    const tapa = (ancho * alto) / (m.width * m.height);
+    const res = { diseno: [...d.classList].find((k) => k.startsWith('bi__diapo--') && k !== 'bi__diapo--completa' && k !== 'bi__diapo--con-movil'), tapa: Math.round(tapa * 100) };
+    d.classList.remove('activa');
+    return res;
+  }));
+  await page.evaluate(() => document.querySelectorAll('[data-bi-diapo]').forEach((d, i) => d.classList.toggle('activa', i === 0)));
+  for (const s of solapes) {
+    const max = s.diseno === 'bi__diapo--tarjeta' ? 30 : s.diseno === 'bi__diapo--solo-imagen' ? 100 : 0;
+    verificar(s.tapa <= max, `Banner (${nombre}) · ${s.diseno}: el texto tapa ${s.tapa}% de la imagen (máx. ${max}%)`);
+  }
+  const completas = await page.$$eval('.bi__diapo--completa .bi__img', (is) => is.map((i) => getComputedStyle(i).objectFit));
+  verificar(completas.every((f) => f === 'contain'), `Banner (${nombre}) · las piezas con texto se ven completas, sin recorte (${completas.join(', ')})`);
+
+  await page.focus('copol-banner');
   await page.keyboard.press('ArrowRight');
   await page.waitForTimeout(100);
-  verificar((await activa()) === 1, `Carrusel (${nombre}) · flecha derecha avanza`);
+  verificar((await activa()) === 1, `Banner (${nombre}) · flecha derecha avanza`);
   await page.keyboard.press('ArrowLeft');
   await page.waitForTimeout(100);
-  verificar((await activa()) === 0, `Carrusel (${nombre}) · flecha izquierda retrocede`);
+  verificar((await activa()) === 0, `Banner (${nombre}) · flecha izquierda retrocede`);
 
-  const caja = await page.locator('[data-mazo]').boundingBox();
+  const caja = await page.locator('[data-bi-diapo].activa .bi__media').boundingBox();
   const y = caja.y + caja.height / 2;
   await page.mouse.move(caja.x + caja.width * 0.8, y);
   await page.mouse.down();
   await page.mouse.move(caja.x + caja.width * 0.2, y, { steps: 6 });
   await page.mouse.up();
   await page.waitForTimeout(100);
-  verificar((await activa()) === 1, `Carrusel (${nombre}) · deslizar hacia la izquierda avanza`);
-  await page.click('[data-indicador="3"]');
-  verificar((await activa()) === 3, `Carrusel (${nombre}) · indicador 4 lleva a la diapositiva 4`);
-  await page.click('[data-siguiente]');
-  verificar((await activa()) === 0, `Carrusel (${nombre}) · flecha "siguiente" avanza (de la 4 vuelve a la 1)`);
-  await page.click('[data-anterior]');
-  verificar((await activa()) === 3, `Carrusel (${nombre}) · flecha "anterior" retrocede`);
-  // Avance automático: con el puntero fuera del carrusel, cambia solo a los ~2,5 s y sigue en bucle.
+  verificar((await activa()) === 1, `Banner (${nombre}) · deslizar hacia la izquierda avanza`);
+  await page.click(`[data-bi-indicador="${n - 1}"]`);
+  verificar((await activa()) === n - 1, `Banner (${nombre}) · el último indicador lleva a la última diapositiva`);
+  await page.click('[data-bi-siguiente]');
+  verificar((await activa()) === 0, `Banner (${nombre}) · "siguiente" desde la última vuelve a la primera`);
+  await page.click('[data-bi-anterior]');
+  verificar((await activa()) === n - 1, `Banner (${nombre}) · "anterior" retrocede`);
+  // Avance automático (6 s por diapositiva) con el puntero y el foco fuera del banner.
   await page.mouse.move(2, vp.height - 2);
   await page.evaluate(() => document.activeElement?.blur());
   const t0 = await activa();
-  await page.waitForTimeout(1800);
+  await page.waitForTimeout(4000);
   const t1 = await activa();
-  await page.waitForTimeout(1400);
-  const t2 = await activa();
-  verificar(t1 === t0 && t2 === (t0 + 1) % 4, `Carrusel (${nombre}) · avanza solo cada 2,5 s (${t0} → ${t1} → ${t2})`);
   await page.waitForTimeout(2600);
-  verificar((await activa()) === (t0 + 2) % 4, `Carrusel (${nombre}) · el avance automático sigue tras usar las flechas`);
+  const t2 = await activa();
+  verificar(t1 === t0 && t2 === (t0 + 1) % n, `Banner (${nombre}) · avanza solo cada 6 s (${t0} → ${t1} → ${t2})`);
+  // Con el puntero encima se detiene.
+  await page.mouse.move(caja.x + caja.width / 2, y);
+  const t3 = await activa();
+  await page.waitForTimeout(6800);
+  verificar((await activa()) === t3, `Banner (${nombre}) · se detiene con el puntero encima`);
   await page.close();
 }
 {
   const ctx = await browser.newContext({ reducedMotion: 'reduce', viewport: VIEWPORTS.escritorio });
   const page = await ctx.newPage();
   await page.goto(`${BASE}/`, { waitUntil: 'networkidle' });
-  const auto = await page.evaluate(() => document.querySelector('[data-carrusel]').classList.contains('hero--auto'));
-  verificar(!auto, 'Carrusel · con movimiento reducido no avanza solo');
+  await page.waitForSelector('copol-banner.bi--js');
+  const auto = await page.evaluate(() => document.querySelector('copol-banner').classList.contains('bi--auto'));
+  verificar(!auto, 'Banner · con movimiento reducido no avanza solo');
   await ctx.close();
 }
 
@@ -319,7 +366,7 @@ for (const [nombre, vp] of Object.entries(VIEWPORTS)) {
     verificar(desborde <= 0, `Sin desplazamiento horizontal (${nombre}) ${ruta}${desborde > 0 ? ` (+${desborde}px)` : ''}`);
     const problemas = await page.evaluate(() =>
       [...document.querySelectorAll('main img')]
-        .filter((img) => img.getBoundingClientRect().width > 40 && !img.closest('[aria-hidden="true"]:not([data-mazo])'))
+        .filter((img) => img.getBoundingClientRect().width > 40 && !img.closest('[aria-hidden="true"]') && img.getAttribute('aria-hidden') !== 'true')
         .map((img) => {
           const r = img.getBoundingClientRect();
           const s = getComputedStyle(img);
@@ -334,8 +381,8 @@ for (const [nombre, vp] of Object.entries(VIEWPORTS)) {
     for (const p of problemas) fallos.push(`Imagen (${nombre}) ${ruta} [${p.img}] ${p.deforma ? 'deformada' : `recorte ${p.corte}%`}`);
     if (axe) {
       await page.addScriptTag({ content: axe });
-      // El carrusel de Inicio cambia solo: se pausa (como con el puntero encima) para medir un estado estable.
-      await page.evaluate(() => document.querySelectorAll('[data-carrusel]').forEach((c) => c.dispatchEvent(new Event('mouseenter'))));
+      // El banner de Inicio cambia solo: se pausa (como con el puntero encima) para medir un estado estable.
+      await page.evaluate(() => document.querySelectorAll('copol-banner').forEach((c) => c.dispatchEvent(new Event('mouseenter'))));
       await page.waitForTimeout(900); // estado final de las transiciones (contraste real)
       const violaciones = await page.evaluate(async () => {
         const r = await window.axe.run(document, { runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa', 'best-practice'] } });

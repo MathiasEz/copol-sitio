@@ -12,6 +12,7 @@ import { cargarConfig } from '../src/config.ts';
 import { ahora, conectar, una, type Db } from '../src/db.ts';
 import { almacenConfigurado } from '../src/imagenes.ts';
 import { novedadesPublicadas } from '../src/novedades.ts';
+import { htmlBanner, obtenerBanner, vigentes } from '../src/banner.ts';
 import { crearUsuario } from '../src/usuarios.ts';
 import { guardarPin } from '../src/acceso.ts';
 import { BASE as RUTA } from '../src/config.ts';
@@ -109,7 +110,7 @@ after(async () => {
 describe('autenticación', () => {
   it('sin sesión redirige al ingreso, también en rutas internas', async () => {
     const n = new Navegador();
-    for (const ruta of [`${RUTA}`, `${RUTA}/productos`, `${RUTA}/usuarios`, `${RUTA}/novedades`, `${RUTA}/registro`, `${RUTA}/nuevo`, `${RUTA}/perfil`]) {
+    for (const ruta of [`${RUTA}`, `${RUTA}/productos`, `${RUTA}/usuarios`, `${RUTA}/novedades`, `${RUTA}/banner`, `${RUTA}/registro`, `${RUTA}/nuevo`, `${RUTA}/perfil`]) {
       const r = await n.pedir(ruta);
       assert.equal(r.status, 302, ruta);
       assert.match(r.headers.get('location')!, new RegExp(`^${RUTA}/ingresar`));
@@ -165,13 +166,13 @@ describe('autorización por rol (del lado del servidor)', () => {
     await n.ingresar('lector');
     assert.equal((await n.pedir(`${RUTA}/productos?q=parlante`)).status, 200);
     assert.equal((await n.post(`${RUTA}/productos/parlante-1/stock`, { estado: 'sin-stock' })).status, 403);
-    for (const ruta of [`${RUTA}/nuevo`, `${RUTA}/usuarios`, `${RUTA}/novedades`]) assert.equal((await n.pedir(ruta)).status, 403, ruta);
+    for (const ruta of [`${RUTA}/nuevo`, `${RUTA}/usuarios`, `${RUTA}/novedades`, `${RUTA}/banner`]) assert.equal((await n.pedir(ruta)).status, 403, ruta);
     assert.equal((await fila<{ stock_estado: string }>("SELECT stock_estado FROM productos WHERE id = 'parlante-1'"))!.stock_estado, 'con-stock');
   });
   it('el editor no administra usuarios, novedades ni registro', async () => {
     const n = new Navegador();
     await n.ingresar('editor');
-    for (const ruta of [`${RUTA}/usuarios`, `${RUTA}/registro`, `${RUTA}/novedades`]) assert.equal((await n.pedir(ruta)).status, 403, ruta);
+    for (const ruta of [`${RUTA}/usuarios`, `${RUTA}/registro`, `${RUTA}/novedades`, `${RUTA}/banner`, `${RUTA}/banner/nueva`]) assert.equal((await n.pedir(ruta)).status, 403, ruta);
     await n.pedir(`${RUTA}/productos`);
     assert.equal((await n.post(`${RUTA}/usuarios`, { usuario: 'xx-1', rol: 'administrador', clave: 'Clave-Larga-123!' })).status, 403);
   });
@@ -300,6 +301,70 @@ describe('productos e imágenes', () => {
   });
   it('no sirve archivos fuera de la carpeta de imágenes', async () => {
     for (const ruta of [`${RUTA}/media/..%2F..%2Fprueba.db`, `${RUTA}/media/productos/..%2F..%2Fprueba.db`]) assert.equal((await app.request(BASE + ruta)).status, 404, ruta);
+  });
+});
+
+describe('administración página: banner de inicio', () => {
+  it('muestra el contenido inicial con vista previa y lo edita, ordena, programa y elimina', async () => {
+    const n = new Navegador();
+    await n.ingresar('principal');
+    // Sin guardar nada, el banner es el inicial (las cuatro diapositivas del carrusel anterior).
+    const inicial = await obtenerBanner(db);
+    assert.equal(inicial.diapositivas.length, 4);
+    const lista = await (await n.pedir(`${RUTA}/banner`)).text();
+    assert.match(lista, /Administración Página/);
+    assert.match(lista, /<copol-banner class="bi"/);
+    assert.match(lista, /\/panel-recursos\/banner-inicio\.css/);
+    assert.doesNotMatch(lista, /style="/, 'sin estilos en línea: la política de seguridad del panel los bloquea');
+
+    await n.pedir(`${RUTA}/banner/nueva`);
+    // Validaciones: imagen obligatoria, enlaces seguros, sin precios y descripción para "Solo imagen".
+    assert.match(await (await n.post(`${RUTA}/banner/nueva`, { titulo: 'Sin imagen', diseno: 'lateral' })).text(), /Subí la imagen/);
+    assert.match(await (await n.post(`${RUTA}/banner/nueva`, { titulo: 'Enlace malo', diseno: 'lateral', imagen: await png(1600, 900), boton1_texto: 'Ir', boton1_url: 'javascript:alert(1)' })).text(), /https:\/\//);
+    assert.match(await (await n.post(`${RUTA}/banner/nueva`, { titulo: 'Oferta', texto: 'Ahora a $ 990', diseno: 'lateral', imagen: await png(1600, 900) })).text(), /no publica precios/);
+    assert.match(await (await n.post(`${RUTA}/banner/nueva`, { titulo: 'Pieza', diseno: 'solo-imagen', imagen: await png(1600, 900) })).text(), /descripción es obligatoria/);
+    assert.match(await (await n.post(`${RUTA}/banner/nueva`, { titulo: 'Fechas', diseno: 'lateral', imagen: await png(1600, 900), desde: '2026-12-10', hasta: '2026-12-01' })).text(), /anterior a la de inicio/);
+
+    const r = await n.post(`${RUTA}/banner/nueva`, {
+      antetitulo: 'Verano', titulo: 'Nueva temporada', resaltado: 'en Pinecoop', texto: 'Reservá tu cabaña <b>ya</b>.', diseno: 'tarjeta', foco: 'abajo', completa: '1',
+      boton1_texto: 'Reservar', boton1_url: '/beneficios/servicios-sociales/pinecoop/', imagen: await png(1600, 900), imagen_movil: await png(900, 900), alt: 'Cabañas de Pinecoop', publicado: '1',
+    });
+    assert.equal(r.status, 302);
+    let banner = await obtenerBanner(db);
+    assert.equal(banner.diapositivas.length, 5);
+    const nueva = banner.diapositivas.at(-1)!;
+    assert.deepEqual([nueva.diseno, nueva.foco, nueva.completa, nueva.boton1?.texto, nueva.boton2], ['tarjeta', 'abajo', true, 'Reservar', null]);
+    assert.match(nueva.imagen, /\/media\/banner\/nueva-temporada-[0-9a-f]{10}-1600\.webp$/);
+    assert.match(nueva.imagenMovil, /nueva-temporada-celular-[0-9a-f]{10}-1600\.webp$/);
+    // El HTML escapa el texto cargado.
+    const html = htmlBanner(vigentes(banner), { segundos: banner.segundos });
+    assert.match(html, /Reservá tu cabaña &lt;b&gt;ya&lt;\/b&gt;\./);
+    assert.match(html, /<source media="\(max-width: 783px\)"/);
+
+    // Orden, despublicación y fechas.
+    assert.equal((await n.post(`${RUTA}/banner/${nueva.id}/mover`, { direccion: 'arriba' })).status, 302);
+    banner = await obtenerBanner(db);
+    assert.equal(banner.diapositivas.at(-2)!.id, nueva.id);
+    assert.equal((await n.post(`${RUTA}/banner/${nueva.id}/publicar`, { publicado: '0' })).status, 302);
+    assert.ok(!vigentes(await obtenerBanner(db)).some((d) => d.id === nueva.id));
+    await n.pedir(`${RUTA}/banner/${nueva.id}`);
+    assert.equal((await n.post(`${RUTA}/banner/${nueva.id}`, { titulo: 'Nueva temporada', diseno: 'lateral', publicado: '1', desde: '2099-01-01', quitar_movil: '1' })).status, 302);
+    banner = await obtenerBanner(db);
+    const editada = banner.diapositivas.find((d) => d.id === nueva.id)!;
+    assert.deepEqual([editada.diseno, editada.imagenMovil, editada.imagen], ['lateral', '', nueva.imagen], 'conserva la imagen y quita la del celular');
+    assert.ok(!vigentes(banner).some((d) => d.id === nueva.id), 'programada para más adelante');
+    assert.match(await (await n.pedir(`${RUTA}/banner`)).text(), /Desde el/);
+
+    // Tiempo entre diapositivas (4 a 12 s).
+    assert.equal((await n.post(`${RUTA}/banner/ajustes`, { segundos: '30' })).headers.get('location'), `${RUTA}/banner?aviso=banner-segundos`);
+    await n.post(`${RUTA}/banner/ajustes`, { segundos: '8' });
+    assert.equal((await obtenerBanner(db)).segundos, 8);
+
+    await n.pedir(`${RUTA}/banner/${nueva.id}`);
+    assert.equal((await n.post(`${RUTA}/banner/${nueva.id}/eliminar`, {})).status, 302);
+    assert.equal((await obtenerBanner(db)).diapositivas.length, 4);
+    const acciones = (await db.execute("SELECT accion FROM auditoria WHERE accion LIKE 'banner.%'")).rows.map((x) => x.accion);
+    for (const a of ['banner.alta', 'banner.orden', 'banner.despublicacion', 'banner.edicion', 'banner.ajustes', 'banner.baja']) assert.ok(acciones.includes(a), a);
   });
 });
 

@@ -1,0 +1,15 @@
+---
+// Banner de Inicio (server island: se genera en el servidor y la CDN lo guarda hasta el próximo cambio
+// en el panel; ver src/lib/cache-publica.ts). Diapositivas, textos, botones, diseño y tiempos se editan
+// en el panel, en "Administración Página → Banner de inicio". Solo se muestran las publicadas y vigentes.
+// Estilos (src/styles/banner-inicio.css) y comportamiento (src/scripts/banner-inicio.js) se cargan desde
+// src/pages/index.astro.
+import { htmlBanner, obtenerBannerPublico, vigentes } from '../lib/banner';
+import { cachearEnCdn, ETIQUETAS_WEB, sinCache } from '../lib/cache-publica';
+
+const { banner, enVivo } = await obtenerBannerPublico();
+if (enVivo) cachearEnCdn(Astro.response.headers, ETIQUETAS_WEB.banner);
+else sinCache(Astro.response.headers);
+const html = htmlBanner(vigentes(banner), { segundos: banner.segundos, prioridad: true });
+---
+{html && <div class="contenedor banner-inicio"><Fragment set:html={html} /></div>}

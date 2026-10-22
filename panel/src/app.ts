@@ -15,12 +15,13 @@ import { BASE, type Config } from './config.ts';
 import { ahora, ejecutar, una, type Db } from './db.ts';
 import { almacenConfigurado, ErrorImagen, procesarImagen, variante, type Almacen } from './imagenes.ts';
 import * as N from './novedades.ts';
+import * as B from './banner.ts';
 import * as E from './empleados.ts';
 import * as P from './productos.ts';
 import * as PR from './propuestas.ts';
 import { hashFicticio, Limitador, problemaClave, puede, tokenAleatorio, verificarClave, type Permiso } from './seguridad.ts';
 import * as U from './usuarios.ts';
-import { correoValido, leerCantidad, rutaInterna, texto, validarNovedad, validarProducto, validarUsuarioNuevo, type Campos } from './validacion.ts';
+import { correoValido, leerCantidad, rutaInterna, texto, validarDiapositiva, validarNovedad, validarProducto, validarUsuarioNuevo, type Campos } from './validacion.ts';
 import * as V from './vistas.ts';
 
 type Vars = { usuario: U.UsuarioPublico | null; sesion: U.Sesion | null; csrf: string; ip: string | null; origen: AC.Origen; db: Db };
@@ -36,6 +37,13 @@ const AVISOS: Record<string, V.Contexto['aviso']> = {
   'novedad-publicada': { tipo: 'ok', texto: 'Novedad publicada en la portada.' },
   'novedad-despublicada': { tipo: 'ok', texto: 'Novedad retirada de la portada.' },
   'novedad-eliminada': { tipo: 'ok', texto: 'Novedad eliminada.' },
+  'banner-guardado': { tipo: 'ok', texto: 'Diapositiva guardada. La portada ya muestra el cambio.' },
+  'banner-publicada': { tipo: 'ok', texto: 'Diapositiva publicada en el banner de Inicio.' },
+  'banner-despublicada': { tipo: 'ok', texto: 'Diapositiva retirada del banner de Inicio.' },
+  'banner-eliminada': { tipo: 'ok', texto: 'Diapositiva eliminada.' },
+  'banner-ajustes': { tipo: 'ok', texto: 'Tiempo de cada diapositiva guardado.' },
+  'banner-segundos': { tipo: 'error', texto: 'Elegí un tiempo entre 4 y 12 segundos.' },
+  'banner-maximo': { tipo: 'error', texto: 'El banner ya tiene el máximo de diapositivas: eliminá una para agregar otra.' },
   'usuario-creado': { tipo: 'ok', texto: 'Usuario agregado.' },
   'usuario-guardado': { tipo: 'ok', texto: 'Usuario actualizado.' },
   'usuario-eliminado': { tipo: 'ok', texto: 'Usuario eliminado.' },
@@ -545,6 +553,104 @@ export function crearApp({ db: fuenteDb, config, almacen, asistente, correo }: O
     const p = await P.crearProducto(db, id, datos, imagen, c.get('usuario')!.usuario);
     await registrar(db, actor(c), 'producto.alta', 'producto', id, { nombre: p.nombre, codigo: p.codigo, categoria: p.categoria_id, estado: p.stock_estado, cantidad: p.stock_cantidad });
     return c.redirect(`${r(`/productos/${encodeURIComponent(id)}`)}?aviso=producto-creado`);
+  });
+
+  // ── Administración Página: banner de Inicio ──
+  const bannerDe = async (c: C) => {
+    const banner = await B.obtenerBanner(c.get('db'));
+    return { banner, diapo: banner.diapositivas.find((d) => d.id === c.req.param('id')) ?? null };
+  };
+  app.get('/banner', requiere('novedades'), async (c) => c.html(V.vistaBanner(ctx(c), await B.obtenerBanner(c.get('db')))));
+  app.get('/banner/nueva', requiere('novedades'), async (c) => {
+    const banner = await B.obtenerBanner(c.get('db'));
+    if (banner.diapositivas.length >= B.MAX_DIAPOSITIVAS) return c.redirect(`${r('/banner')}?aviso=banner-maximo`);
+    return c.html(V.vistaFormBanner(ctx(c), B.diapositivaVacia(), {}, false, banner.segundos));
+  });
+  app.post('/banner/ajustes', requiere('novedades'), async (c) => {
+    const db = c.get('db');
+    const segundos = Number(texto((await cuerpo(c)).segundos, 3));
+    if (!Number.isInteger(segundos) || segundos < B.SEGUNDOS.min || segundos > B.SEGUNDOS.max) return c.redirect(`${r('/banner')}?aviso=banner-segundos`);
+    const banner = await B.obtenerBanner(db);
+    if (banner.segundos !== segundos) {
+      const antes = banner.segundos;
+      banner.segundos = segundos;
+      await B.guardarBanner(db, banner);
+      await registrar(db, actor(c), 'banner.ajustes', 'banner', null, { antes, despues: segundos });
+    }
+    return c.redirect(`${r('/banner')}?aviso=banner-ajustes`);
+  });
+
+  const guardarDiapositiva = async (c: C, existente: B.Diapositiva | null) => {
+    const db = c.get('db');
+    const b = await cuerpo(c);
+    const archivo = b.imagen instanceof File && b.imagen.size > 0 ? b.imagen : null;
+    const archivoMovil = b.imagen_movil instanceof File && b.imagen_movil.size > 0 ? b.imagen_movil : null;
+    const { datos, errores } = validarDiapositiva(b, Boolean(archivo || existente?.imagen));
+    let imagen = existente?.imagen ?? '';
+    let imagenMovil = b.quitar_movil === '1' ? '' : existente?.imagenMovil ?? '';
+    const nombre = slug(datos.titulo).slice(0, 40) || 'banner';
+    if (!Object.keys(errores).length) {
+      for (const [campo, f] of [['imagen', archivo], ['imagen_movil', archivoMovil]] as const) {
+        if (!f) continue;
+        try {
+          const url = await procesarImagen(f, { maxMB: config.maxImagenMB, tipo: 'novedad', carpeta: 'banner', nombre: campo === 'imagen' ? nombre : `${nombre}-celular`, almacen: guardarEn });
+          if (campo === 'imagen') imagen = url;
+          else imagenMovil = url;
+        } catch (e) {
+          if (!(e instanceof ErrorImagen)) throw e;
+          errores[campo] = e.message;
+        }
+      }
+    }
+    const diapo: B.Diapositiva = { ...datos, id: existente?.id ?? B.nuevoId(), imagen, imagenMovil, actualizado_en: ahora(), actualizado_por: c.get('usuario')!.usuario };
+    const banner = await B.obtenerBanner(db);
+    if (!existente && banner.diapositivas.length >= B.MAX_DIAPOSITIVAS) errores.titulo = `El banner admite hasta ${B.MAX_DIAPOSITIVAS} diapositivas: eliminá una para agregar otra.`;
+    if (Object.keys(errores).length) {
+      // La vista previa vuelve a mostrar las imágenes ya guardadas (un archivo elegido hay que volver a elegirlo).
+      return c.html(V.vistaFormBanner(ctx(c), { ...diapo, imagen: existente?.imagen ?? '', imagenMovil: existente?.imagenMovil ?? '' }, errores, Boolean(existente), banner.segundos), 400);
+    }
+    banner.diapositivas = existente ? banner.diapositivas.map((d) => (d.id === existente.id ? diapo : d)) : [...banner.diapositivas, diapo];
+    await B.guardarBanner(db, banner);
+    await registrar(db, actor(c), existente ? 'banner.edicion' : 'banner.alta', 'banner', diapo.id, { titulo: B.tituloCompleto(diapo), publicado: diapo.publicado, diseno: diapo.diseno });
+    return c.redirect(`${r('/banner')}?aviso=banner-guardado`);
+  };
+  app.post('/banner/nueva', requiere('novedades'), (c) => guardarDiapositiva(c, null));
+  app.get('/banner/:id', requiere('novedades'), async (c) => {
+    const { banner, diapo } = await bannerDe(c);
+    return diapo ? c.html(V.vistaFormBanner(ctx(c), diapo, {}, true, banner.segundos)) : c.notFound();
+  });
+  app.post('/banner/:id', requiere('novedades'), async (c) => {
+    const { diapo } = await bannerDe(c);
+    return diapo ? guardarDiapositiva(c, diapo) : c.notFound();
+  });
+  app.post('/banner/:id/publicar', requiere('novedades'), async (c) => {
+    const { banner, diapo } = await bannerDe(c);
+    if (!diapo) return c.notFound();
+    diapo.publicado = (await cuerpo(c)).publicado === '1';
+    await B.guardarBanner(c.get('db'), banner);
+    await registrar(c.get('db'), actor(c), diapo.publicado ? 'banner.publicacion' : 'banner.despublicacion', 'banner', diapo.id, { titulo: B.tituloCompleto(diapo) });
+    return c.redirect(`${r('/banner')}?aviso=${diapo.publicado ? 'banner-publicada' : 'banner-despublicada'}`);
+  });
+  app.post('/banner/:id/mover', requiere('novedades'), async (c) => {
+    const { banner, diapo } = await bannerDe(c);
+    if (!diapo) return c.notFound();
+    const dir = (await cuerpo(c)).direccion === 'arriba' ? 'arriba' : 'abajo';
+    const i = banner.diapositivas.indexOf(diapo);
+    const j = dir === 'arriba' ? i - 1 : i + 1;
+    if (j >= 0 && j < banner.diapositivas.length) {
+      [banner.diapositivas[i], banner.diapositivas[j]] = [banner.diapositivas[j], banner.diapositivas[i]];
+      await B.guardarBanner(c.get('db'), banner);
+      await registrar(c.get('db'), actor(c), 'banner.orden', 'banner', diapo.id, { titulo: B.tituloCompleto(diapo), direccion: dir });
+    }
+    return c.redirect(r('/banner'));
+  });
+  app.post('/banner/:id/eliminar', requiere('novedades'), async (c) => {
+    const { banner, diapo } = await bannerDe(c);
+    if (!diapo) return c.notFound();
+    banner.diapositivas = banner.diapositivas.filter((d) => d.id !== diapo.id);
+    await B.guardarBanner(c.get('db'), banner);
+    await registrar(c.get('db'), actor(c), 'banner.baja', 'banner', diapo.id, { titulo: B.tituloCompleto(diapo) });
+    return c.redirect(`${r('/banner')}?aviso=banner-eliminada`);
   });
 
   // ── Novedades ──

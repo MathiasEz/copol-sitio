@@ -1,11 +1,13 @@
 ---
-// Carrusel de ofertas del supermercado (piezas 4:5 con precio).
-// - Avanza solo, una pieza a la vez, con un leve desplazamiento y desenfoque de movimiento.
-// - Se detiene con el puntero encima y continúa al retirarlo; se detiene con el foco del teclado
-//   y continúa al salir. Con prefers-reduced-motion no avanza solo ni desenfoca.
-// - Controles discretos: barra de progreso por páginas (botones accesibles), contador "N de M",
-//   flechas ←/→ con el carrusel enfocado y deslizamiento táctil (scroll nativo con imán).
-// - Sin JS: es una fila desplazable con todas las piezas.
+// Carrusel de ofertas del supermercado (piezas 4:5 con precio): cinta continua.
+// - Las piezas se deslizan solas, de forma continua y en bucle sin cortes (se duplican como copias
+//   decorativas). La velocidad depende del ancho de cada pieza: cada una tarda ~5 s en pasar.
+// - Con el puntero encima (o el foco del teclado) la cinta frena con suavidad hasta detenerse y retoma
+//   con la misma suavidad al salir. La pieza bajo el puntero se eleva.
+// - Se puede arrastrar con el mouse o deslizar con el dedo (con inercia), usar las flechas ←/→ con la
+//   cinta enfocada. Sin botones de avanzar ni pausar (pedido de la cooperativa): se detiene con el puntero,
+//   con el foco del teclado y mientras se arrastra.
+// - Con prefers-reduced-motion no avanza sola. Sin JS: fila desplazable con encastre.
 import { Image } from 'astro:assets';
 import type { ImageMetadata } from 'astro';
 import type { Oferta } from '../data/confirmado/ofertas-supermercado';
@@ -19,146 +21,190 @@ const imagenes = import.meta.glob<{ default: ImageMetadata }>('../assets/ofertas
 const imagen = (n: string) => imagenes[`../assets/ofertas/${n}.webp`].default;
 ---
 <div class="ofertas" data-ofertas role="region" aria-roledescription="carrusel" aria-label={titulo}>
-  <ul class="ofertas__pista" data-pista tabindex="0" aria-label="Ofertas: usá las flechas izquierda y derecha para recorrerlas">
-
-    {ofertas.map((o, i) => (
-      <li class="oferta" aria-roledescription="diapositiva" aria-label={`${i + 1} de ${ofertas.length}`}>
-        <Image
-          src={imagen(o.imagen)}
-          alt={`Oferta de octubre: ${o.producto}, a ${o.precio}.`}
-          widths={[280, 400, 560]}
-          sizes="(min-width: 1200px) 280px, (min-width: 900px) 24vw, (min-width: 600px) 36vw, 72vw"
-          loading={i < 4 ? 'eager' : 'lazy'}
-          decoding="async"
-          class="oferta__img"
-        />
-      </li>
-    ))}
-  </ul>
-  <div class="ofertas__pie">
-    <div class="ofertas__puntos" data-puntos role="group" aria-label="Elegir grupo de ofertas"></div>
-    <p class="ofertas__contador" aria-live="polite" data-contador>{ofertas.length} ofertas</p>
+  <div class="ofertas__ventana" data-ventana tabindex="0" aria-label="Ofertas: se desplazan solas; pasá el mouse para detenerlas o usá las flechas izquierda y derecha">
+    <ul class="ofertas__pista" data-pista>
+      {ofertas.map((o, i) => (
+        <li class="oferta" aria-roledescription="diapositiva" aria-label={`${o.producto}`}>
+          <Image
+            src={imagen(o.imagen)}
+            alt={`Oferta de octubre: ${o.producto}, a ${o.precio}.`}
+            widths={[280, 400, 560]}
+            sizes="(min-width: 1200px) 280px, (min-width: 900px) 24vw, (min-width: 600px) 36vw, 72vw"
+            loading={i < 5 ? 'eager' : 'lazy'}
+            decoding="async"
+            draggable="false"
+            class="oferta__img"
+          />
+        </li>
+      ))}
+    </ul>
   </div>
+  <p class="ofertas__ayuda" data-ayuda hidden>{ofertas.length} ofertas · pasá el mouse por encima para detenerlas</p>
 </div>
 
 <script>
   document.querySelectorAll<HTMLElement>('[data-ofertas]').forEach((raiz) => {
+    const ventana = raiz.querySelector<HTMLElement>('[data-ventana]')!;
     const pista = raiz.querySelector<HTMLElement>('[data-pista]')!;
-    const items = [...pista.children] as HTMLElement[];
-    const puntos = raiz.querySelector<HTMLElement>('[data-puntos]')!;
-    const contador = raiz.querySelector<HTMLElement>('[data-contador]')!;
+    const originales = [...pista.children] as HTMLElement[];
+    if (originales.length < 2) return;
+    const SEGUNDOS_POR_PIEZA = 5;
     const reducido = matchMedia('(prefers-reduced-motion: reduce)');
-    const INTERVALO = 3200;
-    let porVista = 1;
-    let paginas = 1;
-    let temporizador: number | undefined;
-    let pausaPuntero = false;
-    let pausaFoco = false;
 
-    const paso = () => items[1] ? items[1].offsetLeft - items[0].offsetLeft : pista.clientWidth;
-    const indice = () => Math.round(pista.scrollLeft / paso());
-    const ultimo = () => Math.max(0, items.length - porVista);
-
-    function medir() {
-      porVista = Math.max(1, Math.round(pista.clientWidth / paso()));
-      paginas = Math.ceil(items.length / porVista);
-      puntos.replaceChildren();
-      // En pantallas angostas (una pieza por vista) se muestra solo el contador.
-      if (porVista > 1) {
-        for (let p = 0; p < paginas; p++) {
-          const b = document.createElement('button');
-          b.type = 'button';
-          b.className = 'ofertas__punto';
-          b.setAttribute('aria-label', `Ver ofertas ${p * porVista + 1} a ${Math.min(items.length, (p + 1) * porVista)}`);
-          b.innerHTML = '<span></span>';
-          b.addEventListener('click', () => ir(p * porVista));
-          puntos.append(b);
-        }
-      }
-      actualizar();
+    // Copias para el bucle (decorativas: ocultas para lectores de pantalla y fuera del orden de tabulación).
+    for (let vuelta = 0; vuelta < 2; vuelta++) {
+      originales.forEach((li) => {
+        const copia = li.cloneNode(true) as HTMLElement;
+        copia.setAttribute('aria-hidden', 'true');
+        copia.removeAttribute('aria-label');
+        copia.querySelectorAll('img').forEach((img) => { img.alt = ''; img.loading = 'lazy'; });
+        pista.append(copia);
+      });
     }
-
-    function actualizar() {
-      const i = indice();
-      const pagina = Math.min(paginas - 1, Math.floor((i + porVista - 1) / porVista));
-      [...puntos.children].forEach((b, p) => b.setAttribute('aria-current', String(p === pagina)));
-      const hasta = Math.min(items.length, i + porVista);
-      contador.textContent = porVista > 1 ? `Ofertas ${i + 1} a ${hasta} de ${items.length}` : `Oferta ${i + 1} de ${items.length}`;
-    }
-
-    function ir(i: number) {
-      const destino = Math.max(0, Math.min(ultimo(), i));
-      if (!reducido.matches) {
-        raiz.classList.add('ofertas--moviendo');
-        window.setTimeout(() => raiz.classList.remove('ofertas--moviendo'), 520);
-      }
-      pista.scrollTo({ left: destino * paso(), behavior: reducido.matches ? 'auto' : 'smooth' });
-    }
-
-    const pausado = () => pausaPuntero || pausaFoco || reducido.matches || document.hidden;
-    function programar() {
-      window.clearTimeout(temporizador);
-      if (pausado()) return;
-      temporizador = window.setTimeout(() => {
-        if (!pausado()) ir(indice() >= ultimo() ? 0 : indice() + 1);
-        programar();
-      }, INTERVALO);
-    }
-
-    raiz.addEventListener('pointerenter', (e) => { if (e.pointerType === 'mouse') { pausaPuntero = true; programar(); } });
-    raiz.addEventListener('pointerleave', (e) => { if (e.pointerType === 'mouse') { pausaPuntero = false; programar(); } });
-    raiz.addEventListener('focusin', () => { pausaFoco = true; programar(); });
-    raiz.addEventListener('focusout', (e) => { if (!raiz.contains(e.relatedTarget as Node)) { pausaFoco = false; programar(); } });
-    // Al tocar o deslizar, se reinicia la espera para no "pelear" con el gesto.
-    pista.addEventListener('touchstart', () => programar(), { passive: true });
-    raiz.addEventListener('keydown', (e) => {
-      if (e.key === 'ArrowRight') { e.preventDefault(); ir(indice() + 1); }
-      if (e.key === 'ArrowLeft') { e.preventDefault(); ir(indice() - 1); }
-    });
-    let espera: number | undefined;
-    pista.addEventListener('scroll', () => { window.clearTimeout(espera); espera = window.setTimeout(actualizar, 60); }, { passive: true });
-    document.addEventListener('visibilitychange', programar);
-    reducido.addEventListener('change', programar);
-    new ResizeObserver(() => medir()).observe(pista);
     raiz.classList.add('ofertas--js');
-    medir();
-    programar();
+    raiz.querySelector<HTMLElement>('[data-ayuda]')!.hidden = false;
+
+    const paso = () => (pista.children[1] as HTMLElement).offsetLeft - (pista.children[0] as HTMLElement).offsetLeft;
+    const anchoSet = () => (pista.children[originales.length] as HTMLElement).offsetLeft - (pista.children[0] as HTMLElement).offsetLeft;
+
+    let x = 0;            // desplazamiento actual (px)
+    let v = 0;            // velocidad actual (px/s): se acerca de a poco a la velocidad objetivo
+    let encima = false;
+    let foco = false;
+    let arrastre: { id: number; x0: number; xInicio: number; ultimoX: number; ultimoT: number; vel: number } | null = null;
+    let inercia = 0;      // velocidad residual tras soltar (px/s)
+    let salto: { desde: number; hasta: number; t0: number; dur: number } | null = null;
+    let ultimo = 0;
+
+    const objetivo = () => (reducido.matches || encima || foco || arrastre || document.hidden ? 0 : paso() / SEGUNDOS_POR_PIEZA);
+    const envolver = () => {
+      const set = anchoSet();
+      if (set <= 0) return;
+      while (x >= set) x -= set;
+      while (x < 0) x += set;
+    };
+    const pintar = () => { pista.style.transform = `translate3d(${-x}px, 0, 0)`; };
+    const easeOutQuart = (t: number) => 1 - (1 - t) ** 4;
+
+    const cuadro = (t: number) => {
+      const dt = ultimo ? Math.min((t - ultimo) / 1000, 0.1) : 0;
+      ultimo = t;
+      if (salto) {
+        const p = Math.min(1, (t - salto.t0) / salto.dur);
+        x = salto.desde + (salto.hasta - salto.desde) * easeOutQuart(p);
+        if (p >= 1) salto = null;
+      } else if (!arrastre) {
+        // Aceleración y frenado suaves (~0,7 s) en vez de cortes bruscos.
+        v += (objetivo() - v) * (1 - Math.exp(-dt * 4));
+        if (Math.abs(inercia) > 1) {
+          x += inercia * dt;
+          inercia *= Math.exp(-dt * 3.5);
+        } else inercia = 0;
+        x += v * dt;
+      }
+      envolver();
+      pintar();
+      requestAnimationFrame(cuadro);
+    };
+
+    const saltar = (dir: 1 | -1) => {
+      const p = paso();
+      inercia = 0;
+      // Alinea al borde de la pieza más cercana en la dirección elegida.
+      const base = dir > 0 ? Math.floor(x / p + 0.05) * p : Math.ceil(x / p - 0.05) * p;
+      salto = { desde: x, hasta: base + dir * p, t0: performance.now(), dur: reducido.matches ? 1 : 650 };
+    };
+    ventana.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowRight') { e.preventDefault(); saltar(1); }
+      if (e.key === 'ArrowLeft') { e.preventDefault(); saltar(-1); }
+    });
+
+    // Pausa al pasar el mouse (solo puntero fino: en pantallas táctiles no hay "encima").
+    ventana.addEventListener('pointerenter', (e) => { if (e.pointerType === 'mouse') encima = true; });
+    ventana.addEventListener('pointerleave', (e) => { if (e.pointerType === 'mouse') encima = false; });
+    ventana.addEventListener('focusin', () => { foco = ventana.matches(':focus-visible'); });
+    ventana.addEventListener('focusout', () => { foco = false; });
+
+    // Arrastre con el mouse o deslizamiento con el dedo (el desplazamiento vertical de la página sigue libre).
+    ventana.addEventListener('pointerdown', (e) => {
+      if (e.button !== 0) return;
+      salto = null; inercia = 0; v = 0;
+      arrastre = { id: e.pointerId, x0: e.clientX, xInicio: x, ultimoX: e.clientX, ultimoT: performance.now(), vel: 0 };
+    });
+    ventana.addEventListener('pointermove', (e) => {
+      if (!arrastre || e.pointerId !== arrastre.id) return;
+      const dx = e.clientX - arrastre.x0;
+      if (Math.abs(dx) > 4 && !ventana.hasPointerCapture(e.pointerId)) {
+        ventana.setPointerCapture(e.pointerId);
+        raiz.classList.add('ofertas--arrastrando');
+      }
+      const ahora = performance.now();
+      const dt = (ahora - arrastre.ultimoT) / 1000;
+      if (dt > 0) arrastre.vel = 0.8 * ((arrastre.ultimoX - e.clientX) / dt) + 0.2 * arrastre.vel;
+      arrastre.ultimoX = e.clientX; arrastre.ultimoT = ahora;
+      x = arrastre.xInicio - dx;
+    });
+    const soltar = (e: PointerEvent) => {
+      if (!arrastre || e.pointerId !== arrastre.id) return;
+      inercia = Math.max(-2500, Math.min(2500, arrastre.vel));
+      arrastre = null;
+      raiz.classList.remove('ofertas--arrastrando');
+    };
+    ventana.addEventListener('pointerup', soltar);
+    ventana.addEventListener('pointercancel', soltar);
+    ventana.addEventListener('lostpointercapture', soltar);
+    ventana.addEventListener('dragstart', (e) => e.preventDefault());
+
+    requestAnimationFrame(cuadro);
   });
 </script>
 
 <style>
-  .ofertas { position: relative; display: grid; gap: 14px; border-radius: var(--radio-xl); outline-offset: 6px; }
-  .ofertas__pista:focus-visible { outline: 3px solid var(--ring); outline-offset: 4px; border-radius: var(--radio-lg); }
-  .ofertas__pista {
-    list-style: none; margin: 0; padding: 4px 2px 10px; display: grid; grid-auto-flow: column;
-    grid-auto-columns: calc((100% - 3 * 16px) / 4); gap: 16px;
+  .ofertas { position: relative; display: grid; gap: 16px; }
+  .ofertas__ventana {
     overflow-x: auto; scroll-snap-type: x mandatory; overscroll-behavior-x: contain; scrollbar-width: none;
+    border-radius: var(--radio-lg);
   }
-  .ofertas__pista::-webkit-scrollbar { display: none; }
-  @media (max-width: 1099px) { .ofertas__pista { grid-auto-columns: calc((100% - 2 * 14px) / 3); gap: 14px; } }
-  @media (max-width: 759px) { .ofertas__pista { grid-auto-columns: calc((100% - 14px) / 2); } }
-  @media (max-width: 479px) { .ofertas__pista { grid-auto-columns: 78%; } }
+  .ofertas__ventana::-webkit-scrollbar { display: none; }
+  .ofertas__ventana:focus-visible { outline: 3px solid var(--ring); outline-offset: 4px; }
+  .ofertas__pista {
+    list-style: none; margin: 0; padding: 14px 2px 18px; display: grid; grid-auto-flow: column;
+    grid-auto-columns: calc((100% - 3 * 18px) / 4); gap: 18px;
+  }
+  @media (max-width: 1099px) { .ofertas__pista { grid-auto-columns: calc((100% - 2 * 16px) / 3); gap: 16px; } }
+  @media (max-width: 759px) { .ofertas__pista { grid-auto-columns: calc((100% - 14px) / 2); gap: 14px; } }
+  @media (max-width: 479px) { .ofertas__pista { grid-auto-columns: 72%; } }
   .oferta { scroll-snap-align: start; min-width: 0; }
   .oferta :global(.oferta__img) {
     display: block; width: 100%; height: auto; aspect-ratio: 4 / 5; object-fit: cover;
     border-radius: var(--radio-lg); box-shadow: var(--anillo), var(--sombra-suave); background: #f3c3dc;
-    transition: filter 420ms var(--ease-out-quart), transform 420ms var(--ease-out-quart);
+    user-select: none; -webkit-user-drag: none;
   }
-  /* Desenfoque de movimiento moderado mientras avanza. */
-  .ofertas--moviendo .oferta :global(.oferta__img) { filter: blur(2px) saturate(1.05); transform: translateX(-6px) scale(0.985); }
-  @media (prefers-reduced-motion: reduce) {
-    .ofertas__pista { scroll-behavior: auto; }
-    .oferta :global(.oferta__img) { transition: none; }
-    .ofertas--moviendo .oferta :global(.oferta__img) { filter: none; transform: none; }
+
+  /* ── Con JS: cinta continua ── */
+  .ofertas--js .ofertas__ventana {
+    overflow: hidden; scroll-snap-type: none; touch-action: pan-y; cursor: grab;
+    /* Bordes que se desvanecen: las piezas entran y salen sin corte seco. */
+    -webkit-mask-image: linear-gradient(90deg, transparent, #000 5%, #000 95%, transparent);
+    mask-image: linear-gradient(90deg, transparent, #000 5%, #000 95%, transparent);
   }
-  .ofertas__pie { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
-  .ofertas__puntos { display: flex; gap: 2px; flex-wrap: wrap; }
-  .ofertas__puntos :global(.ofertas__punto) {
-    width: 28px; height: 24px; padding: 0; border: 0; background: none; cursor: pointer; display: grid; place-items: center; border-radius: 6px;
+  .ofertas--js .ofertas__pista { will-change: transform; }
+  .ofertas--arrastrando .ofertas__ventana { cursor: grabbing; }
+  .ofertas--js .oferta { scroll-snap-align: none; }
+  @media (prefers-reduced-motion: no-preference) {
+    .ofertas--js .oferta :global(.oferta__img) {
+      transition: transform 500ms var(--resorte), box-shadow 400ms var(--ease-out-quart), filter 400ms var(--ease-out-quart);
+    }
+    @media (hover: hover) and (pointer: fine) {
+      /* La pieza bajo el puntero se eleva; las demás bajan apenas el brillo para darle protagonismo. */
+      .ofertas--js .ofertas__ventana:hover .oferta :global(.oferta__img) { filter: saturate(0.85) brightness(0.97); }
+      .ofertas--js .ofertas__ventana:hover .oferta:hover :global(.oferta__img) {
+        transform: translateY(-8px) scale(1.02); filter: none;
+        box-shadow: var(--anillo), 0 24px 40px -18px rgb(0 51 26 / 0.45);
+      }
+    }
   }
-  .ofertas__puntos :global(.ofertas__punto span) { width: 20px; height: 4px; border-radius: 999px; background: var(--borde-fuerte); transition: background var(--transicion), width 300ms var(--resorte); }
-  .ofertas__puntos :global(.ofertas__punto[aria-current='true'] span) { background: var(--verde-oscuro); width: 26px; }
-  .ofertas__puntos :global(.ofertas__punto:focus-visible) { outline: 2px solid var(--ring); }
-  .ofertas__contador { font-size: 0.875rem; font-weight: 600; color: var(--muted-foreground); }
-  .ofertas:not(.ofertas--js) .ofertas__contador { display: none; }
+
+  .ofertas__ayuda { font-size: 0.875rem; font-weight: 600; color: var(--muted-foreground); }
+  @media (hover: none) { .ofertas__ayuda { display: none; } }
 </style>

@@ -66,14 +66,12 @@ const faqLd = {
       </div>
       <div class="caminos escalonar">
         <Card as="article" class="camino">
-          <span class="camino__numero" aria-hidden="true">1</span>
           <Badge variant="default">¿Tenés convenio? Sí</Badge>
           <h3>Te asociás directamente</h3>
           <p>Tu institución o empresa ya tiene convenio con COPOL. Comunicate con nosotros, verificamos tu situación y te damos de alta.</p>
           <Button href={ws('Hola, quiero info para asociarme (tengo convenio)')}>Asociate ahora <Icono nombre="flecha" tamano={18} /></Button>
         </Card>
         <Card as="article" class="camino">
-          <span class="camino__numero" aria-hidden="true">2</span>
           <Badge variant="accent">¿Tenés convenio? No</Badge>
           <h3>Creá el convenio</h3>
           <p>Si tu institución no tiene convenio con COPOL, pueden crearlo: reúnan 6 o más personas de la misma empresa o institución y nosotros nos encargamos del resto.</p>
@@ -96,7 +94,7 @@ const faqLd = {
 
   <section class="contenedor seccion" aria-labelledby="final-titulo">
     <div class="final sobre-verde">
-      <h2 id="final-titulo">Más de 35.000 socios ya disfrutan de COPOL</h2>
+      <h2 id="final-titulo">Más de 36.000 socios ya disfrutan de COPOL</h2>
       <p>No te quedes afuera: hacete socio hoy y empezá a disfrutar de todos los beneficios.</p>
       <div class="final__acciones">
         <Button href={ws('Hola, quiero info para asociarme')} variant="accent"><Icono nombre="whatsapp" tamano={18} /> Escribinos al {CONTACTO.whatsappSocios.texto}</Button>
@@ -115,12 +113,6 @@ const faqLd = {
   .caminos { display: grid; gap: 20px; }
   @media (min-width: 860px) { .caminos { grid-template-columns: 1fr 1fr; } }
   .caminos :global(.camino) { align-items: flex-start; padding: clamp(24px, 3vw, 36px); border-radius: var(--radio-xl); overflow: hidden; }
-  .camino__numero {
-    position: absolute; right: 20px; top: -10px;
-    font-size: 7rem; font-weight: 900; line-height: 1; letter-spacing: -0.05em;
-    color: var(--muted); pointer-events: none; user-select: none;
-  }
-  .caminos :global(.camino > :not(.camino__numero)) { position: relative; }
 
   .faq { display: grid; gap: 28px; }
   @media (min-width: 900px) { .faq { grid-template-columns: 1fr 1.4fr; align-items: start; } }

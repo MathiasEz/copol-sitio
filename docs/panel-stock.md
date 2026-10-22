@@ -9,7 +9,7 @@ Panel para que el personal autorizado consulte y actualice el inventario del Baz
 ```
 Panel          ──escribe──►  Base de datos (Turso / libSQL)  ◄──lee──  Web pública (copia en la CDN de Vercel)
    ├─ confirma "Guardado" solo después de releer la fila y comprobar el valor
-   └─ borra la copia de la CDN (etiqueta "bazar" o "novedades"): la visita siguiente ya lee el valor nuevo
+   └─ borra la copia de la CDN (etiqueta "bazar", "novedades" o "banner"): la visita siguiente ya lee el valor nuevo
 ```
 
 - **Antes** (problema reportado el 13/10/2026): la página de Bazar era estática; el stock salía del archivo `bazar.json` generado al compilar, y la lectura en vivo dependía de una variable (`PUBLIC_PANEL_URL`) que no estaba configurada, más 30 s de caché en la API. El panel sí guardaba el cambio (quedó en la base y en el registro), pero la web seguía mostrando el valor viejo.
@@ -17,7 +17,7 @@ Panel          ──escribe──►  Base de datos (Turso / libSQL)  ◄──
   - `/hipermercado/bazar/` se genera en el servidor leyendo la misma base que escribe el panel. La CDN de Vercel guarda la página (`Vercel-CDN-Cache-Control: max-age=60, stale-while-revalidate=86400`, etiqueta `Vercel-Cache-Tag: bazar`) y la entrega sin ejecutar la función, así un pico de visitas no hace cola en el servidor ni en la base. El navegador no guarda copia propia (`Cache-Control: public, max-age=0, must-revalidate`). Ver `src/lib/cache-publica.ts`.
   - Al registrar un cambio visible en la web (stock, productos o novedades), el panel borra las copias de esa etiqueta (`panel/src/web-publica.ts`, desde `registrar()` en `auditoria.ts`): la visita siguiente se genera con el valor nuevo. Si el borrado fallara, la copia se renueva sola a los 60 s.
   - Si la base no responde, esa versión de la página no se guarda en la CDN (`no-store`).
-  - En Inicio y en Hipermercado, el estante de productos y las novedades son *server islands* con la misma caché (etiquetas `bazar` y `novedades`): el resto de la página es estático.
+  - En Inicio y en Hipermercado, el banner, el estante de productos y las novedades son *server islands* con la misma caché (etiquetas `banner`, `bazar` y `novedades`): el resto de la página es estático.
   - Los scripts de consola (`panel:sembrar`, `panel:restaurar`) no borran la caché: la web los muestra al renovarse la copia (60 s como máximo).
   - El panel guarda con control de versión y **relee la fila**: el mensaje "Guardado: Sin stock" aparece solo si la base devolvió exactamente ese valor. Si no, muestra un error y no confirma.
   - Si la base no respondiera, la web no muestra un stock viejo: todas las tarjetas pasan a "Consultar disponibilidad" con un aviso.
@@ -29,7 +29,8 @@ Panel          ──escribe──►  Base de datos (Turso / libSQL)  ◄──
 |---|---|
 | **Inventario** | Buscar por código interno COPOL, nombre o marca; filtrar por categoría y por estado (pestañas Todos / Con stock / Sin stock / Sin dato con contadores); marcar con o sin stock o cargar una cantidad (0 = sin stock) directamente en la tabla. |
 | **Agregar / editar producto** | Código interno COPOL (a mano o **escaneado con la cámara**), nombre, categoría existente, marca, descripción, stock e imagen. Historial de cambios del producto. |
-| **Novedades** | Crear, editar, publicar, despublicar, eliminar y ordenar (subir/bajar). Imagen, título, texto, plantilla (imagen a la izquierda y texto a la derecha · imagen completa · título y texto) y botón opcional. Inicio muestra solo las publicadas, en ese orden. |
+| **Administración Página → Banner de inicio** | (Antes "Novedades" en el menú.) Diapositivas del banner de Inicio: crear, editar, publicar, despublicar, ordenar y eliminar (máx. 8). Antetítulo, título con final resaltado, texto, etiqueta sobre la imagen, dos botones, imagen + imagen opcional para celular, punto de interés de la foto, "mostrar la imagen completa" (piezas con texto) y fechas desde/hasta. Diseños: texto al costado, recuadro chico sobre la foto o solo imagen; en celular el texto va siempre debajo. **Vista previa en vivo** (Computadora / Celular) al editar y del banner completo en la lista. Tiempo por diapositiva: 4 a 12 s. Se guarda como JSON en `ajustes` (clave `banner_inicio`); sin guardar, se muestra el contenido inicial (`panel/src/banner.ts`). Estilos y comportamiento compartidos con la web: `src/styles/banner-inicio.css` y `src/scripts/banner-inicio.js` (copiados al panel en cada build). |
+| **Administración Página → Novedades** | Crear, editar, publicar, despublicar, eliminar y ordenar (subir/bajar). Imagen, título, texto, plantilla (imagen a la izquierda y texto a la derecha · imagen completa · título y texto) y botón opcional. Inicio muestra solo las publicadas, en ese orden. |
 | **Usuarios** | Alta con usuario o correo, rol y contraseña temporal; cambio de rol, desactivación, restablecimiento de contraseña y baja. |
 | **Mi perfil** | Cada persona cambia su propia contraseña. |
 | **Registro** | Ingresos, cambios de stock (antes → después), productos, imágenes, novedades y usuarios, con fecha, usuario e IP. |
@@ -95,7 +96,7 @@ El panel funciona como **conector personalizado (MCP)** de la app de Claude: se 
 | Consultar el inventario | ✓ | ✓ | ✓ |
 | Cambiar stock y cantidades | ✓ | ✓ | — |
 | Agregar y editar productos e imágenes | ✓ | ✓ | — |
-| Novedades | ✓ | — | — |
+| Administración Página (banner y novedades) | ✓ | — | — |
 | Usuarios y registro de cambios | ✓ | — | — |
 | Asistente (Claude) | ✓ | ✓ (prepara y confirma cambios) | ✓ (solo consulta) |
 

@@ -149,6 +149,85 @@
     requestAnimationFrame(cuadro);
   });
 
+  // ── Administración Página: vista previa del banner de Inicio ──
+  // Selector Computadora / Celular (el banner usa consultas de contenedor: en "Celular" el recuadro se
+  // angosta a 375 px). Los enlaces de la vista previa no navegan.
+  document.querySelectorAll('[data-previa]').forEach((previa) => {
+    const modos = previa.querySelector('[data-previa-modos]');
+    if (!modos) return;
+    modos.hidden = false;
+    modos.querySelectorAll('[data-previa-modo]').forEach((b) => b.addEventListener('click', () => {
+      const celular = b.dataset.previaModo === 'celular';
+      previa.classList.toggle('previa--celular', celular);
+      modos.querySelectorAll('[data-previa-modo]').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+    }));
+  });
+  document.addEventListener('click', (e) => {
+    if (e.target instanceof Element && e.target.closest('[data-previa-marco] a')) e.preventDefault();
+  });
+
+  // Edición de una diapositiva: la vista previa refleja cada cambio del formulario al instante.
+  const editor = document.querySelector('[data-bi-editor]');
+  const diapo = editor?.querySelector('[data-bi-diapo]');
+  if (editor && diapo) {
+    const el = (n) => diapo.querySelector(`[data-bi-campo="${n}"]`);
+    const val = (n) => (editor.elements.namedItem(n)?.value ?? '').trim();
+    const marcado = (n) => editor.querySelector(`[name="${n}"]:checked`)?.value ?? '';
+    const poner = (n, v, siVacio) => {
+      const e = el(n);
+      if (!e) return;
+      e.textContent = v || siVacio || '';
+      if (siVacio === undefined) e.hidden = !v;
+    };
+    const cambiarClase = (prefijo, valor) => {
+      [...diapo.classList].filter((k) => k.startsWith(prefijo)).forEach((k) => diapo.classList.remove(k));
+      if (valor) diapo.classList.add(prefijo + valor);
+    };
+    let movilNueva = false;
+    const actualizar = () => {
+      poner('antetitulo', val('antetitulo'));
+      poner('titulo', val('titulo'), 'Título de la diapositiva');
+      poner('resaltado', val('resaltado'));
+      poner('texto', val('texto'));
+      poner('etiqueta', val('etiqueta'));
+      for (const n of [1, 2]) {
+        const texto = val(`boton${n}_texto`);
+        poner(`boton${n}-texto`, texto, '');
+        el(`boton${n}`).hidden = !texto;
+      }
+      el('acciones').hidden = el('boton1').hidden && el('boton2').hidden;
+      const diseno = marcado('diseno');
+      ['lateral', 'tarjeta', 'solo-imagen'].forEach((d) => diapo.classList.toggle(`bi__diapo--${d}`, d === diseno));
+      diapo.classList.toggle('bi__diapo--completa', Boolean(editor.elements.namedItem('completa')?.checked));
+      cambiarClase('bi__foco--', marcado('foco'));
+      const movil = el('imagen-movil');
+      const quitar = editor.elements.namedItem('quitar_movil')?.checked && !movilNueva;
+      const conMovil = Boolean(movil?.getAttribute('src')) && !quitar;
+      if (movil) movil.hidden = !conMovil;
+      diapo.classList.toggle('bi__diapo--con-movil', conMovil);
+    };
+    editor.addEventListener('input', actualizar);
+    editor.addEventListener('change', (e) => {
+      const t = e.target;
+      if (t instanceof HTMLInputElement && t.dataset.biArchivo && t.files?.[0]) {
+        const url = URL.createObjectURL(t.files[0]);
+        if (t.dataset.biArchivo === 'imagen') {
+          const img = el('imagen');
+          img.removeAttribute('srcset');
+          img.src = url;
+          img.hidden = false;
+          el('fondo').src = url;
+          el('vacio').hidden = true;
+        } else {
+          el('imagen-movil').src = url;
+          movilNueva = true;
+        }
+      }
+      actualizar();
+    });
+    actualizar();
+  }
+
   // ── Fotos grandes: se achican en el navegador antes de enviarlas ──
   // Vercel rechaza pedidos de más de ~4,5 MB; una foto de celular ronda los 3-6 MB. Se reducen a 1800 px
   // (WebP). Si el navegador no puede, se envían tal cual y el servidor informa si son demasiado grandes.

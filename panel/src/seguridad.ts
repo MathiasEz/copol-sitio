@@ -47,7 +47,7 @@ export type Permiso = 'ver' | 'stock' | 'productos' | 'novedades' | 'usuarios' |
 export const ROLES: Record<Rol, { nombre: string; descripcion: string; permisos: Permiso[] }> = {
   administrador: {
     nombre: 'Administrador',
-    descripcion: 'Acceso total: stock, productos, novedades, usuarios, registro de cambios y asistente.',
+    descripcion: 'Acceso total: stock, productos, Administración Página (banner de Inicio y novedades), usuarios, registro de cambios y asistente.',
     permisos: ['ver', 'stock', 'productos', 'novedades', 'usuarios', 'auditoria', 'asistente'],
   },
   editor: {

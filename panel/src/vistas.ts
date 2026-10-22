@@ -8,6 +8,7 @@ import { BASE } from './config.ts';
 import { variante } from './imagenes.ts';
 import { GRUPOS, qrSvg, type Grupo, type ImagenPortal, type Portal } from './empleados.ts';
 import { PLANTILLAS, type Novedad, type Plantilla } from './novedades.ts';
+import { DISENOS, estadoDiapositiva, FOCOS, hoyUruguay, htmlBanner, MAX_DIAPOSITIVAS, SEGUNDOS, tituloCompleto, vigentes, type Banner, type Diapositiva, type Diseno, type Foco } from './banner.ts';
 import type * as AC from './acceso.ts';
 import type { MensajeGuardado, ResumenConversacion, TarjetaGuardada } from './conversaciones.ts';
 import { describirEquipo } from './acceso.ts';
@@ -64,6 +65,10 @@ const ICONOS: Record<string, string> = {
   pausa: '<path d="M9 5v14M15 5v14"/>',
   recibo: '<path d="M6 2h12v20l-3-2-3 2-3-2-3 2Z"/><path d="M9 7h6M9 11h6M9 15h4"/>',
   derecha: '<path d="m9 18 6-6-6-6"/>',
+  pagina: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M7 13h6M7 16h4"/><rect x="14" y="12.5" width="3.5" height="4" rx=".5"/>',
+  monitor: '<rect x="2" y="4" width="20" height="13" rx="2"/><path d="M8 21h8M12 17v4"/>',
+  celular: '<rect x="7" y="2" width="10" height="20" rx="2"/><path d="M11 18h2"/>',
+  calendario: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/>',
 };
 export const icono = (n: string, t = 18) => raw(`<svg class="i" width="${t}" height="${t}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONOS[n] ?? ''}</svg>`);
 
@@ -71,7 +76,10 @@ const fecha = (iso: string | null) => (iso ? new Date(iso).toLocaleString('es-UY
 export const csrfCampo = (c: Contexto) => html`<input type="hidden" name="_csrf" value="${c.csrf}">`;
 const etiquetaCodigo = 'Código interno COPOL';
 
-function cabeza(titulo: string) {
+/** Archivos extra de una página (p. ej. la vista previa del banner de Inicio). */
+export interface Recursos { estilos?: string[]; scripts?: string[] }
+
+function cabeza(titulo: string, extra: Recursos = {}) {
   return html`<!doctype html>
 <html lang="es-UY" data-base="${BASE}">
 <head>
@@ -84,6 +92,8 @@ function cabeza(titulo: string) {
 <link rel="icon" href="/favicon.png">
 <script src="/panel-recursos/tema.js"></script>
 <script src="/panel-recursos/panel.js" defer></script>
+${(extra.estilos ?? []).map((e) => html`<link rel="stylesheet" href="${e}">`)}
+${(extra.scripts ?? []).map((e) => html`<script src="${e}" defer></script>`)}
 </head>`;
 }
 
@@ -94,11 +104,11 @@ const botonTema = (clase: string) =>
 const alerta = (a: Contexto['aviso']) =>
   a ? html`<div class="alert alert--${a.tipo}" role="${a.tipo === 'error' ? 'alert' : 'status'}" data-aviso>${icono(a.tipo === 'ok' ? 'check' : 'info')}<p>${a.texto}</p></div>` : '';
 
-export function layout(c: Contexto, titulo: string, cuerpo: H, acciones: H | '' = '') {
+export function layout(c: Contexto, titulo: string, cuerpo: H, acciones: H | '' = '', extra: Recursos = {}) {
   const u = c.usuario!;
-  const activo = (p: string) => (p === '/productos' ? c.ruta === r() || c.ruta.startsWith(r('/productos')) || c.ruta.startsWith(r('/?')) : c.ruta.startsWith(r(p)));
+  const activo = (p: string) => (p === '/productos' ? c.ruta === r() || c.ruta.startsWith(r('/productos')) || c.ruta.startsWith(r('/?')) : p === '/banner' ? c.ruta.startsWith(r('/banner')) || c.ruta.startsWith(r('/novedades')) : c.ruta.startsWith(r(p)));
   const item = (p: string, texto: string, ic: string) => html`<a href="${r(p === '/productos' ? '' : p)}" class="nav__item" ${si(activo(p), 'aria-current="page"')}>${icono(ic)}<span>${texto}</span></a>`;
-  return html`${cabeza(titulo)}
+  return html`${cabeza(titulo, extra)}
 <body class="app">
 <a class="saltar" href="#contenido">Saltar al contenido</a>
 <aside class="sidebar" aria-label="Panel">
@@ -108,7 +118,7 @@ export function layout(c: Contexto, titulo: string, cuerpo: H, acciones: H | '' 
     <nav class="nav">
       ${item('/productos', 'Inventario', 'caja')}
       ${puede(u.rol, 'productos') ? item('/nuevo', 'Agregar producto', 'mas') : ''}
-      ${puede(u.rol, 'novedades') ? item('/novedades', 'Novedades', 'noticia') : ''}
+      ${puede(u.rol, 'novedades') ? item('/banner', 'Administración Página', 'pagina') : ''}
       ${puede(u.rol, 'usuarios') ? item('/usuarios', 'Usuarios', 'usuarios') : ''}
       ${puede(u.rol, 'auditoria') ? item('/registro', 'Registro', 'registro') : ''}
       ${puede(u.rol, 'auditoria') ? item('/accesos', 'Accesos', 'escudo') : ''}
@@ -442,11 +452,157 @@ const evento = (e: Evento) => {
   return html`<li><span class="eventos__fecha">${fecha(e.fecha)} · ${e.usuario ?? 'sistema'}</span><span>${ACCIONES[e.accion] ?? e.accion}${det ? html` — ${det}` : ''}</span></li>`;
 };
 
+// ── Administración Página: banner de Inicio y novedades ──
+const tabsPagina = (activo: 'banner' | 'novedades') => html`<nav class="tabs" aria-label="Secciones de la portada">
+  <a class="tabs__item" href="${r('/banner')}" ${si(activo === 'banner', 'aria-current="true"')}>${icono('imagen', 16)}Banner de inicio</a>
+  <a class="tabs__item" href="${r('/novedades')}" ${si(activo === 'novedades', 'aria-current="true"')}>${icono('noticia', 16)}Novedades</a>
+</nav>`;
+const RECURSOS_BANNER: Recursos = { estilos: ['/panel-recursos/banner-inicio.css'], scripts: ['/panel-recursos/banner-inicio.js'] };
+const fechaCorta = (f: string) => (f ? new Date(`${f}T12:00:00`).toLocaleDateString('es-UY', { day: 'numeric', month: 'short', year: 'numeric' }) : '');
+
+/** Recuadro de vista previa con selector Computadora / Celular. `contenido` es HTML de htmlBanner (escapa todo dato). */
+const vistaPrevia = (contenido: string, titulo: string, ayuda: string, fija = false) => html`<section class="card previa${fija ? ' previa--fija' : ''}" data-previa aria-label="${titulo}">
+  <div class="previa__cabecera">
+    <div><h2 class="card__titulo">${titulo}</h2><p class="ayuda">${ayuda}</p></div>
+    <div class="segmentado" role="group" aria-label="Tamaño de la vista previa" data-previa-modos hidden>
+      <button type="button" class="segmentado__item" data-previa-modo="computadora" aria-pressed="true">${icono('monitor', 16)}Computadora</button>
+      <button type="button" class="segmentado__item" data-previa-modo="celular" aria-pressed="false">${icono('celular', 16)}Celular</button>
+    </div>
+  </div>
+  <div class="previa__lienzo"><div class="previa__marco" data-previa-marco>${raw(contenido)}</div></div>
+</section>`;
+
+const ESTADOS_DIAPOSITIVA = {
+  publicada: { clase: 'con-stock', icono: 'ojo', texto: () => 'Publicada' },
+  borrador: { clase: 'sin-stock', icono: 'ojoNo', texto: () => 'Borrador' },
+  programada: { clase: 'sin-dato', icono: 'calendario', texto: (d: Diapositiva) => `Desde el ${fechaCorta(d.desde)}` },
+  vencida: { clase: 'sin-stock', icono: 'reloj', texto: (d: Diapositiva) => `Terminó el ${fechaCorta(d.hasta)}` },
+} as const;
+
+export function vistaBanner(c: Contexto, banner: Banner) {
+  const hoy = hoyUruguay();
+  const visibles = vigentes(banner, hoy);
+  const lista = banner.diapositivas;
+  const lleno = lista.length >= MAX_DIAPOSITIVAS;
+  return layout(c, 'Administración Página', html`
+${tabsPagina('banner')}
+<p class="muted subtitulo">El banner es lo primero que se ve en Inicio. Las diapositivas publicadas aparecen en este orden y cambian solas.</p>
+${visibles.length
+  ? vistaPrevia(htmlBanner(visibles, { segundos: banner.segundos }), 'Vista previa', 'Así se ve hoy la portada. Pasá el mouse por encima para detenerla.')
+  : html`<div class="alert alert--error" role="status">${icono('info')}<p>No hay diapositivas publicadas y vigentes: la portada se muestra sin banner.</p></div>`}
+<section class="card" aria-labelledby="diapositivas-titulo">
+  <div class="card__cabecera"><h2 class="card__titulo" id="diapositivas-titulo">Diapositivas</h2><span class="muted ayuda">${lista.length} de ${MAX_DIAPOSITIVAS} como máximo</span></div>
+  ${lista.length
+    ? html`<ol class="novedades diapositivas">${lista.map((d, i) => {
+      const e = estadoDiapositiva(d, hoy);
+      const est = ESTADOS_DIAPOSITIVA[e];
+      return html`<li class="novedad diapositiva">
+        <div class="novedad__orden">
+          <form method="post" action="${r(`/banner/${d.id}/mover`)}">${csrfCampo(c)}<input type="hidden" name="direccion" value="arriba"><button class="btn btn--ghost btn--icono" type="submit" aria-label="Subir ${tituloCompleto(d)}" ${si(i === 0, 'disabled')}>${icono('arriba')}</button></form>
+          <form method="post" action="${r(`/banner/${d.id}/mover`)}">${csrfCampo(c)}<input type="hidden" name="direccion" value="abajo"><button class="btn btn--ghost btn--icono" type="submit" aria-label="Bajar ${tituloCompleto(d)}" ${si(i === lista.length - 1, 'disabled')}>${icono('abajo')}</button></form>
+        </div>
+        <div class="novedad__img diapositiva__img"><img src="${variante(d.imagen, 800)}" alt="" loading="lazy"></div>
+        <div class="novedad__texto"><strong>${tituloCompleto(d)}</strong><span class="muted">${DISENOS[d.diseno].nombre}${d.completa ? ' · imagen completa' : ''}${d.hasta && e !== 'vencida' ? ` · hasta el ${fechaCorta(d.hasta)}` : ''}</span></div>
+        <span class="badge badge--${est.clase}">${icono(est.icono, 14)}${est.texto(d)}</span>
+        <div class="novedad__acciones">
+          <form method="post" action="${r(`/banner/${d.id}/publicar`)}">${csrfCampo(c)}<input type="hidden" name="publicado" value="${d.publicado ? '0' : '1'}"><button class="btn btn--outline btn--sm" type="submit">${d.publicado ? 'Despublicar' : 'Publicar'}</button></form>
+          <a class="btn btn--ghost btn--sm" href="${r(`/banner/${d.id}`)}">${icono('editar', 16)}Editar</a>
+        </div>
+      </li>`;
+    })}</ol>`
+    : html`<div class="vacio"><p><strong>Todavía no hay diapositivas.</strong></p></div>`}
+</section>
+<form class="card form ajustes-banner" method="post" action="${r('/banner/ajustes')}">
+  ${csrfCampo(c)}
+  <label class="campo"><span class="label">Tiempo de cada diapositiva</span>
+    <select class="input" name="segundos">${Array.from({ length: SEGUNDOS.max - SEGUNDOS.min + 1 }, (_, k) => SEGUNDOS.min + k).map((s) => html`<option value="${s}" ${si(s === banner.segundos, 'selected')}>${s} segundos</option>`)}</select>
+    <span class="ayuda">Cuánto se muestra cada una antes de pasar a la siguiente. Se detiene sola cuando alguien pasa el mouse por encima.</span>
+  </label>
+  <button class="btn btn--outline" type="submit">Guardar tiempo</button>
+</form>`, lleno ? html`<span class="ayuda">Máximo de ${MAX_DIAPOSITIVAS} diapositivas</span>` : html`<a class="btn" href="${r('/banner/nueva')}">${icono('mas')}Nueva diapositiva</a>`, RECURSOS_BANNER);
+}
+
+const FOCOS_NOMBRES: Record<Foco, string> = {
+  'arriba-izquierda': 'Arriba a la izquierda', arriba: 'Arriba', 'arriba-derecha': 'Arriba a la derecha',
+  izquierda: 'Izquierda', centro: 'Centro', derecha: 'Derecha',
+  'abajo-izquierda': 'Abajo a la izquierda', abajo: 'Abajo', 'abajo-derecha': 'Abajo a la derecha',
+};
+
+export function vistaFormBanner(c: Contexto, d: Diapositiva, errores: Record<string, string>, existe: boolean, segundos: number) {
+  const err = (k: string) => (errores[k] ? html`<span class="error" id="err-${k}">${errores[k]}</span>` : '');
+  const inv = (k: string) => (errores[k] ? raw(`aria-invalid="true" aria-describedby="err-${k}"`) : '');
+  const accion = existe ? r(`/banner/${d.id}`) : r('/banner/nueva');
+  const campoTexto = (nombre: string, etiqueta: string, valor: string, max: number, extra: { opcional?: boolean; ayuda?: string; placeholder?: string } = {}) => html`<label class="campo"><span class="label">${etiqueta}${extra.opcional ? html` <span class="opcional">(opcional)</span>` : ''}</span>
+    <input class="input" name="${nombre}" value="${valor}" maxlength="${max}" placeholder="${extra.placeholder ?? ''}" ${inv(nombre)} data-bi-entrada="${nombre}">${extra.ayuda ? html`<span class="ayuda">${extra.ayuda}</span>` : ''}${err(nombre)}</label>`;
+  const boton = (n: 1 | 2, b: Diapositiva['boton1'], etiqueta: string, ejemplo: string) => html`<div class="fila">
+    <label class="campo"><span class="label">${etiqueta} <span class="opcional">(opcional)</span></span><input class="input" name="boton${n}_texto" value="${b?.texto ?? ''}" maxlength="30" placeholder="${ejemplo}" ${inv(`boton${n}_texto`)} data-bi-entrada="boton${n}_texto">${err(`boton${n}_texto`)}</label>
+    <label class="campo"><span class="label">Enlace</span><input class="input" name="boton${n}_url" value="${b?.url ?? ''}" maxlength="500" placeholder="/hacete-socio/ o https://wa.me/…" ${inv(`boton${n}_url`)} data-bi-entrada="boton${n}_url">${err(`boton${n}_url`)}</label>
+  </div>`;
+  const previa = htmlBanner([{ ...d, titulo: d.titulo || 'Título de la diapositiva' }], { segundos, editable: true });
+  return layout(c, existe ? 'Editar diapositiva' : 'Nueva diapositiva', html`
+${tabsPagina('banner')}
+${Object.keys(errores).length ? html`<div class="alert alert--error" role="alert">${icono('info')}<p>Revisá los campos marcados. No se guardó nada.</p></div>` : ''}
+<form method="post" action="${accion}" enctype="multipart/form-data" novalidate class="grid-form grid-form--previa" data-comprimir data-bi-editor>
+  ${csrfCampo(c)}
+  <div class="col">
+    <section class="card form"><h2 class="card__titulo">Texto</h2>
+      ${campoTexto('antetitulo', 'Antetítulo', d.antetitulo, 50, { opcional: true, placeholder: 'Servicios sociales · Turismo', ayuda: 'Línea chica arriba del título.' })}
+      ${campoTexto('titulo', 'Título', d.titulo, 90)}
+      ${campoTexto('resaltado', 'Final del título resaltado', d.resaltado, 40, { opcional: true, placeholder: 'tu familia', ayuda: 'Se agrega al final del título, sobre fondo amarillo.' })}
+      <label class="campo"><span class="label">Texto <span class="opcional">(opcional)</span></span><textarea class="input" name="texto" rows="3" maxlength="220" ${inv('texto')} data-bi-entrada="texto">${d.texto}</textarea><span class="ayuda">Una o dos frases: el banner se lee de un vistazo. Sin precios.</span>${err('texto')}</label>
+      ${campoTexto('etiqueta', 'Etiqueta sobre la imagen', d.etiqueta, 40, { opcional: true, placeholder: 'Próximamente', ayuda: 'Cartel chico en una esquina de la imagen.' })}
+    </section>
+    <section class="card form"><h2 class="card__titulo">Diseño</h2>
+      <fieldset class="campo"><legend class="label">Dónde va el texto</legend>
+        <div class="plantillas">${(Object.keys(DISENOS) as Diseno[]).map((k) => html`<label class="plantilla">
+          <input type="radio" name="diseno" value="${k}" ${si(k === d.diseno, 'checked')} data-bi-entrada="diseno">
+          <span class="plantilla__dibujo diseno__dibujo diseno__dibujo--${k}" aria-hidden="true"><i></i><b></b><b></b></span>
+          <span class="plantilla__nombre">${DISENOS[k].nombre}</span>
+          <span class="ayuda">${DISENOS[k].ayuda}</span>
+        </label>`)}</div>${err('diseno')}
+      </fieldset>
+      <label class="check"><input type="checkbox" name="completa" value="1" ${si(d.completa, 'checked')} data-bi-entrada="completa"><span>Mostrar la imagen completa, sin recortar <span class="opcional">(para piezas gráficas con texto)</span></span></label>
+      <fieldset class="campo"><legend class="label">Punto de interés de la foto</legend>
+        <div class="foco">${(Object.keys(FOCOS) as Foco[]).map((k) => html`<label class="foco__punto" title="${FOCOS_NOMBRES[k]}"><input type="radio" name="foco" value="${k}" ${si(k === d.foco, 'checked')} data-bi-entrada="foco"><span class="sr">${FOCOS_NOMBRES[k]}</span></label>`)}</div>
+        <span class="ayuda">La parte de la foto que siempre queda a la vista cuando hay que recortarla para llenar el banner.</span>
+      </fieldset>
+    </section>
+    <section class="card form"><h2 class="card__titulo">Botones</h2>
+      ${boton(1, d.boton1, 'Botón principal', 'Hacete socio')}
+      ${boton(2, d.boton2, 'Botón secundario', 'Consultá por WhatsApp')}
+      <p class="ayuda">Con "Solo imagen", el botón principal convierte toda la imagen en un enlace.</p>
+    </section>
+    <section class="card form"><h2 class="card__titulo">Imágenes</h2>
+      <label class="campo"><span class="label">${d.imagen ? 'Cambiar imagen' : 'Imagen'}</span><input class="input" type="file" name="imagen" accept="image/jpeg,image/png,image/webp,image/avif" ${inv('imagen')} data-bi-archivo="imagen">
+        <span class="ayuda">Ancha, de 1920 × 1080 px o más. JPG, PNG, WebP o AVIF · máx. 5 MB.</span>${err('imagen')}</label>
+      <label class="campo"><span class="label">Descripción de la imagen <span class="opcional">${d.diseno === 'solo-imagen' ? '' : '(para lectores de pantalla)'}</span></span><input class="input" name="alt" value="${d.alt}" maxlength="250" ${inv('alt')}><span class="ayuda">Qué se ve (y, si es una pieza con texto, qué dice).</span>${err('alt')}</label>
+      <label class="campo"><span class="label">Imagen para celular <span class="opcional">(opcional)</span></span><input class="input" type="file" name="imagen_movil" accept="image/jpeg,image/png,image/webp,image/avif" ${inv('imagen_movil')} data-bi-archivo="imagen-movil">
+        <span class="ayuda">Se muestra entera en pantallas chicas, por ejemplo 1080 × 1080 px.</span>${err('imagen_movil')}</label>
+      ${d.imagenMovil ? html`<label class="check"><input type="checkbox" name="quitar_movil" value="1" data-bi-entrada="quitar_movil"><span>Quitar la imagen para celular</span></label>` : ''}
+    </section>
+    <section class="card form"><h2 class="card__titulo">Publicación</h2>
+      <label class="check"><input type="checkbox" name="publicado" value="1" ${si(d.publicado, 'checked')}><span>Publicada en la portada</span></label>
+      <div class="fila">
+        <label class="campo"><span class="label">${icono('calendario', 14)} Desde <span class="opcional">(opcional)</span></span><input class="input" type="date" name="desde" value="${d.desde}" ${inv('desde')}>${err('desde')}</label>
+        <label class="campo"><span class="label">${icono('calendario', 14)} Hasta <span class="opcional">(opcional)</span></span><input class="input" type="date" name="hasta" value="${d.hasta}" ${inv('hasta')}>${err('hasta')}</label>
+      </div>
+      <p class="ayuda">Con fechas, se muestra solo entre esos días (hora de Uruguay). Útil para promociones con vencimiento.</p>
+    </section>
+  </div>
+  <div class="col col--previa">
+    ${vistaPrevia(previa, 'Vista previa', 'Se actualiza mientras escribís. Probá cómo se ve en celular.', true)}
+    <div class="acciones-form acciones-form--previa"><button class="btn btn--lg" type="submit">${existe ? 'Guardar cambios' : 'Crear diapositiva'}</button><a class="btn btn--ghost" href="${r('/banner')}">Cancelar</a></div>
+  </div>
+</form>
+${existe ? html`<form method="post" action="${r(`/banner/${d.id}/eliminar`)}" class="zona-peligro" data-confirmar="¿Eliminar la diapositiva “${tituloCompleto(d)}”?">${csrfCampo(c)}<button class="btn btn--peligro btn--sm" type="submit">${icono('basura', 16)}Eliminar diapositiva</button></form>` : ''}`, '', RECURSOS_BANNER);
+}
+
 // ── Novedades ──
 const nombrePlantilla = (p: Plantilla) => PLANTILLAS[p].nombre;
 export function vistaNovedades(c: Contexto, lista: Novedad[], imgUrl: (n: Novedad) => string | null) {
-  return layout(c, 'Novedades', html`
-<p class="muted subtitulo">Las publicadas aparecen en la portada en este orden.</p>
+  return layout(c, 'Administración Página', html`
+${tabsPagina('novedades')}
+<p class="muted subtitulo">Las publicadas aparecen en la portada, debajo de Pinecoop, en este orden.</p>
 ${lista.length
   ? html`<ol class="novedades">${lista.map((n, i) => {
     const img = imgUrl(n);
@@ -474,6 +630,7 @@ export function vistaFormNovedad(c: Contexto, n: Partial<Novedad>, errores: Reco
   const plantilla = n.plantilla ?? 'imagen-izquierda';
   const accion = n.id ? r(`/novedades/${n.id}`) : r('/novedades/nueva');
   return layout(c, n.id ? 'Editar novedad' : 'Nueva novedad', html`
+${tabsPagina('novedades')}
 ${Object.keys(errores).length ? html`<div class="alert alert--error" role="alert">${icono('info')}<p>Revisá los campos marcados.</p></div>` : ''}
 <form method="post" action="${accion}" enctype="multipart/form-data" novalidate class="grid-form" data-form-novedad>
   ${csrfCampo(c)}

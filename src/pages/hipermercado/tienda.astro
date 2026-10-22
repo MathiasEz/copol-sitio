@@ -38,15 +38,14 @@ const rubros = [
         <p class="lead">Recorré cada piso con acceso fácil y cómodo por escaleras mecánicas.</p>
       </div>
     </div>
-    <ol class="rubros escalonar">
-      {rubros.map((r, i) => (
+    <ul class="rubros escalonar">
+      {rubros.map((r) => (
         <li class="card">
-          <span class="rubros__numero">{String(i + 1).padStart(2, '0')}</span>
           <h3>{r.nombre}</h3>
           <p>{r.detalle}</p>
         </li>
       ))}
-    </ol>
+    </ul>
   </section>
 
   <section class="seccion seccion--suave" aria-labelledby="horarios-titulo">
@@ -90,7 +89,6 @@ const rubros = [
 <style>
   .rubros { list-style: none; margin: 0; padding: 0; display: grid; gap: 16px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr)); }
   .rubros li { gap: 6px; padding: 24px; }
-  .rubros__numero { font-weight: 800; font-size: 0.875rem; color: var(--verde-oscuro); font-variant-numeric: tabular-nums; }
 
   .info { display: grid; gap: 18px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); }
   .info__bloque { gap: 12px; align-items: flex-start; padding: 26px; border-radius: var(--radio-xl); }

@@ -17,6 +17,8 @@ panel/datos-*/
 # Archivos generados en cada build (scripts/variantes-catalogo.mjs y scripts/copiar-recursos.mjs)
 public/catalogo/
 public/panel-recursos/zxing-browser.min.js
+public/panel-recursos/banner-inicio.css
+public/panel-recursos/banner-inicio.js
 
 # Herramientas locales del editor/asistente
 .claude/
