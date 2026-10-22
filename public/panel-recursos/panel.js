@@ -228,6 +228,23 @@
     actualizar();
   }
 
+  // ── Estadísticas: lectura del día bajo el puntero (o el dedo) en el gráfico ──
+  const grafico = document.querySelector('[data-grafico]');
+  const lectura = document.querySelector('[data-grafico-lectura]');
+  if (grafico && lectura) {
+    const inicial = lectura.textContent;
+    let activo = null;
+    const marcar = (dia) => {
+      if (dia === activo) return;
+      activo?.classList.remove('activo');
+      activo = dia;
+      dia?.classList.add('activo');
+      lectura.textContent = dia ? dia.dataset.etiqueta : inicial;
+    };
+    grafico.addEventListener('pointermove', (e) => marcar(e.target instanceof Element ? e.target.closest('[data-grafico-dia]') : null));
+    grafico.addEventListener('pointerleave', () => marcar(null));
+  }
+
   // ── Ofertas: las piezas se suben de a una (cada pedido queda lejos del límite de tamaño de Vercel) ──
   const subida = document.querySelector('[data-subir-piezas]');
   subida?.addEventListener('submit', async (e) => {

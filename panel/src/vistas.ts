@@ -10,6 +10,7 @@ import { GRUPOS, qrSvg, type Grupo, type ImagenPortal, type Portal } from './emp
 import { estadoNovedad, PLANTILLAS, type Novedad, type Plantilla } from './novedades.ts';
 import { MAX_PIEZAS, vencidas, type Ofertas } from './ofertas.ts';
 import { proximas, type Apertura } from './creditos.ts';
+import { nombreRuta, type Resumen } from './estadisticas.ts';
 import { DISENOS, estadoDiapositiva, FOCOS, hoyUruguay, htmlBanner, MAX_DIAPOSITIVAS, SEGUNDOS, tituloCompleto, vigentes, type Banner, type Diapositiva, type Diseno, type Foco } from './banner.ts';
 import type * as AC from './acceso.ts';
 import type { MensajeGuardado, ResumenConversacion, TarjetaGuardada } from './conversaciones.ts';
@@ -62,6 +63,7 @@ const ICONOS: Record<string, string> = {
   luna: '<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>',
   sol: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
   empleados: '<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="11" r="2.5"/><path d="M5.5 17a3.5 3.5 0 0 1 7 0M15 9h3M15 13h3"/>',
+  grafico: '<path d="M3 3v18h18"/><path d="M7 16v-5M12 16V8M17 16v-8"/>',
   etiqueta: '<path d="M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8Z"/><circle cx="7.5" cy="7.5" r="1.5"/>',
   'flecha-externa': '<path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/>',
   izquierda: '<path d="m15 18-6-6 6-6"/>',
@@ -123,6 +125,7 @@ export function layout(c: Contexto, titulo: string, cuerpo: H, acciones: H | '' 
       ${puede(u.rol, 'productos') ? item('/nuevo', 'Agregar producto', 'mas') : ''}
       ${puede(u.rol, 'novedades') ? item('/banner', 'Administración Página', 'pagina') : ''}
       ${puede(u.rol, 'usuarios') ? item('/usuarios', 'Usuarios', 'usuarios') : ''}
+      ${puede(u.rol, 'auditoria') ? item('/estadisticas', 'Estadísticas', 'grafico') : ''}
       ${puede(u.rol, 'auditoria') ? item('/registro', 'Registro', 'registro') : ''}
       ${puede(u.rol, 'auditoria') ? item('/accesos', 'Accesos', 'escudo') : ''}
       ${puede(u.rol, 'asistente') ? item('/asistente', 'Asistente', 'chispa') : ''}
@@ -604,6 +607,82 @@ ${Object.keys(errores).length ? html`<div class="alert alert--error" role="alert
   </div>
 </form>
 ${existe ? html`<form method="post" action="${r(`/banner/${d.id}/eliminar`)}" class="zona-peligro" data-confirmar="¿Eliminar la diapositiva “${tituloCompleto(d)}”?">${csrfCampo(c)}<button class="btn btn--peligro btn--sm" type="submit">${icono('basura', 16)}Eliminar diapositiva</button></form>` : ''}`, '', RECURSOS_BANNER);
+}
+
+// ── Estadísticas de la web ──
+const numero = (n: number) => n.toLocaleString('es-UY');
+const diaCorto = (f: string) => new Date(`${f}T12:00:00`).toLocaleDateString('es-UY', { weekday: 'short', day: 'numeric', month: 'short' });
+
+export function vistaEstadisticas(c: Contexto, d: Resumen, dias: number) {
+  const variacion = (actual: number, antes: number) => {
+    if (!antes) return html`<span class="kpi__var muted">Sin datos del período anterior</span>`;
+    const p = Math.round(((actual - antes) / antes) * 100);
+    return p === 0
+      ? html`<span class="kpi__var muted">Igual que los ${dias} días anteriores</span>`
+      : html`<span class="kpi__var ${p > 0 ? 'kpi__var--sube' : 'kpi__var--baja'}">${p > 0 ? '▲' : '▼'} ${Math.abs(p)} % ${p > 0 ? 'más' : 'menos'} que los ${dias} días anteriores</span>`;
+  };
+  const t = d.totales;
+  const pctCelular = t.celular + t.computadora ? Math.round((t.celular / (t.celular + t.computadora)) * 100) : 0;
+  const kpi = (titulo: string, valor: string, extra: H | string) => html`<div class="card kpi"><span class="kpi__titulo">${titulo}</span><strong class="kpi__valor">${valor}</strong>${extra}</div>`;
+
+  // Gráfico de barras (vistas por día). SVG con atributos (la política de seguridad del panel no admite estilos en línea).
+  const W = 960, H = 220, gap = 2;
+  const max = Math.max(1, ...d.dias.map((x) => x.vistas));
+  const tope = (() => { const p = 10 ** Math.floor(Math.log10(max)); return Math.ceil(max / p) * p; })();
+  const ancho = W / d.dias.length;
+  const barra = Math.max(2, ancho - gap);
+  const grafico = raw(`<svg class="grafico__svg" viewBox="0 0 ${W} ${H}" role="img" aria-label="Vistas por día, del ${diaCorto(d.desde)} al ${diaCorto(d.hasta)}">
+    ${[0.25, 0.5, 0.75, 1].map((f) => `<line class="grafico__guia" x1="0" x2="${W}" y1="${(H - H * f).toFixed(1)}" y2="${(H - H * f).toFixed(1)}"/>`).join('')}
+    <line class="grafico__base" x1="0" x2="${W}" y1="${H - 0.5}" y2="${H - 0.5}"/>
+    ${d.dias.map((x, i) => {
+      const h = x.vistas ? Math.max(3, (x.vistas / tope) * H) : 0;
+      const etiqueta = `${diaCorto(x.fecha)}: ${numero(x.vistas)} vistas · ${numero(x.visitantes)} visitantes · ${numero(x.whatsapp)} clics a WhatsApp`;
+      return `<g class="grafico__dia" data-grafico-dia data-etiqueta="${etiqueta.replace(/"/g, '&quot;')}"><title>${etiqueta}</title>
+        <rect class="grafico__zona" x="${(i * ancho).toFixed(1)}" y="0" width="${ancho.toFixed(1)}" height="${H}"/>
+        ${h ? `<path class="grafico__barra" d="M${(i * ancho + gap / 2).toFixed(1)} ${H}V${(H - h + Math.min(4, h / 2)).toFixed(1)}q0 -${Math.min(4, h / 2).toFixed(1)} ${Math.min(4, barra / 2).toFixed(1)} -${Math.min(4, h / 2).toFixed(1)}H${(i * ancho + gap / 2 + barra - Math.min(4, barra / 2)).toFixed(1)}q${Math.min(4, barra / 2).toFixed(1)} 0 ${Math.min(4, barra / 2).toFixed(1)} ${Math.min(4, h / 2).toFixed(1)}V${H}Z"/>` : ''}
+      </g>`;
+    }).join('')}
+  </svg>`);
+  const lista = (titulo: string, filas: { clave: string; valor: number }[], nombre: (k: string) => string, vacio: string) => {
+    const tope2 = Math.max(1, ...filas.map((f) => f.valor));
+    return html`<section class="card ranking"><h2 class="card__titulo">${titulo}</h2>
+      ${filas.length ? html`<ol class="ranking__lista">${filas.map((f) => html`<li>
+        <span class="ranking__nombre" title="${nombre(f.clave)}">${nombre(f.clave)}</span><span class="ranking__valor">${numero(f.valor)}</span>
+        ${raw(`<svg class="ranking__barra" viewBox="0 0 100 4" preserveAspectRatio="none" aria-hidden="true"><rect width="${Math.max(1, (f.valor / tope2) * 100).toFixed(1)}" height="4" rx="2"/></svg>`)}
+      </li>`)}</ol>` : html`<p class="muted ayuda">${vacio}</p>`}
+    </section>`;
+  };
+  const periodo = (n: number) => html`<a class="tabs__item" href="${r(`/estadisticas?dias=${n}`)}" ${si(n === dias, 'aria-current="true"')}>Últimos ${n} días</a>`;
+  const hayDatos = t.vistas > 0;
+  return layout(c, 'Estadísticas', html`
+<p class="muted subtitulo">Visitas a la web pública, sin cookies ni datos personales: solo contadores por día. Las visitas del panel no se cuentan.</p>
+<nav class="tabs" aria-label="Período">${periodo(7)}${periodo(30)}${periodo(90)}</nav>
+<div class="kpis">
+  ${kpi('Vistas de páginas', numero(t.vistas), variacion(t.vistas, d.anteriores.vistas))}
+  ${kpi('Visitantes', numero(t.visitantes), variacion(t.visitantes, d.anteriores.visitantes))}
+  ${kpi('Clics a WhatsApp', numero(t.whatsapp), variacion(t.whatsapp, d.anteriores.whatsapp))}
+  ${kpi('Desde el celular', hayDatos ? `${pctCelular} %` : '—', html`<span class="kpi__var muted">${hayDatos ? `${numero(t.celular)} de ${numero(t.celular + t.computadora)} vistas` : 'Sin visitas en el período'}</span>`)}
+</div>
+<section class="card grafico" aria-labelledby="grafico-titulo">
+  <div class="card__cabecera"><h2 class="card__titulo" id="grafico-titulo">Vistas por día</h2><span class="ayuda grafico__lectura" data-grafico-lectura aria-live="polite">Pasá el mouse por las barras para ver el detalle de cada día.</span></div>
+  ${hayDatos ? html`<div class="grafico__area">
+    <div class="grafico__eje" aria-hidden="true"><span>${numero(tope)}</span><span>${numero(tope / 2)}</span><span>0</span></div>
+    <div class="grafico__lienzo" data-grafico>${grafico}</div>
+  </div>
+  <div class="grafico__fechas" aria-hidden="true"><span>${diaCorto(d.desde)}</span><span>${diaCorto(d.hasta)}</span></div>
+  <details class="grafico__tabla"><summary>Ver como tabla</summary>
+    <table class="tabla"><thead><tr><th scope="col">Día</th><th scope="col">Vistas</th><th scope="col">Visitantes</th><th scope="col">Clics a WhatsApp</th></tr></thead>
+    <tbody>${[...d.dias].reverse().map((x) => html`<tr><td>${diaCorto(x.fecha)}</td><td>${numero(x.vistas)}</td><td>${numero(x.visitantes)}</td><td>${numero(x.whatsapp)}</td></tr>`)}</tbody></table>
+  </details>` : html`<div class="vacio"><p><strong>Todavía no hay visitas registradas en este período.</strong></p><p class="muted">Se empiezan a contar desde la publicación de esta función.</p></div>`}
+</section>
+<div class="rankings">
+  ${lista('Páginas más vistas', d.ranking.pagina, nombreRuta, 'Sin visitas.')}
+  ${lista('De dónde llegan', d.ranking.origen, (k) => (k === 'Directo' ? 'Directo (enlace guardado, WhatsApp o escrito a mano)' : k), 'Sin datos.')}
+  ${lista('Productos más consultados por WhatsApp', d.ranking.producto, (k) => k, 'Todavía nadie consultó un producto del Bazar por WhatsApp.')}
+  ${lista('Páginas desde donde escriben por WhatsApp', d.ranking.whatsapp_pagina, nombreRuta, 'Sin clics a WhatsApp.')}
+  ${lista('Clics en el banner de Inicio', d.ranking.banner, (k) => k, 'Sin clics en el banner.')}
+  ${lista('Imágenes ampliadas (por página)', d.ranking.visor, nombreRuta, 'Nadie amplió imágenes todavía.')}
+</div>`);
 }
 
 // ── Ofertas del supermercado (Promociones) ──

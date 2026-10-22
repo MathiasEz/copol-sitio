@@ -18,6 +18,7 @@ import * as N from './novedades.ts';
 import * as B from './banner.ts';
 import * as OF from './ofertas.ts';
 import * as CR from './creditos.ts';
+import * as ES from './estadisticas.ts';
 import { fechaValida, hoyUruguay } from './fechas.ts';
 import * as E from './empleados.ts';
 import * as P from './productos.ts';
@@ -659,6 +660,12 @@ export function crearApp({ db: fuenteDb, config, almacen, asistente, correo }: O
     await B.guardarBanner(c.get('db'), banner);
     await registrar(c.get('db'), actor(c), 'banner.baja', 'banner', diapo.id, { titulo: B.tituloCompleto(diapo) });
     return c.redirect(`${r('/banner')}?aviso=banner-eliminada`);
+  });
+
+  // ── Estadísticas de la web (sin cookies ni datos personales; ver estadisticas.ts) ──
+  app.get('/estadisticas', requiere('auditoria'), async (c) => {
+    const dias = [7, 30, 90].includes(Number(c.req.query('dias'))) ? Number(c.req.query('dias')) : 30;
+    return c.html(V.vistaEstadisticas(ctx(c), await ES.resumen(c.get('db'), dias), dias));
   });
 
   // ── Administración Página: ofertas del supermercado (Promociones) ──

@@ -135,6 +135,11 @@ const MIGRACIONES: string[] = [
   ALTER TABLE novedades ADD COLUMN desde TEXT;
   ALTER TABLE novedades ADD COLUMN hasta TEXT
   `,
+  /* 8 · estadísticas de la web sin cookies ni datos personales: contadores por día y, para contar visitantes
+     únicos, un identificador anónimo que cambia cada día (hash con sal diaria; se borra a los 2 días). */ `
+  CREATE TABLE estadisticas_dia (fecha TEXT NOT NULL, tipo TEXT NOT NULL, clave TEXT NOT NULL, valor INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (fecha, tipo, clave));
+  CREATE TABLE visitantes_dia (fecha TEXT NOT NULL, hash TEXT NOT NULL, PRIMARY KEY (fecha, hash))
+  `,
 ];
 
 /** Versión del esquema en una tabla propia (PRAGMA user_version no se conserva igual en todos los destinos). */

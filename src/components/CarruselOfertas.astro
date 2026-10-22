@@ -12,16 +12,17 @@
 //   página (en Promociones va dentro de una server island). Las piezas se cargan en el panel
 //   (Administración Página → Ofertas).
 interface Props {
-  piezas: { src: string; srcset?: string; alt: string }[];
+  /** grande: imagen para el visor ampliado (src/components/Visor.astro). */
+  piezas: { src: string; srcset?: string; grande?: string; alt: string }[];
   titulo: string;
 }
 const { piezas, titulo } = Astro.props;
 ---
 <copol-ofertas class="ofertas" data-ofertas role="region" aria-roledescription="carrusel" aria-label={titulo}>
-  <div class="ofertas__ventana" data-ventana tabindex="0" aria-label="Ofertas: se desplazan solas; pasá el mouse para detenerlas o usá las flechas izquierda y derecha">
+  <div class="ofertas__ventana" data-ventana tabindex="0" aria-label="Ofertas: se desplazan solas; pasá el mouse para detenerlas, usá las flechas izquierda y derecha o Enter para verlas en grande">
     <ul class="ofertas__pista" data-pista>
       {piezas.map((p, i) => (
-        <li class="oferta" aria-roledescription="diapositiva">
+        <li class="oferta" aria-roledescription="diapositiva" data-visor data-visor-grupo="ofertas" data-visor-i={i} data-visor-src={p.grande ?? p.src} data-visor-alt={p.alt}>
           <img
             src={p.src}
             srcset={p.srcset}
@@ -38,7 +39,7 @@ const { piezas, titulo } = Astro.props;
       ))}
     </ul>
   </div>
-  <p class="ofertas__ayuda" data-ayuda hidden>{piezas.length} ofertas · pasá el mouse por encima para detenerlas</p>
+  <p class="ofertas__ayuda" data-ayuda hidden>{piezas.length} ofertas · pasá el mouse por encima para detenerlas y tocá una para verla en grande</p>
 </copol-ofertas>
 
 <script>
@@ -116,6 +117,11 @@ const { piezas, titulo } = Astro.props;
     ventana.addEventListener('keydown', (e) => {
       if (e.key === 'ArrowRight') { e.preventDefault(); saltar(1); }
       if (e.key === 'ArrowLeft') { e.preventDefault(); saltar(-1); }
+      // Enter abre en grande la pieza que está primera a la vista.
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        (window as unknown as { copolVisor?: { abrirGrupo: (g: string, i: number) => void } }).copolVisor?.abrirGrupo('ofertas', Math.round(x / paso()) % originales.length);
+      }
     });
 
     // Pausa al pasar el mouse (solo puntero fino: en pantallas táctiles no hay "encima").
@@ -126,6 +132,7 @@ const { piezas, titulo } = Astro.props;
 
     // Arrastre con el mouse o deslizamiento con el dedo (el desplazamiento vertical de la página sigue libre).
     ventana.addEventListener('pointerdown', (e) => {
+      delete raiz.dataset.arrastrado;
       if (e.button !== 0) return;
       salto = null; inercia = 0; v = 0;
       arrastre = { id: e.pointerId, x0: e.clientX, xInicio: x, ultimoX: e.clientX, ultimoT: performance.now(), vel: 0 };
@@ -135,6 +142,7 @@ const { piezas, titulo } = Astro.props;
       const dx = e.clientX - arrastre.x0;
       if (Math.abs(dx) > 4 && !ventana.hasPointerCapture(e.pointerId)) {
         ventana.setPointerCapture(e.pointerId);
+        raiz.dataset.arrastrado = '1'; // el clic al soltar no abre el visor
         raiz.classList.add('ofertas--arrastrando');
       }
       const ahora = performance.now();
@@ -198,7 +206,8 @@ const { piezas, titulo } = Astro.props;
     mask-image: linear-gradient(90deg, transparent, #000 5%, #000 95%, transparent);
   }
   .ofertas--js .ofertas__pista { will-change: transform; }
-  .ofertas--arrastrando .ofertas__ventana { cursor: grabbing; }
+  .ofertas--js .oferta { cursor: zoom-in; }
+  .ofertas--arrastrando .ofertas__ventana, .ofertas--arrastrando .oferta { cursor: grabbing; }
   .ofertas--js .oferta { scroll-snap-align: none; }
   @media (prefers-reduced-motion: no-preference) {
     .ofertas--js .oferta .oferta__img {

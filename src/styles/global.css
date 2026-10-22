@@ -674,3 +674,19 @@ a:hover > .media::after { box-shadow: var(--anillo-fuerte); }
 .creditos-esqueleto { padding-top: var(--seccion); }
 .creditos-esqueleto > div { height: 196px; border-radius: var(--radio-xl); background: var(--muted); }
 @media (max-width: 599px) { .creditos-esqueleto > div { height: 360px; } }
+
+/* ── Transiciones entre páginas (plan de mejoras V3) ─────────────────────────────────────────
+   Navegación entre páginas del sitio con un fundido suave (View Transitions del navegador, sin JS):
+   el encabezado y la barra superior quedan quietos y solo cambia el contenido. Los navegadores que no
+   lo admiten navegan como siempre. Con "reducir movimiento" no hay transición. */
+@media (prefers-reduced-motion: no-preference) {
+  @view-transition { navigation: auto; }
+  .barra-superior { view-transition-name: barra-superior; }
+  .encabezado { view-transition-name: encabezado; }
+  ::view-transition-group(barra-superior),
+  ::view-transition-group(encabezado) { animation: none; }
+  ::view-transition-old(root) { animation: 140ms var(--ease-out-quart) both vt-salida; }
+  ::view-transition-new(root) { animation: 320ms var(--ease-out-quart) 40ms both vt-entrada; }
+}
+@keyframes vt-salida { to { opacity: 0; } }
+@keyframes vt-entrada { from { opacity: 0; transform: translateY(10px); } }

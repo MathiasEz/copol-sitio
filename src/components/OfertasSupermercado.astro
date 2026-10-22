@@ -12,7 +12,7 @@ import { cachearEnCdn, ETIQUETAS_WEB, sinCache } from '../lib/cache-publica';
 const { valor: ofertas, enVivo } = await leerOfertas();
 if (enVivo) cachearEnCdn(Astro.response.headers, ETIQUETAS_WEB.ofertas);
 else sinCache(Astro.response.headers);
-const piezas = piezasVigentes(ofertas).map((p) => ({ ...imagenPieza(p.imagen), alt: p.alt || `${ofertas.titulo}: pieza del supermercado` }));
+const piezas = piezasVigentes(ofertas).map((p) => ({ ...imagenPieza(p.imagen), grande: p.imagen, alt: p.alt || `${ofertas.titulo}: pieza del supermercado` }));
 ---
 {piezas.length > 0 && (
   <section class="contenedor seccion supermercado" aria-labelledby="super-titulo">

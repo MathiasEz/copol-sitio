@@ -1,6 +1,8 @@
 # Plan de mejoras — sitio y panel COPOL (22/10/2026)
 
-**Hecho el 22/10/2026:** S10 (encabezados de seguridad del sitio, `vercel.json`), F1 (ofertas editables desde el panel, con vencimiento), F2 (fechas de créditos editables; las pasadas se ocultan solas), F3 (novedades programadas), S4 (respaldo diario cifrado en Vercel Blob a las 04:00, últimos 30; `npm run panel:descifrar` + `npm run panel:restaurar`) y S7 en parte (GitHub Actions corre `npm run verificar` en cada push; falta proteger la rama `main` en GitHub).
+**Hecho el 22/10/2026:** S10 (encabezados de seguridad del sitio, `vercel.json`), F1 (ofertas editables desde el panel, con vencimiento), F2 (fechas de créditos editables; las pasadas se ocultan solas), F3 (novedades programadas), S4 (respaldo diario cifrado en Vercel Blob a las 04:00, últimos 30; `npm run panel:descifrar` + `npm run panel:restaurar`) S7 en parte (GitHub Actions corre `npm run verificar` en cada push; falta proteger la rama `main` en GitHub).
+
+**Hecho el 22/10/2026 (2.ª tanda):** V3 (transiciones suaves entre páginas, solo CSS), V4 (visor ampliado en las ofertas de Promociones y en la ficha del Bazar: `src/components/Visor.astro`), V5 (botón flotante de WhatsApp en celulares, salvo en el Bazar) y F5 con estadísticas propias sin cookies (`panel/src/estadisticas.ts`, `/api/e`) y la página **Estadísticas** del panel (solo administradores).
 
 Propuestas ordenadas por prioridad. **Esfuerzo:** S (horas) · M (1–3 días) · L (una semana o más).
 Lo que ya existe no se repite acá: contraseñas con scrypt, PIN de entrada, código por correo, CSRF, política de

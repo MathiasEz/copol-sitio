@@ -2,16 +2,20 @@
 import '../styles/global.css';
 import Encabezado from '../components/Encabezado.astro';
 import Pie from '../components/Pie.astro';
-import { CONTACTO, REDES, SITIO } from '../data/confirmado/sitio';
+import Visor from '../components/Visor.astro';
+import Icono from '../components/Icono.astro';
+import { CONTACTO, REDES, SITIO, whatsapp } from '../data/confirmado/sitio';
 
 interface Props {
   titulo: string;
   descripcion?: string;
   imagen?: string;
   noIndexar?: boolean;
+  /** Sin el botón flotante de WhatsApp (p. ej. en el Bazar, que tiene su propio botón flotante). */
+  sinWhatsappFlotante?: boolean;
 }
 
-const { titulo, descripcion = SITIO.descripcion, imagen = '/og-copol.jpg', noIndexar: noIndexarPagina = false } = Astro.props;
+const { titulo, descripcion = SITIO.descripcion, imagen = '/og-copol.jpg', noIndexar: noIndexarPagina = false, sinWhatsappFlotante = false } = Astro.props;
 // Copias de prueba (vista previa de Vercel o SITIO_DE_PRUEBA=1 al compilar): que los buscadores no las indexen.
 const noIndexar = noIndexarPagina || process.env.VERCEL_ENV === 'preview' || process.env.SITIO_DE_PRUEBA === '1';
 const tituloCompleto = Astro.url.pathname === '/' ? `${SITIO.nombre} · ${SITIO.nombreCompleto} — ${SITIO.lema}` : `${titulo} · ${SITIO.nombre} Cooperativa Policial`;
@@ -73,6 +77,12 @@ const organizacion = {
     <slot />
   </main>
   <Pie />
+  <Visor />
+  {!sinWhatsappFlotante && (
+    <a href={whatsapp(CONTACTO.whatsappGeneral.numero, 'Hola! Quiero hacer una consulta')} class="wa-flotante" rel="noopener" aria-label={`Escribinos por WhatsApp al ${CONTACTO.whatsappGeneral.texto}`} data-wa-flotante>
+      <Icono nombre="whatsapp" tamano={26} />
+    </a>
+  )}
   <script>
     // Imágenes de .media: aparecen nítidas al terminar de cargar (sin JS se ven directamente).
     // Escucha en fase de captura (load/error no burbujean) para cubrir también las de carga diferida.
@@ -109,10 +119,55 @@ const organizacion = {
     } else {
       elementos.forEach((el) => el.classList.add('visible'));
     }
+
+    // Botón flotante de WhatsApp (solo en pantallas chicas, ver .wa-flotante): aparece al bajar y se
+    // oculta sobre el pie (que ya tiene los contactos) para no tapar sus enlaces.
+    const flotante = document.querySelector<HTMLElement>('[data-wa-flotante]');
+    const pie = document.querySelector('.pie');
+    if (flotante) {
+      let sobrePie = false;
+      const pintar = () => flotante.classList.toggle('wa-flotante--visible', scrollY > 480 && !sobrePie);
+      addEventListener('scroll', pintar, { passive: true });
+      if (pie && 'IntersectionObserver' in window) new IntersectionObserver(([e]) => { sobrePie = e.isIntersecting; pintar(); }).observe(pie);
+      pintar();
+    }
+
+    // Estadísticas propias (panel/src/estadisticas.ts): sin cookies ni datos personales. Cuenta la vista de
+    // la página y los clics a WhatsApp y al banner. No cuenta navegadores automatizados (pruebas).
+    const enviar = (datos: Record<string, unknown>) => {
+      if (navigator.webdriver) return;
+      try {
+        const cuerpo = JSON.stringify({ r: location.pathname, ...datos });
+        if (!navigator.sendBeacon?.('/api/e', new Blob([cuerpo], { type: 'text/plain' }))) fetch('/api/e', { method: 'POST', body: cuerpo, keepalive: true }).catch(() => {});
+      } catch { /* las estadísticas nunca interrumpen la página */ }
+    };
+    (window as unknown as { copolEstadistica: typeof enviar }).copolEstadistica = enviar;
+    enviar({ t: 'vista', ref: document.referrer, m: matchMedia('(max-width: 899px), (pointer: coarse)').matches });
+    document.addEventListener('click', (e) => {
+      const a = (e.target as HTMLElement).closest?.<HTMLAnchorElement>('a[href]');
+      if (!a) return;
+      if (a.href.startsWith('https://wa.me/')) enviar({ t: 'whatsapp', u: a.href });
+      else if (a.closest('copol-banner')) enviar({ t: 'banner', d: a.closest('[data-bi-diapo]')?.getAttribute('aria-label')?.replace(/^\d+ de \d+: /, '') ?? '' });
+    }, { capture: true });
   </script>
 </body>
 </html>
 
 <style>
   main:focus { outline: none; }
+
+  /* Botón flotante de WhatsApp (plan de mejoras V5): solo en celulares y tablets. */
+  .wa-flotante {
+    position: fixed; z-index: 30; right: max(16px, env(safe-area-inset-right)); bottom: max(16px, env(safe-area-inset-bottom));
+    display: none; place-items: center; width: 56px; height: 56px; border-radius: 999px;
+    background: var(--verde-copol); color: var(--blanco); text-decoration: none;
+    box-shadow: 0 14px 30px -10px rgb(0 51 26 / 0.55), inset 0 0 0 1px rgb(255 255 255 / 0.18);
+    opacity: 0; transform: translateY(16px) scale(0.9); pointer-events: none;
+    transition: opacity 260ms var(--ease-out-quart), transform 500ms var(--resorte), background var(--transicion);
+  }
+  .wa-flotante--visible { opacity: 1; transform: none; pointer-events: auto; }
+  .wa-flotante:active { transform: scale(0.94); }
+  .wa-flotante:focus-visible { outline: 3px solid var(--amarillo-copol); outline-offset: 3px; }
+  @media (max-width: 899px) { .wa-flotante { display: grid; } }
+  @media (prefers-reduced-motion: reduce) { .wa-flotante { transition: opacity 120ms linear; transform: none; } }
 </style>

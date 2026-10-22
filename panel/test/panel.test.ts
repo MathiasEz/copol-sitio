@@ -16,6 +16,7 @@ import { htmlBanner, obtenerBanner, vigentes } from '../src/banner.ts';
 import { obtenerOfertas, piezasVigentes } from '../src/ofertas.ts';
 import { obtenerAperturas, proximas } from '../src/creditos.ts';
 import { cifrar, descifrar, exportarDatos, secretoValido } from '../src/respaldo.ts';
+import * as ES from '../src/estadisticas.ts';
 import { crearUsuario } from '../src/usuarios.ts';
 import { guardarPin } from '../src/acceso.ts';
 import { BASE as RUTA } from '../src/config.ts';
@@ -430,6 +431,48 @@ describe('administración página: ofertas, créditos y novedades programadas', 
     assert.ok(!(await titulos('2099-11-30')).includes('De diciembre'));
     assert.ok((await titulos('2099-12-15')).includes('De diciembre'));
     assert.ok(!(await titulos('2100-01-01')).includes('De diciembre'));
+  });
+});
+
+describe('estadísticas de la web', () => {
+  it('valida los eventos, cuenta sin datos personales y resume en el panel', async () => {
+    const host = 'copol.test';
+    // Validación: rutas conocidas, panel excluido, origen externo, producto deducido del mensaje de WhatsApp.
+    assert.equal(ES.leerEvento({ t: 'vista', r: `${RUTA}/productos` }, host), null);
+    assert.equal(ES.leerEvento({ t: 'hackeo', r: '/' }, host), null);
+    assert.equal(ES.leerEvento({ t: 'vista', r: '/inventado/<script>' }, host)?.ruta, '/otras/');
+    assert.deepEqual(ES.leerEvento({ t: 'vista', r: '/hipermercado/bazar', ref: 'https://www.google.com/search?q=copol', m: true }, host), { tipo: 'vista', ruta: '/hipermercado/bazar/', origen: 'google.com', celular: true, detalle: undefined });
+    assert.equal(ES.leerEvento({ t: 'vista', r: '/', ref: `https://${host}/contacto/` }, host)?.origen, undefined, 'navegación interna: sin origen');
+    const wa = `https://wa.me/59898872727?text=${encodeURIComponent('Hola! Quiero consultar por el producto: Parlante JBL Go 3 (código interno COPOL 465123)')}`;
+    assert.equal(ES.leerEvento({ t: 'whatsapp', r: '/hipermercado/bazar/', u: wa }, host)?.detalle, 'Parlante JBL Go 3 · 465123');
+    assert.equal(ES.leerEvento({ t: 'whatsapp', r: '/', u: 'https://malicioso.test/?text=x' }, host)?.detalle, undefined);
+    assert.ok(ES.esBot('Mozilla/5.0 HeadlessChrome/120') && ES.esBot(null) && !ES.esBot('Mozilla/5.0 (iPhone) Safari/604.1'));
+
+    const hoy = '2099-03-10';
+    const ana = { ip: '203.0.113.5', agente: 'Mozilla/5.0 (iPhone)' };
+    await ES.registrarEvento(db, ES.leerEvento({ t: 'vista', r: '/', ref: '', m: true }, host)!, ana, hoy);
+    await ES.registrarEvento(db, ES.leerEvento({ t: 'vista', r: '/hipermercado/bazar/', ref: `https://${host}/` }, host)!, ana, hoy);
+    await ES.registrarEvento(db, ES.leerEvento({ t: 'vista', r: '/', ref: 'https://facebook.com/' }, host)!, { ip: '198.51.100.7', agente: 'Mozilla/5.0 (Windows)' }, hoy);
+    await ES.registrarEvento(db, ES.leerEvento({ t: 'whatsapp', r: '/hipermercado/bazar/', u: wa }, host)!, ana, hoy);
+    await ES.registrarEvento(db, ES.leerEvento({ t: 'banner', r: '/', d: 'Llevate tu moto 0 km' }, host)!, ana, hoy);
+    const r = await ES.resumen(db, 7, hoy);
+    assert.deepEqual(r.totales, { vistas: 3, visitantes: 2, whatsapp: 1, celular: 1, computadora: 2 });
+    assert.deepEqual(r.ranking.pagina.map((x) => [x.clave, x.valor]), [['/', 2], ['/hipermercado/bazar/', 1]]);
+    assert.deepEqual(r.ranking.origen.map((x) => x.clave).sort(), ['Directo', 'facebook.com']);
+    assert.deepEqual(r.ranking.producto, [{ clave: 'Parlante JBL Go 3 · 465123', valor: 1 }]);
+    assert.equal(r.dias.length, 7);
+    // No se guarda la IP: solo hash anónimos del día.
+    const hashes = (await db.execute('SELECT hash FROM visitantes_dia')).rows.map((f) => String(f.hash));
+    assert.ok(hashes.length === 2 && hashes.every((h) => !h.includes('203.0.113') && h.length === 32));
+
+    const n = new Navegador();
+    await n.ingresar('principal');
+    const pagina = await (await n.pedir(`${RUTA}/estadisticas?dias=7`)).text();
+    assert.match(pagina, /Vistas de páginas/);
+    assert.doesNotMatch(pagina, /style="/);
+    const e = new Navegador();
+    await e.ingresar('editor');
+    assert.equal((await e.pedir(`${RUTA}/estadisticas`)).status, 403);
   });
 });
 

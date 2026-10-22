@@ -584,4 +584,37 @@ select.input { padding-right: 28px; }
 .credito--pasada { opacity: .7; }
 details.card > summary { cursor: pointer; }
 
+/* ── Estadísticas ── */
+.kpis { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr)); }
+.kpi { display: grid; gap: 4px; align-content: start; }
+.kpi__titulo { font-size: .8125rem; font-weight: 600; color: var(--muted-foreground); }
+.kpi__valor { font-size: 1.875rem; font-weight: 750; letter-spacing: -0.02em; line-height: 1.15; font-variant-numeric: tabular-nums; }
+.kpi__var { font-size: .8125rem; font-weight: 600; }
+.kpi__var--sube { color: var(--ok); }
+.kpi__var--baja { color: var(--destructive); }
+.grafico { display: grid; gap: 10px; }
+.grafico__lectura { min-height: 1.4em; font-variant-numeric: tabular-nums; }
+.grafico__area { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px; }
+.grafico__eje { display: flex; flex-direction: column; justify-content: space-between; font-size: .75rem; color: var(--muted-foreground); text-align: right; font-variant-numeric: tabular-nums; padding-block: 0 2px; }
+.grafico__eje span:first-child { transform: translateY(-50%); }
+.grafico__lienzo { min-width: 0; }
+.grafico__svg { display: block; width: 100%; height: auto; overflow: visible; }
+.grafico__guia { stroke: var(--border); stroke-width: 1; stroke-dasharray: 2 4; vector-effect: non-scaling-stroke; }
+.grafico__base { stroke: var(--input); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.grafico__zona { fill: transparent; }
+.grafico__barra { fill: var(--primary); transition: fill .15s; }
+.grafico__dia:hover .grafico__zona, .grafico__dia.activo .grafico__zona { fill: var(--suave); }
+.grafico__dia:hover .grafico__barra, .grafico__dia.activo .grafico__barra { fill: var(--primary-hover); }
+.grafico__fechas { display: flex; justify-content: space-between; font-size: .75rem; color: var(--muted-foreground); padding-left: 44px; }
+.grafico__tabla summary { cursor: pointer; font-size: .875rem; font-weight: 600; color: var(--muted-foreground); }
+.grafico__tabla table { margin-top: 10px; width: 100%; font-variant-numeric: tabular-nums; }
+.grafico__tabla :is(th, td) { text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--border); font-size: .875rem; }
+.rankings { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); }
+.ranking__lista { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 10px; }
+.ranking__lista li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 12px; font-size: .875rem; }
+.ranking__nombre { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ranking__valor { font-weight: 700; font-variant-numeric: tabular-nums; }
+.ranking__barra { grid-column: 1 / -1; width: 100%; height: 4px; display: block; }
+.ranking__barra rect { fill: var(--primary); opacity: .75; }
+
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; } }

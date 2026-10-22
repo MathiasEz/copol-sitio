@@ -26,7 +26,7 @@ else sinCache(Astro.response.headers);
 const TOTALES_STOCK = catalogo.totales;
 const secciones = catalogo.categorias.map((c) => ({ ...c, modelos: MODELOS.filter((m) => m.categoriaId === c.id) }));
 ---
-<Base titulo="Bazar" descripcion={`Catálogo del Bazar COPOL: ${MODELOS.length} productos de tecnología, hogar, audio, bicicletas y más. Consultá stock y condiciones por WhatsApp.`}>
+<Base titulo="Bazar" sinWhatsappFlotante descripcion={`Catálogo del Bazar COPOL: ${MODELOS.length} productos de tecnología, hogar, audio, bicicletas y más. Consultá stock y condiciones por WhatsApp.`}>
   <EncabezadoPagina
     titulo="Catálogo del Bazar"
     antetitulo="Hipermercado · Bazar"
@@ -370,7 +370,20 @@ const secciones = catalogo.categorias.map((c) => ({ ...c, modelos: MODELOS.filte
       const copia = img.cloneNode() as HTMLImageElement;
       copia.loading = 'eager';
       copia.sizes = '200px';
-      cajaImg.append(copia);
+      // Tocar la foto la abre en el visor ampliado (src/components/Visor.astro), en su mayor tamaño.
+      const ampliar = document.createElement('button');
+      ampliar.type = 'button';
+      ampliar.className = 'ficha__ampliar';
+      ampliar.dataset.visor = '';
+      ampliar.dataset.visorSrc = img.srcset ? img.srcset.split(',').map((s) => s.trim().split(/\s+/)[0]).pop()! : img.src;
+      ampliar.dataset.visorAlt = img.alt || (tarjeta.querySelector('[data-nombre]')?.textContent ?? '');
+      ampliar.setAttribute('aria-label', 'Ver la imagen ampliada');
+      const etiqueta = document.createElement('span');
+      etiqueta.className = 'ficha__ampliar-etiqueta';
+      etiqueta.textContent = 'Ampliar';
+      etiqueta.setAttribute('aria-hidden', 'true');
+      ampliar.append(copia, etiqueta);
+      cajaImg.append(ampliar);
     }
     ficha.dataset.estado = tarjeta.dataset.estado ?? '';
     ficha.querySelector('[data-ficha-categoria]')!.textContent = tarjeta.querySelector('.producto__categoria')?.textContent ?? '';
@@ -774,6 +787,18 @@ const secciones = catalogo.categorias.map((c) => ({ ...c, modelos: MODELOS.filte
   .ficha__imagen { aspect-ratio: 1; border-radius: var(--radio-lg); background: #fff; box-shadow: var(--anillo); display: grid; place-items: center; overflow: hidden; }
   .ficha__imagen img { width: 100%; height: 100%; object-fit: contain; padding: 10px; mix-blend-mode: multiply; }
   .ficha[data-estado='sin-stock'] .ficha__imagen img { filter: grayscale(1); opacity: 0.7; }
+  .ficha__imagen :global(.ficha__ampliar) {
+    position: relative; display: grid; width: 100%; height: 100%; padding: 0; border: 0; background: none; cursor: zoom-in; border-radius: inherit;
+  }
+  .ficha__imagen :global(.ficha__ampliar:focus-visible) { outline: 3px solid var(--ring); outline-offset: -3px; }
+  .ficha__imagen :global(.ficha__ampliar-etiqueta) {
+    position: absolute; right: 8px; bottom: 8px; padding: 3px 10px; border-radius: var(--radio-pill);
+    background: rgb(18 38 26 / 0.75); color: var(--blanco); font-size: 0.75rem; font-weight: 700;
+    opacity: 0; transition: opacity var(--transicion);
+  }
+  .ficha__imagen :global(.ficha__ampliar:hover .ficha__ampliar-etiqueta),
+  .ficha__imagen :global(.ficha__ampliar:focus-visible .ficha__ampliar-etiqueta) { opacity: 1; }
+  @media (hover: none) { .ficha__imagen :global(.ficha__ampliar-etiqueta) { opacity: 1; } }
   .ficha__titulos { display: grid; gap: 6px; }
   .ficha__titulo { font-size: clamp(1.25rem, 2.6vw, 1.5rem); line-height: 1.2; }
   .ficha__resumen { color: var(--muted-foreground); font-size: 0.9375rem; }

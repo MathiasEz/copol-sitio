@@ -1,0 +1,136 @@
+---
+// Visor ampliado de imágenes (plan de mejoras V4), uno solo por página (en Base.astro).
+// Cualquier elemento con data-visor abre la imagen grande al tocarlo:
+//   data-visor-src / data-visor-srcset / data-visor-alt   imagen grande y su descripción
+//   data-visor-grupo="x" + data-visor-i="n"               recorrido con anterior/siguiente dentro del grupo
+// Las copias decorativas (aria-hidden="true", p. ej. las del bucle de la cinta de ofertas) abren la original.
+// También se abre desde código: window.copolVisor.abrirGrupo('ofertas', 3).
+// Teclado: ←/→ para recorrer, Esc para cerrar (y el foco vuelve a donde estaba). Deslizar con el dedo
+// también recorre. Tocar fuera de la imagen cierra.
+import Icono from './Icono.astro';
+---
+<dialog class="visor" data-visor-dialogo aria-label="Imagen ampliada">
+  <div class="visor__marco">
+    <figure class="visor__figura">
+      <img class="visor__img" alt="" data-visor-img decoding="async" />
+      <figcaption class="visor__pie"><span data-visor-texto></span><span class="visor__contador" data-visor-contador></span></figcaption>
+    </figure>
+    <button type="button" class="visor__boton visor__boton--cerrar" data-visor-cerrar aria-label="Cerrar"><Icono nombre="cerrar" tamano={22} /></button>
+    <button type="button" class="visor__boton visor__boton--anterior" data-visor-anterior aria-label="Imagen anterior"><Icono nombre="chevron-izq" tamano={24} /></button>
+    <button type="button" class="visor__boton visor__boton--siguiente" data-visor-siguiente aria-label="Imagen siguiente"><Icono nombre="chevron-der" tamano={24} /></button>
+  </div>
+</dialog>
+
+<script>
+  interface Item { src: string; srcset?: string; alt: string }
+  const dialogo = document.querySelector<HTMLDialogElement>('[data-visor-dialogo]');
+  if (dialogo) {
+    const img = dialogo.querySelector<HTMLImageElement>('[data-visor-img]')!;
+    const texto = dialogo.querySelector<HTMLElement>('[data-visor-texto]')!;
+    const contador = dialogo.querySelector<HTMLElement>('[data-visor-contador]')!;
+    const anterior = dialogo.querySelector<HTMLButtonElement>('[data-visor-anterior]')!;
+    const siguiente = dialogo.querySelector<HTMLButtonElement>('[data-visor-siguiente]')!;
+    let items: Item[] = [];
+    let actual = 0;
+    let volverA: HTMLElement | null = null;
+
+    const leer = (el: HTMLElement): Item => ({ src: el.dataset.visorSrc ?? '', srcset: el.dataset.visorSrcset, alt: el.dataset.visorAlt ?? '' });
+    const mostrar = (i: number, direccion = 0) => {
+      actual = (i + items.length) % items.length;
+      const it = items[actual];
+      dialogo.dataset.direccion = String(direccion);
+      img.classList.remove('visor__img--lista');
+      if (it.srcset) img.srcset = it.srcset; else img.removeAttribute('srcset');
+      img.sizes = '(min-width: 900px) 70vw, 100vw';
+      img.src = it.src;
+      img.alt = it.alt;
+      texto.textContent = it.alt;
+      const varias = items.length > 1;
+      contador.textContent = varias ? `${actual + 1} de ${items.length}` : '';
+      anterior.hidden = siguiente.hidden = !varias;
+    };
+    img.addEventListener('load', () => img.classList.add('visor__img--lista'));
+
+    const abrir = (lista: Item[], i = 0) => {
+      if (!lista.length) return;
+      items = lista;
+      volverA = document.activeElement as HTMLElement | null;
+      mostrar(i);
+      if (!dialogo.open) dialogo.showModal();
+      (window as unknown as { copolEstadistica?: (d: object) => void }).copolEstadistica?.({ t: 'visor' });
+    };
+    const abrirGrupo = (grupo: string, i = 0) => {
+      const els = [...document.querySelectorAll<HTMLElement>(`[data-visor][data-visor-grupo="${CSS.escape(grupo)}"]`)].filter((el) => !el.closest('[aria-hidden="true"]'));
+      els.sort((a, b) => Number(a.dataset.visorI ?? 0) - Number(b.dataset.visorI ?? 0));
+      abrir(els.map(leer), i);
+    };
+    (window as unknown as { copolVisor: object }).copolVisor = { abrir, abrirGrupo };
+
+    document.addEventListener('click', (e) => {
+      const el = (e.target as HTMLElement).closest<HTMLElement>('[data-visor]');
+      if (!el) return;
+      // Un arrastre en la cinta de ofertas no es un clic.
+      if (el.closest<HTMLElement>('[data-arrastrado="1"]')) return;
+      e.preventDefault();
+      if (el.dataset.visorGrupo) abrirGrupo(el.dataset.visorGrupo, Number(el.dataset.visorI ?? 0));
+      else abrir([leer(el)]);
+    });
+
+    anterior.addEventListener('click', () => mostrar(actual - 1, -1));
+    siguiente.addEventListener('click', () => mostrar(actual + 1, 1));
+    dialogo.querySelector('[data-visor-cerrar]')!.addEventListener('click', () => dialogo.close());
+    dialogo.addEventListener('click', (e) => { if (e.target === dialogo || (e.target as HTMLElement).classList.contains('visor__marco')) dialogo.close(); });
+    dialogo.addEventListener('keydown', (e) => {
+      if (items.length < 2) return;
+      if (e.key === 'ArrowLeft') { e.preventDefault(); mostrar(actual - 1, -1); }
+      if (e.key === 'ArrowRight') { e.preventDefault(); mostrar(actual + 1, 1); }
+    });
+    let x0 = 0, y0 = 0;
+    dialogo.addEventListener('pointerdown', (e) => { x0 = e.clientX; y0 = e.clientY; });
+    dialogo.addEventListener('pointerup', (e) => {
+      const dx = e.clientX - x0, dy = e.clientY - y0;
+      if (items.length > 1 && Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.3) mostrar(actual + (dx < 0 ? 1 : -1), dx < 0 ? 1 : -1);
+    });
+    dialogo.addEventListener('close', () => { img.removeAttribute('src'); volverA?.focus?.({ preventScroll: true }); });
+  }
+</script>
+
+<style is:global>
+  .visor {
+    width: 100vw; height: 100dvh; max-width: none; max-height: none; margin: 0; padding: 0; border: 0;
+    background: transparent; color: #fff; overflow: hidden;
+  }
+  .visor::backdrop { background: rgb(6 20 12 / 0.9); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+  .visor__marco { position: relative; width: 100%; height: 100%; display: grid; place-items: center; padding: clamp(56px, 7vh, 80px) clamp(12px, 6vw, 96px); }
+  .visor__figura { margin: 0; display: grid; gap: 14px; justify-items: center; max-width: 100%; max-height: 100%; }
+  .visor__img {
+    display: block; max-width: min(100%, 900px); max-height: calc(100dvh - 190px); width: auto; height: auto;
+    border-radius: 18px; box-shadow: 0 30px 80px -20px rgb(0 0 0 / 0.6); background: rgb(255 255 255 / 0.06);
+    opacity: 0; transform: scale(0.97);
+  }
+  .visor__img--lista { opacity: 1; transform: none; }
+  @media (prefers-reduced-motion: no-preference) {
+    .visor[open] { animation: visor-entrada 260ms cubic-bezier(0.25, 1, 0.5, 1); }
+    .visor__img { transition: opacity 260ms cubic-bezier(0.25, 1, 0.5, 1), transform 420ms cubic-bezier(0.25, 1, 0.5, 1); }
+    .visor[data-direccion='1'] .visor__img:not(.visor__img--lista) { transform: translateX(24px) scale(0.98); }
+    .visor[data-direccion='-1'] .visor__img:not(.visor__img--lista) { transform: translateX(-24px) scale(0.98); }
+  }
+  @keyframes visor-entrada { from { opacity: 0; } }
+  .visor__pie { display: flex; gap: 14px; align-items: baseline; justify-content: center; flex-wrap: wrap; max-width: 70ch; text-align: center; font-size: 0.9375rem; line-height: 1.45; color: rgb(255 255 255 / 0.88); }
+  .visor__contador { font-size: 0.8125rem; font-weight: 700; color: rgb(255 255 255 / 0.6); white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .visor__boton {
+    position: absolute; display: grid; place-items: center; width: 48px; height: 48px; padding: 0; border: 0; border-radius: 999px;
+    background: rgb(255 255 255 / 0.12); color: #fff; cursor: pointer; box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.2);
+    transition: background 180ms ease, transform 300ms cubic-bezier(0.25, 1, 0.5, 1);
+  }
+  .visor__boton:hover { background: rgb(255 255 255 / 0.22); }
+  .visor__boton:active { transform: scale(0.94); }
+  .visor__boton:focus-visible { outline: 3px solid #f8ea39; outline-offset: 2px; }
+  .visor__boton--cerrar { top: max(14px, env(safe-area-inset-top)); right: max(14px, env(safe-area-inset-right)); }
+  .visor__boton--anterior { left: max(14px, env(safe-area-inset-left)); top: 50%; translate: 0 -50%; }
+  .visor__boton--siguiente { right: max(14px, env(safe-area-inset-right)); top: 50%; translate: 0 -50%; }
+  @media (max-width: 599px) {
+    .visor__boton--anterior, .visor__boton--siguiente { top: auto; bottom: max(14px, env(safe-area-inset-bottom)); translate: none; }
+    .visor__img { max-height: calc(100dvh - 220px); }
+  }
+</style>
