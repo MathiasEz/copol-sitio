@@ -5,6 +5,7 @@
 // src/styles/banner-inicio.css y el comportamiento de src/scripts/banner-inicio.js (copiados al panel en el build).
 import crypto from 'node:crypto';
 import { ahora, ejecutar, una, type Db } from './db.ts';
+import { hoyUruguay } from './fechas.ts';
 
 const CLAVE = 'banner_inicio';
 
@@ -162,8 +163,7 @@ export async function guardarBanner(db: Db, b: Banner) {
 
 export const nuevoId = () => crypto.randomBytes(6).toString('base64url');
 
-/** Fecha de hoy en Uruguay (AAAA-MM-DD). */
-export const hoyUruguay = (fecha = new Date()) => fecha.toLocaleDateString('en-CA', { timeZone: 'America/Montevideo' });
+export { hoyUruguay };
 
 /** Estado público de una diapositiva en una fecha. */
 export function estadoDiapositiva(d: Diapositiva, hoy = hoyUruguay()): 'publicada' | 'borrador' | 'programada' | 'vencida' {

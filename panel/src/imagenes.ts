@@ -16,7 +16,7 @@ const FORMATOS = new Set(['jpeg', 'png', 'webp', 'avif', 'heif']);
 const MAX_PIXELES = 40_000_000;
 const MIN_LADO = 200;
 /** Anchos generados por tipo de imagen; el último es el que se guarda en la base. */
-export const VARIANTES = { producto: [400, 800], novedad: [800, 1600] } as const;
+export const VARIANTES = { producto: [400, 800], novedad: [800, 1600], oferta: [400, 800] } as const;
 export type TipoImagen = keyof typeof VARIANTES;
 
 export class ErrorImagen extends Error {}

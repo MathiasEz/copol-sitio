@@ -42,7 +42,10 @@ const departamentos = new Set(CONVENIOS.map((c) => c.departamento)).size;
     </div>
   </section>
 
-  <AperturasCredito />
+  <!-- Fechas de crédito: se cargan en el panel; las pasadas se ocultan solas -->
+  <AperturasCredito server:defer>
+    <div slot="fallback" class="contenedor creditos-esqueleto" aria-hidden="true"><div></div></div>
+  </AperturasCredito>
   <BandaSocio />
 </Base>
 

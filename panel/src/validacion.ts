@@ -5,6 +5,7 @@ import { esPlantilla, PLANTILLAS, type DatosNovedad } from './novedades.ts';
 import { esDiseno, esFoco, type Boton, type Diapositiva } from './banner.ts';
 import { esRol, type Rol } from './seguridad.ts';
 import { BASE } from './config.ts';
+import { fechaValida } from './fechas.ts';
 
 const PRECIO = /(\$|U\$S|USD|UYU)\s?\d|precio\s*[:$]|\d+[.,]\d{3}\s*(pesos|\$)/i;
 export type Campos = Record<string, string | File | (string | File)[]>;
@@ -90,7 +91,12 @@ export function validarNovedad(b: Campos, tieneImagen: boolean) {
     enlace_texto: texto(b.enlace_texto, 40) || null,
     enlace_url: texto(b.enlace_url, 500) || null,
     publicado: b.publicado === '1',
+    desde: fechaValida(b.desde) || null,
+    hasta: fechaValida(b.hasta) || null,
   };
+  if (texto(b.desde, 10) && !d.desde) errores.desde = 'Fecha inválida.';
+  if (texto(b.hasta, 10) && !d.hasta) errores.hasta = 'Fecha inválida.';
+  if (d.desde && d.hasta && d.hasta < d.desde) errores.hasta = 'La fecha de fin es anterior a la de inicio.';
   if (d.titulo.length < 3) errores.titulo = 'Escribí un título (mínimo 3 caracteres).';
   if (d.titulo.length > 120) errores.titulo = 'El título es demasiado largo (máx. 120).';
   if ((d.texto?.length ?? 0) > 600) errores.texto = 'El texto es demasiado largo (máx. 600).';
@@ -110,7 +116,6 @@ export function validarDiapositiva(b: Campos, tieneImagen: boolean) {
   const linea = (v: unknown, max: number) => texto(v, max).replace(/\s+/g, ' ');
   const diseno = texto(b.diseno, 20);
   const foco = texto(b.foco, 20);
-  const fecha = (v: unknown) => { const t = texto(v, 10); return /^\d{4}-\d{2}-\d{2}$/.test(t) && !Number.isNaN(Date.parse(t)) ? t : ''; };
   const botonDe = (n: 1 | 2): Boton | null => {
     const t = linea(b[`boton${n}_texto`], 30);
     const url = texto(b[`boton${n}_url`], 500);
@@ -133,8 +138,8 @@ export function validarDiapositiva(b: Campos, tieneImagen: boolean) {
     boton1: botonDe(1),
     boton2: botonDe(2),
     publicado: b.publicado === '1',
-    desde: fecha(b.desde),
-    hasta: fecha(b.hasta),
+    desde: fechaValida(b.desde),
+    hasta: fechaValida(b.hasta),
   };
   if (d.titulo.length < 3) errores.titulo = 'Escribí un título (mínimo 3 caracteres).';
   if (d.titulo.length > 90) errores.titulo = 'El título es demasiado largo (máx. 90).';

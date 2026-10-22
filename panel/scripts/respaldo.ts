@@ -1,5 +1,6 @@
 // Respaldo del panel en panel/datos/respaldos/<fecha-hora>/ (o PANEL_RESPALDOS):
-//   datos.json   todas las tablas (usuarios solo con el hash de contraseña; sin sesiones)
+//   datos.json   todas las tablas (usuarios solo con el hash de contraseña; sin sesiones), con los
+//                ajustes (banner de Inicio, ofertas, créditos, información para empleados y PIN)
 //   imagenes/    copia de las imágenes subidas desde el panel (Vercel Blob o carpeta local)
 // Funciona igual contra Turso (producción) o el archivo local. Turso además guarda historial propio
 // (restauración a un punto en el tiempo desde su consola). Copiar la carpeta fuera del equipo.
@@ -8,18 +9,17 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { BASE, cargarConfig } from '../src/config.ts';
-import { conectar, todas } from '../src/db.ts';
-
-const TABLAS = ['rubros', 'categorias', 'productos', 'novedades', 'usuarios', 'auditoria'] as const;
+import { conectar } from '../src/db.ts';
+import { exportarDatos, TABLAS_RESPALDO as TABLAS } from '../src/respaldo.ts';
 const config = cargarConfig();
 const sello = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
 const destino = path.join(config.dirRespaldos, sello);
 await fs.mkdir(path.join(destino, 'imagenes'), { recursive: true });
 
 const db = await conectar();
-const datos: Record<string, unknown[]> = {};
-for (const t of TABLAS) datos[t] = await todas(db, `SELECT * FROM ${t}`);
-await fs.writeFile(path.join(destino, 'datos.json'), JSON.stringify({ exportado: new Date().toISOString(), tablas: datos }, null, 1));
+const respaldo = await exportarDatos(db);
+const datos = respaldo.tablas;
+await fs.writeFile(path.join(destino, 'datos.json'), JSON.stringify(respaldo, null, 1));
 
 // Imágenes subidas desde el panel (las importadas ya están en el repositorio del sitio).
 const urls = new Set<string>();

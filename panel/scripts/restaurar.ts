@@ -3,6 +3,7 @@
 // Las imágenes del respaldo quedan como copia: si se perdió el almacenamiento, volver a subirlas.
 //
 //   npm run panel:restaurar -- --desde panel/datos/respaldos/2026-10-13T20-00-00 --confirmar
+// Para un respaldo diario cifrado (Vercel Blob), primero: npm run panel:descifrar (ver ese script).
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { parseArgs } from 'node:util';
@@ -17,6 +18,8 @@ if (!values.desde) {
 const respaldo = JSON.parse(await fs.readFile(path.join(path.resolve(values.desde), 'datos.json'), 'utf8')) as { exportado: string; tablas: Record<string, Record<string, unknown>[]> };
 const ORDEN = ['rubros', 'categorias', 'productos', 'novedades', 'usuarios', 'auditoria'];
 for (const t of ORDEN) if (!Array.isArray(respaldo.tablas[t])) throw new Error(`El respaldo no tiene la tabla ${t}`);
+// Respaldos desde el 22/10/2026: también traen los ajustes (banner, ofertas, créditos, empleados y PIN).
+if (Array.isArray(respaldo.tablas.ajustes)) ORDEN.push('ajustes');
 console.log(`Respaldo del ${respaldo.exportado}: ${ORDEN.map((t) => `${t} ${respaldo.tablas[t].length}`).join(' · ')}`);
 if (!values.confirmar) {
   console.log('Revisión sin cambios. Para restaurar de verdad, repetí el comando con --confirmar.');

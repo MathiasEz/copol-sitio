@@ -131,6 +131,10 @@ const MIGRACIONES: string[] = [
   );
   CREATE INDEX conversaciones_usuario ON conversaciones(usuario_id, actualizada_en)
   `,
+  /* 7 · novedades programadas: se muestran solo entre estas fechas (AAAA-MM-DD, hora de Uruguay) */ `
+  ALTER TABLE novedades ADD COLUMN desde TEXT;
+  ALTER TABLE novedades ADD COLUMN hasta TEXT
+  `,
 ];
 
 /** Versión del esquema en una tabla propia (PRAGMA user_version no se conserva igual en todos los destinos). */

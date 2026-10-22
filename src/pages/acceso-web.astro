@@ -79,7 +79,10 @@ import Badge from '../components/ui/Badge.astro';
     </div>
   </section>
 
-  <AperturasCredito />
+  <!-- Fechas de crédito: se cargan en el panel; las pasadas se ocultan solas -->
+  <AperturasCredito server:defer>
+    <div slot="fallback" class="contenedor creditos-esqueleto" aria-hidden="true"><div></div></div>
+  </AperturasCredito>
 </Base>
 
 <style>

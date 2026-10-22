@@ -79,7 +79,10 @@ const accesos = [
     </ul>
   </section>
 
-  <AperturasCredito />
+  <!-- Fechas de crédito: se cargan en el panel; las pasadas se ocultan solas -->
+  <AperturasCredito server:defer>
+    <div slot="fallback" class="contenedor creditos-esqueleto" aria-hidden="true"><div></div></div>
+  </AperturasCredito>
 
   <!-- ── Bazar: banner + estante de productos ── -->
   <section class="contenedor bloque" aria-labelledby="bazar-titulo">

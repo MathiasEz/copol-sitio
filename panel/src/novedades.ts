@@ -1,5 +1,6 @@
 // Novedades de la portada: se crean y ordenan en el panel; el sitio muestra solo las publicadas.
 import { ahora, ejecutar, todas, una, type Db } from './db.ts';
+import { hoyUruguay } from './fechas.ts';
 
 export type Plantilla = 'imagen-izquierda' | 'imagen-completa' | 'texto';
 export const PLANTILLAS: Record<Plantilla, { nombre: string; requiereImagen: boolean }> = {
@@ -20,6 +21,9 @@ export interface Novedad {
   enlace_texto: string | null;
   enlace_url: string | null;
   publicado: number;
+  /** Se muestra solo desde / hasta estas fechas (AAAA-MM-DD, hora de Uruguay); null = sin límite. */
+  desde: string | null;
+  hasta: string | null;
   orden: number;
   creado_en: string;
   actualizado_en: string;
@@ -34,23 +38,34 @@ export interface DatosNovedad {
   enlace_texto: string | null;
   enlace_url: string | null;
   publicado: boolean;
+  desde: string | null;
+  hasta: string | null;
 }
 
 export const listarNovedades = (db: Db) => todas<Novedad>(db, 'SELECT * FROM novedades ORDER BY orden, id');
-export const novedadesPublicadas = (db: Db) => todas<Novedad>(db, 'SELECT * FROM novedades WHERE publicado = 1 ORDER BY orden, id');
+/** Las que se ven hoy en la portada: publicadas y dentro de sus fechas. */
+export const novedadesPublicadas = (db: Db, hoy = hoyUruguay()) =>
+  todas<Novedad>(db, "SELECT * FROM novedades WHERE publicado = 1 AND (desde IS NULL OR desde = '' OR desde <= ?) AND (hasta IS NULL OR hasta = '' OR hasta >= ?) ORDER BY orden, id", [hoy, hoy]);
+
+export function estadoNovedad(n: Pick<Novedad, 'publicado' | 'desde' | 'hasta'>, hoy = hoyUruguay()): 'publicada' | 'borrador' | 'programada' | 'vencida' {
+  if (!Number(n.publicado)) return 'borrador';
+  if (n.desde && hoy < n.desde) return 'programada';
+  if (n.hasta && hoy > n.hasta) return 'vencida';
+  return 'publicada';
+}
 export const obtenerNovedad = (db: Db, id: number) => una<Novedad>(db, 'SELECT * FROM novedades WHERE id = ?', [id]);
 
 export async function crearNovedad(db: Db, d: DatosNovedad, imagen: string | null, por: string) {
   const t = ahora();
   const orden = Number((await una<{ o: number }>(db, 'SELECT COALESCE(MAX(orden), 0) + 1 o FROM novedades'))?.o ?? 1);
-  const r = await ejecutar(db, `INSERT INTO novedades (titulo, texto, imagen, imagen_alt, plantilla, enlace_texto, enlace_url, publicado, orden, creado_en, actualizado_en, actualizado_por)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, [d.titulo, d.texto, imagen, d.imagen_alt, d.plantilla, d.enlace_texto, d.enlace_url, d.publicado ? 1 : 0, orden, t, t, por]);
+  const r = await ejecutar(db, `INSERT INTO novedades (titulo, texto, imagen, imagen_alt, plantilla, enlace_texto, enlace_url, publicado, desde, hasta, orden, creado_en, actualizado_en, actualizado_por)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, [d.titulo, d.texto, imagen, d.imagen_alt, d.plantilla, d.enlace_texto, d.enlace_url, d.publicado ? 1 : 0, d.desde, d.hasta, orden, t, t, por]);
   return (await obtenerNovedad(db, r.id!))!;
 }
 
 export async function editarNovedad(db: Db, id: number, d: DatosNovedad, imagen: string | null | undefined, por: string) {
-  await ejecutar(db, `UPDATE novedades SET titulo = ?, texto = ?, imagen_alt = ?, plantilla = ?, enlace_texto = ?, enlace_url = ?, publicado = ?, actualizado_en = ?, actualizado_por = ?${imagen !== undefined ? ', imagen = ?' : ''} WHERE id = ?`, [
-    d.titulo, d.texto, d.imagen_alt, d.plantilla, d.enlace_texto, d.enlace_url, d.publicado ? 1 : 0, ahora(), por, ...(imagen !== undefined ? [imagen] : []), id,
+  await ejecutar(db, `UPDATE novedades SET titulo = ?, texto = ?, imagen_alt = ?, plantilla = ?, enlace_texto = ?, enlace_url = ?, publicado = ?, desde = ?, hasta = ?, actualizado_en = ?, actualizado_por = ?${imagen !== undefined ? ', imagen = ?' : ''} WHERE id = ?`, [
+    d.titulo, d.texto, d.imagen_alt, d.plantilla, d.enlace_texto, d.enlace_url, d.publicado ? 1 : 0, d.desde, d.hasta, ahora(), por, ...(imagen !== undefined ? [imagen] : []), id,
   ]);
   return obtenerNovedad(db, id);
 }

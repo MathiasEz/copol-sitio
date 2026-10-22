@@ -16,6 +16,9 @@ import { ahora, ejecutar, una, type Db } from './db.ts';
 import { almacenConfigurado, ErrorImagen, procesarImagen, variante, type Almacen } from './imagenes.ts';
 import * as N from './novedades.ts';
 import * as B from './banner.ts';
+import * as OF from './ofertas.ts';
+import * as CR from './creditos.ts';
+import { fechaValida, hoyUruguay } from './fechas.ts';
 import * as E from './empleados.ts';
 import * as P from './productos.ts';
 import * as PR from './propuestas.ts';
@@ -43,7 +46,12 @@ const AVISOS: Record<string, V.Contexto['aviso']> = {
   'banner-eliminada': { tipo: 'ok', texto: 'Diapositiva eliminada.' },
   'banner-ajustes': { tipo: 'ok', texto: 'Tiempo de cada diapositiva guardado.' },
   'banner-segundos': { tipo: 'error', texto: 'Elegí un tiempo entre 4 y 12 segundos.' },
-  'banner-maximo': { tipo: 'error', texto: 'El banner ya tiene el máximo de diapositivas: eliminá una para agregar otra.' },
+  'ofertas-guardadas': { tipo: 'ok', texto: 'Ofertas guardadas. Promociones ya muestra los cambios.' },
+  'ofertas-agregadas': { tipo: 'ok', texto: 'Piezas agregadas al final. Describí cada una con el producto y el precio, y guardá.' },
+  'ofertas-error-subida': { tipo: 'error', texto: 'Alguna imagen no se pudo agregar (formato no admitido, muy chica o demasiado grande). Las demás se agregaron.' },
+  'ofertas-vaciadas': { tipo: 'ok', texto: 'Se quitaron todas las piezas: la sección de ofertas no se muestra hasta que cargues otras.' },
+  'creditos-guardado': { tipo: 'ok', texto: 'Fechas de crédito guardadas. La web ya muestra el cambio.' },
+  'banner-maximo':{ tipo: 'error', texto: 'El banner ya tiene el máximo de diapositivas: eliminá una para agregar otra.' },
   'usuario-creado': { tipo: 'ok', texto: 'Usuario agregado.' },
   'usuario-guardado': { tipo: 'ok', texto: 'Usuario actualizado.' },
   'usuario-eliminado': { tipo: 'ok', texto: 'Usuario eliminado.' },
@@ -651,6 +659,107 @@ export function crearApp({ db: fuenteDb, config, almacen, asistente, correo }: O
     await B.guardarBanner(c.get('db'), banner);
     await registrar(c.get('db'), actor(c), 'banner.baja', 'banner', diapo.id, { titulo: B.tituloCompleto(diapo) });
     return c.redirect(`${r('/banner')}?aviso=banner-eliminada`);
+  });
+
+  // ── Administración Página: ofertas del supermercado (Promociones) ──
+  app.get('/ofertas', requiere('novedades'), async (c) => c.html(V.vistaOfertas(ctx(c), await OF.obtenerOfertas(c.get('db')))));
+  app.post('/ofertas', requiere('novedades'), async (c) => {
+    const db = c.get('db');
+    const b = await cuerpo(c);
+    const o = await OF.obtenerOfertas(db);
+    const errores: Record<string, string> = {};
+    const titulo = texto(b.titulo, 80).replace(/\s+/g, ' ');
+    const mes = texto(b.mes, 60).replace(/\s+/g, ' ');
+    const hastaTexto = texto(b.hasta, 10);
+    const hasta = fechaValida(hastaTexto);
+    if (titulo.length < 3 || titulo.length > 80) errores.titulo = 'Escribí un título de 3 a 80 caracteres (por ejemplo "Ofertas de noviembre").';
+    if (mes.length > 60) errores.mes = 'El período es demasiado largo (máx. 60).';
+    if (hastaTexto && !hasta) errores.hasta = 'Fecha inválida.';
+    const piezas = o.piezas.map((p) => {
+      const alt = typeof b[`alt_${p.id}`] === 'string' ? texto(b[`alt_${p.id}`], 200).replace(/\s+/g, ' ') : p.alt;
+      if (alt.length > 200) errores[`alt_${p.id}`] = 'Máximo 200 caracteres.';
+      return { ...p, alt };
+    });
+    if (Object.keys(errores).length) return c.html(V.vistaOfertas(ctx(c), { titulo, mes, hasta: hastaTexto, piezas }, errores), 400);
+    const quedan = piezas.filter((p) => b[`quitar_${p.id}`] !== '1');
+    const [accion, id] = texto(b.accion, 40).split(':');
+    const i = quedan.findIndex((p) => p.id === id);
+    const j = accion === 'arriba' ? i - 1 : i + 1;
+    if (i >= 0 && (accion === 'arriba' || accion === 'abajo') && j >= 0 && j < quedan.length) [quedan[i], quedan[j]] = [quedan[j], quedan[i]];
+    await OF.guardarOfertas(db, { titulo, mes, hasta, piezas: quedan });
+    await registrar(db, actor(c), 'ofertas.edicion', 'ofertas', null, { titulo, hasta: hasta || null, piezas: quedan.length, quitadas: piezas.length - quedan.length, ...(i >= 0 && accion !== 'guardar' ? { orden: accion } : {}) });
+    return c.redirect(`${r('/ofertas')}?aviso=ofertas-guardadas`);
+  });
+  app.post('/ofertas/piezas', requiere('novedades'), async (c) => {
+    const db = c.get('db');
+    const b = await cuerpo(c);
+    const quiereJson = c.req.header('accept')?.includes('application/json');
+    const archivos = (Array.isArray(b.piezas) ? b.piezas : [b.piezas]).filter((f): f is File => f instanceof File && f.size > 0).sort((x, y) => x.name.localeCompare(y.name, 'es', { numeric: true }));
+    const o = await OF.obtenerOfertas(db);
+    let error: string | null = archivos.length ? null : 'Elegí al menos una imagen.';
+    let agregadas = 0;
+    for (const f of archivos) {
+      if (o.piezas.length >= OF.MAX_PIEZAS) { error = `Se llegó al máximo de ${OF.MAX_PIEZAS} piezas.`; break; }
+      try {
+        const imagen = await procesarImagen(f, { maxMB: config.maxImagenMB, tipo: 'oferta', carpeta: 'ofertas', nombre: slug(f.name.replace(/\.\w+$/, '')).slice(0, 40) || 'oferta', almacen: guardarEn });
+        o.piezas.push({ id: OF.nuevoIdPieza(), imagen, alt: '' });
+        agregadas++;
+      } catch (e) {
+        if (!(e instanceof ErrorImagen)) throw e;
+        error = `${f.name}: ${e.message}`;
+      }
+    }
+    if (agregadas) {
+      await OF.guardarOfertas(db, o);
+      await registrar(db, actor(c), 'ofertas.piezas', 'ofertas', null, { agregadas, total: o.piezas.length });
+    }
+    if (quiereJson) return c.json({ ok: !error, agregadas, error }, error && !agregadas ? 400 : 200);
+    return c.redirect(`${r('/ofertas')}?aviso=${error ? 'ofertas-error-subida' : 'ofertas-agregadas'}`);
+  });
+  app.post('/ofertas/vaciar', requiere('novedades'), async (c) => {
+    const db = c.get('db');
+    const o = await OF.obtenerOfertas(db);
+    await OF.guardarOfertas(db, { ...o, piezas: [] });
+    await registrar(db, actor(c), 'ofertas.vaciado', 'ofertas', null, { quitadas: o.piezas.length });
+    return c.redirect(`${r('/ofertas')}?aviso=ofertas-vaciadas`);
+  });
+
+  // ── Administración Página: aperturas de crédito ──
+  app.get('/creditos', requiere('novedades'), async (c) => c.html(V.vistaCreditos(ctx(c), await CR.obtenerAperturas(c.get('db')))));
+  app.post('/creditos', requiere('novedades'), async (c) => {
+    const db = c.get('db');
+    const b = await cuerpo(c);
+    const lista = await CR.obtenerAperturas(db);
+    const fecha = fechaValida(b.fecha);
+    const error = !fecha ? 'Elegí una fecha válida.'
+      : fecha < hoyUruguay() ? 'La fecha ya pasó.'
+      : lista.some((a) => a.fecha === fecha) ? 'Esa fecha ya está cargada.'
+      : lista.length >= CR.MAX_APERTURAS ? `Se admiten hasta ${CR.MAX_APERTURAS} fechas: quitá alguna pasada.` : null;
+    if (error) return c.html(V.vistaCreditos(ctx(c), lista, error), 400);
+    const confirmada = b.confirmada === '1';
+    await CR.guardarAperturas(db, [...lista, { fecha, confirmada }]);
+    await registrar(db, actor(c), 'creditos.alta', 'creditos', fecha, { fecha, confirmada });
+    return c.redirect(`${r('/creditos')}?aviso=creditos-guardado`);
+  });
+  app.post('/creditos/confirmar', requiere('novedades'), async (c) => {
+    const db = c.get('db');
+    const b = await cuerpo(c);
+    const lista = await CR.obtenerAperturas(db);
+    const a = lista.find((x) => x.fecha === fechaValida(b.fecha));
+    if (!a) return c.notFound();
+    a.confirmada = b.confirmada === '1';
+    await CR.guardarAperturas(db, lista);
+    await registrar(db, actor(c), 'creditos.edicion', 'creditos', a.fecha, { fecha: a.fecha, confirmada: a.confirmada });
+    return c.redirect(`${r('/creditos')}?aviso=creditos-guardado`);
+  });
+  app.post('/creditos/quitar', requiere('novedades'), async (c) => {
+    const db = c.get('db');
+    const fecha = fechaValida((await cuerpo(c)).fecha);
+    const lista = await CR.obtenerAperturas(db);
+    if (!lista.some((a) => a.fecha === fecha)) return c.notFound();
+    await CR.guardarAperturas(db, lista.filter((a) => a.fecha !== fecha));
+    await registrar(db, actor(c), 'creditos.baja', 'creditos', fecha, { fecha });
+    return c.redirect(`${r('/creditos')}?aviso=creditos-guardado`);
   });
 
   // ── Novedades ──

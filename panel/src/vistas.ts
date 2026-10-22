@@ -7,7 +7,9 @@ import { ACCIONES, type Evento } from './auditoria.ts';
 import { BASE } from './config.ts';
 import { variante } from './imagenes.ts';
 import { GRUPOS, qrSvg, type Grupo, type ImagenPortal, type Portal } from './empleados.ts';
-import { PLANTILLAS, type Novedad, type Plantilla } from './novedades.ts';
+import { estadoNovedad, PLANTILLAS, type Novedad, type Plantilla } from './novedades.ts';
+import { MAX_PIEZAS, vencidas, type Ofertas } from './ofertas.ts';
+import { proximas, type Apertura } from './creditos.ts';
 import { DISENOS, estadoDiapositiva, FOCOS, hoyUruguay, htmlBanner, MAX_DIAPOSITIVAS, SEGUNDOS, tituloCompleto, vigentes, type Banner, type Diapositiva, type Diseno, type Foco } from './banner.ts';
 import type * as AC from './acceso.ts';
 import type { MensajeGuardado, ResumenConversacion, TarjetaGuardada } from './conversaciones.ts';
@@ -60,6 +62,7 @@ const ICONOS: Record<string, string> = {
   luna: '<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>',
   sol: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
   empleados: '<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="11" r="2.5"/><path d="M5.5 17a3.5 3.5 0 0 1 7 0M15 9h3M15 13h3"/>',
+  etiqueta: '<path d="M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8Z"/><circle cx="7.5" cy="7.5" r="1.5"/>',
   'flecha-externa': '<path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/>',
   izquierda: '<path d="m15 18-6-6 6-6"/>',
   pausa: '<path d="M9 5v14M15 5v14"/>',
@@ -106,7 +109,7 @@ const alerta = (a: Contexto['aviso']) =>
 
 export function layout(c: Contexto, titulo: string, cuerpo: H, acciones: H | '' = '', extra: Recursos = {}) {
   const u = c.usuario!;
-  const activo = (p: string) => (p === '/productos' ? c.ruta === r() || c.ruta.startsWith(r('/productos')) || c.ruta.startsWith(r('/?')) : p === '/banner' ? c.ruta.startsWith(r('/banner')) || c.ruta.startsWith(r('/novedades')) : c.ruta.startsWith(r(p)));
+  const activo = (p: string) => (p === '/productos' ? c.ruta === r() || c.ruta.startsWith(r('/productos')) || c.ruta.startsWith(r('/?')) : p === '/banner' ? ['/banner', '/ofertas', '/creditos', '/novedades'].some((s) => c.ruta.startsWith(r(s))) : c.ruta.startsWith(r(p)));
   const item = (p: string, texto: string, ic: string) => html`<a href="${r(p === '/productos' ? '' : p)}" class="nav__item" ${si(activo(p), 'aria-current="page"')}>${icono(ic)}<span>${texto}</span></a>`;
   return html`${cabeza(titulo, extra)}
 <body class="app">
@@ -453,9 +456,10 @@ const evento = (e: Evento) => {
 };
 
 // ── Administración Página: banner de Inicio y novedades ──
-const tabsPagina = (activo: 'banner' | 'novedades') => html`<nav class="tabs" aria-label="Secciones de la portada">
-  <a class="tabs__item" href="${r('/banner')}" ${si(activo === 'banner', 'aria-current="true"')}>${icono('imagen', 16)}Banner de inicio</a>
-  <a class="tabs__item" href="${r('/novedades')}" ${si(activo === 'novedades', 'aria-current="true"')}>${icono('noticia', 16)}Novedades</a>
+type SeccionPagina = 'banner' | 'ofertas' | 'creditos' | 'novedades';
+const SECCIONES_PAGINA: [SeccionPagina, string, string][] = [['banner', 'Banner de inicio', 'imagen'], ['ofertas', 'Ofertas', 'etiqueta'], ['creditos', 'Créditos', 'calendario'], ['novedades', 'Novedades', 'noticia']];
+const tabsPagina = (activo: SeccionPagina) => html`<nav class="tabs" aria-label="Secciones de la web">
+  ${SECCIONES_PAGINA.map(([k, texto, ic]) => html`<a class="tabs__item" href="${r(`/${k}`)}" ${si(activo === k, 'aria-current="true"')}>${icono(ic, 16)}${texto}</a>`)}
 </nav>`;
 const RECURSOS_BANNER: Recursos = { estilos: ['/panel-recursos/banner-inicio.css'], scripts: ['/panel-recursos/banner-inicio.js'] };
 const fechaCorta = (f: string) => (f ? new Date(`${f}T12:00:00`).toLocaleDateString('es-UY', { day: 'numeric', month: 'short', year: 'numeric' }) : '');
@@ -475,9 +479,14 @@ const vistaPrevia = (contenido: string, titulo: string, ayuda: string, fija = fa
 const ESTADOS_DIAPOSITIVA = {
   publicada: { clase: 'con-stock', icono: 'ojo', texto: () => 'Publicada' },
   borrador: { clase: 'sin-stock', icono: 'ojoNo', texto: () => 'Borrador' },
-  programada: { clase: 'sin-dato', icono: 'calendario', texto: (d: Diapositiva) => `Desde el ${fechaCorta(d.desde)}` },
-  vencida: { clase: 'sin-stock', icono: 'reloj', texto: (d: Diapositiva) => `Terminó el ${fechaCorta(d.hasta)}` },
+  programada: { clase: 'sin-dato', icono: 'calendario', texto: (d: Pick<Diapositiva, 'desde' | 'hasta'>) => `Desde el ${fechaCorta(d.desde)}` },
+  vencida: { clase: 'sin-stock', icono: 'reloj', texto: (d: Pick<Diapositiva, 'desde' | 'hasta'>) => `Terminó el ${fechaCorta(d.hasta)}` },
 } as const;
+/** Estado de algo publicable con fechas (diapositivas y novedades). */
+const badgePublicacion = (e: keyof typeof ESTADOS_DIAPOSITIVA, desde: string, hasta: string) => {
+  const est = ESTADOS_DIAPOSITIVA[e];
+  return html`<span class="badge badge--${est.clase}">${icono(est.icono, 14)}${est.texto({ desde, hasta })}</span>`;
+};
 
 export function vistaBanner(c: Contexto, banner: Banner) {
   const hoy = hoyUruguay();
@@ -597,6 +606,88 @@ ${Object.keys(errores).length ? html`<div class="alert alert--error" role="alert
 ${existe ? html`<form method="post" action="${r(`/banner/${d.id}/eliminar`)}" class="zona-peligro" data-confirmar="¿Eliminar la diapositiva “${tituloCompleto(d)}”?">${csrfCampo(c)}<button class="btn btn--peligro btn--sm" type="submit">${icono('basura', 16)}Eliminar diapositiva</button></form>` : ''}`, '', RECURSOS_BANNER);
 }
 
+// ── Ofertas del supermercado (Promociones) ──
+export function vistaOfertas(c: Contexto, o: Ofertas, errores: Record<string, string> = {}) {
+  const err = (k: string) => (errores[k] ? html`<span class="error" id="err-${k}">${errores[k]}</span>` : '');
+  const inv = (k: string) => (errores[k] ? raw(`aria-invalid="true" aria-describedby="err-${k}"`) : '');
+  const vencio = vencidas(o);
+  const sinDescribir = o.piezas.filter((p) => !p.alt.trim()).length;
+  return layout(c, 'Administración Página', html`
+${tabsPagina('ofertas')}
+<p class="muted subtitulo">Piezas del supermercado que pasan en la cinta de Promociones. Es la única sección de la web que muestra precios.</p>
+${vencio
+  ? html`<div class="alert alert--error" role="status">${icono('info')}<p>Estas ofertas vencieron el ${fechaCorta(o.hasta)}: la web ya no las muestra. Quitalas y cargá las del mes nuevo.</p></div>`
+  : !o.piezas.length
+    ? html`<div class="alert alert--error" role="status">${icono('info')}<p>No hay piezas: la sección de ofertas no aparece en Promociones.</p></div>`
+    : ''}
+${Object.keys(errores).length ? html`<div class="alert alert--error" role="alert">${icono('info')}<p>Revisá los campos marcados. No se guardó nada.</p></div>` : ''}
+<form class="card form ofertas-subir" method="post" action="${r('/ofertas/piezas')}" enctype="multipart/form-data" data-subir-piezas>
+  ${csrfCampo(c)}
+  <h2 class="card__titulo">Agregar piezas</h2>
+  <label class="campo"><span class="label">Imágenes de las ofertas</span>
+    <input class="input" type="file" name="piezas" accept="image/jpeg,image/png,image/webp,image/avif" multiple ${si(o.piezas.length >= MAX_PIEZAS, 'disabled')}>
+    <span class="ayuda">Podés elegir todas juntas; se agregan al final, en el orden de los nombres de archivo. Formato vertical 4:5 (por ejemplo 1080 × 1350). Hasta ${MAX_PIEZAS} piezas.</span>${err('piezas')}</label>
+  <div class="acciones-form acciones-form--previa"><button class="btn" type="submit" ${si(o.piezas.length >= MAX_PIEZAS, 'disabled')}>${icono('mas')}Agregar piezas</button><span class="ayuda" data-subir-estado aria-live="polite"></span></div>
+</form>
+<form class="grid-form ofertas-form" method="post" action="${r('/ofertas')}" novalidate>
+  ${csrfCampo(c)}
+  <div class="col">
+    <section class="card form"><h2 class="card__titulo">Datos de la sección</h2>
+      <label class="campo"><span class="label">Título</span><input class="input" name="titulo" value="${o.titulo}" maxlength="80" placeholder="Ofertas de noviembre" ${inv('titulo')}>${err('titulo')}</label>
+      <label class="campo"><span class="label">Período</span><input class="input" name="mes" value="${o.mes}" maxlength="60" placeholder="noviembre de 2026" ${inv('mes')}><span class="ayuda">Se lee: "Ofertas del supermercado de COPOL para …".</span>${err('mes')}</label>
+      <label class="campo"><span class="label">${icono('calendario', 14)} Válidas hasta</span><input class="input" type="date" name="hasta" value="${o.hasta}" ${inv('hasta')}><span class="ayuda">Al día siguiente la sección se retira sola de la web.</span>${err('hasta')}</label>
+      <div class="acciones-form acciones-form--previa"><button class="btn btn--lg" type="submit" name="accion" value="guardar">Guardar cambios</button><a class="btn btn--ghost" href="/hipermercado/promociones/" target="_blank" rel="noopener">Ver en la web${icono('flecha-externa', 16)}</a></div>
+    </section>
+  </div>
+  <section class="card form ofertas-piezas" aria-labelledby="piezas-titulo">
+    <div class="card__cabecera"><h2 class="card__titulo" id="piezas-titulo">Piezas</h2><span class="muted ayuda">${o.piezas.length} de ${MAX_PIEZAS}${sinDescribir ? html` · <strong class="texto-aviso">${sinDescribir} sin describir</strong>` : ''}</span></div>
+    ${o.piezas.length
+      ? html`<ul class="piezas">${o.piezas.map((p, i) => html`<li class="pieza">
+        <img src="${variante(p.imagen, 400)}" alt="" loading="lazy">
+        <label class="campo"><span class="label">Producto y precio</span><textarea class="input" name="alt_${p.id}" rows="2" maxlength="200" placeholder="Oferta: Galletas Chocolinas, a 69 pesos." ${inv(`alt_${p.id}`)}>${p.alt}</textarea>${err(`alt_${p.id}`)}</label>
+        <div class="pieza__acciones">
+          <button class="btn btn--ghost btn--icono" type="submit" name="accion" value="arriba:${p.id}" aria-label="Mover antes" ${si(i === 0, 'disabled')}>${icono('izquierda')}</button>
+          <button class="btn btn--ghost btn--icono" type="submit" name="accion" value="abajo:${p.id}" aria-label="Mover después" ${si(i === o.piezas.length - 1, 'disabled')}>${icono('derecha')}</button>
+          <label class="check check--chico"><input type="checkbox" name="quitar_${p.id}" value="1"><span>Quitar</span></label>
+        </div>
+      </li>`)}</ul>
+      <p class="ayuda">Describí cada pieza con el producto y el precio tal como figuran: lo leen los lectores de pantalla. Para quitar, marcá "Quitar" y guardá.</p>`
+      : html`<p class="muted">Todavía no hay piezas.</p>`}
+  </section>
+</form>
+${o.piezas.length ? html`<form method="post" action="${r('/ofertas/vaciar')}" class="zona-peligro" data-confirmar="¿Quitar todas las piezas de ofertas? La sección dejará de verse en la web hasta que cargues otras.">${csrfCampo(c)}<button class="btn btn--peligro btn--sm" type="submit">${icono('basura', 16)}Quitar todas las piezas (para empezar un mes nuevo)</button></form>` : ''}`);
+}
+
+// ── Aperturas de crédito ──
+export function vistaCreditos(c: Contexto, lista: Apertura[], error: string | null = null) {
+  const futuras = proximas(lista);
+  const pasadas = lista.filter((a) => !futuras.includes(a));
+  const fecha = (f: string) => new Date(`${f}T12:00:00`).toLocaleDateString('es-UY', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  const fila = (a: Apertura, pasada = false) => html`<li class="credito${pasada ? ' credito--pasada' : ''}">
+    <span class="credito__fecha">${icono('calendario', 16)}<strong>${fecha(a.fecha)}</strong></span>
+    ${pasada ? html`<span class="badge badge--sin-stock">Ya pasó</span>` : a.confirmada ? html`<span class="badge badge--con-stock">${icono('check', 14)}Confirmada</span>` : html`<span class="badge badge--sin-dato">A confirmar</span>`}
+    <div class="novedad__acciones">
+      ${pasada ? '' : html`<form method="post" action="${r('/creditos/confirmar')}">${csrfCampo(c)}<input type="hidden" name="fecha" value="${a.fecha}"><input type="hidden" name="confirmada" value="${a.confirmada ? '0' : '1'}"><button class="btn btn--outline btn--sm" type="submit">${a.confirmada ? 'Marcar "a confirmar"' : 'Marcar confirmada'}</button></form>`}
+      <form method="post" action="${r('/creditos/quitar')}" data-confirmar="¿Quitar la apertura del ${fecha(a.fecha)}?">${csrfCampo(c)}<input type="hidden" name="fecha" value="${a.fecha}"><button class="btn btn--ghost btn--sm" type="submit">${icono('basura', 16)}Quitar</button></form>
+    </div>
+  </li>`;
+  return layout(c, 'Administración Página', html`
+${tabsPagina('creditos')}
+<p class="muted subtitulo">Fechas de apertura de créditos que se ven en Inicio, Beneficios, Hacete socio y Acceso web. Las fechas pasadas se ocultan solas.</p>
+${error ? html`<div class="alert alert--error" role="alert">${icono('info')}<p>${error}</p></div>` : ''}
+<section class="card" aria-labelledby="proximas-titulo">
+  <h2 class="card__titulo" id="proximas-titulo">Próximas aperturas</h2>
+  ${futuras.length ? html`<ul class="creditos">${futuras.map((a) => fila(a))}</ul>` : html`<p class="muted">No hay fechas próximas: la web muestra "Las próximas aperturas se publicarán aquí".</p>`}
+</section>
+<form class="card form ajustes-banner" method="post" action="${r('/creditos')}">
+  ${csrfCampo(c)}
+  <label class="campo"><span class="label">Nueva fecha</span><input class="input" type="date" name="fecha" required min="${new Date().toISOString().slice(0, 10)}"></label>
+  <label class="check"><input type="checkbox" name="confirmada" value="1" checked><span>Confirmada</span></label>
+  <button class="btn" type="submit">${icono('mas')}Agregar fecha</button>
+</form>
+${pasadas.length ? html`<details class="card"><summary class="card__titulo">Fechas pasadas (${pasadas.length})</summary><ul class="creditos">${pasadas.map((a) => fila(a, true))}</ul></details>` : ''}`);
+}
+
 // ── Novedades ──
 const nombrePlantilla = (p: Plantilla) => PLANTILLAS[p].nombre;
 export function vistaNovedades(c: Contexto, lista: Novedad[], imgUrl: (n: Novedad) => string | null) {
@@ -614,7 +705,7 @@ ${lista.length
       </div>
       <div class="novedad__img">${img ? html`<img src="${img}" alt="" loading="lazy">` : html`<span class="sin-img">${icono('noticia', 20)}</span>`}</div>
       <div class="novedad__texto"><strong>${n.titulo}</strong><span class="muted">${nombrePlantilla(n.plantilla)}</span></div>
-      ${n.publicado ? html`<span class="badge badge--con-stock">${icono('ojo', 14)}Publicada</span>` : html`<span class="badge badge--sin-stock">${icono('ojoNo', 14)}Borrador</span>`}
+      ${badgePublicacion(estadoNovedad(n), n.desde ?? '', n.hasta ?? '')}
       <div class="novedad__acciones">
         <form method="post" action="${r(`/novedades/${n.id}/publicar`)}">${csrfCampo(c)}<input type="hidden" name="publicado" value="${n.publicado ? '0' : '1'}"><button class="btn btn--outline btn--sm" type="submit">${n.publicado ? 'Despublicar' : 'Publicar'}</button></form>
         <a class="btn btn--ghost btn--sm" href="${r(`/novedades/${n.id}`)}">${icono('editar', 16)}Editar</a>
@@ -650,6 +741,11 @@ ${Object.keys(errores).length ? html`<div class="alert alert--error" role="alert
         <label class="campo"><span class="label">Enlace del botón</span><input class="input" name="enlace_url" value="${n.enlace_url ?? ''}" maxlength="500" placeholder="/hipermercado/bazar/ o https://…" ${inv('enlace_url')}>${err('enlace_url')}</label>
       </div>
       <label class="check"><input type="checkbox" name="publicado" value="1" ${si(n.publicado, 'checked')}><span>Publicada en la portada</span></label>
+      <div class="fila">
+        <label class="campo"><span class="label">Desde <span class="opcional">(opcional)</span></span><input class="input" type="date" name="desde" value="${n.desde ?? ''}" ${inv('desde')}>${err('desde')}</label>
+        <label class="campo"><span class="label">Hasta <span class="opcional">(opcional)</span></span><input class="input" type="date" name="hasta" value="${n.hasta ?? ''}" ${inv('hasta')}>${err('hasta')}</label>
+      </div>
+      <p class="ayuda">Con fechas, la novedad aparece y se retira sola (hora de Uruguay).</p>
     </section>
   </div>
   <div class="col">

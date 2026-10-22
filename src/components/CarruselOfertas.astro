@@ -8,28 +8,27 @@
 //   cinta enfocada. Sin botones de avanzar ni pausar (pedido de la cooperativa): se detiene con el puntero,
 //   con el foco del teclado y mientras se arrastra.
 // - Con prefers-reduced-motion no avanza sola. Sin JS: fila desplazable con encastre.
-import { Image } from 'astro:assets';
-import type { ImageMetadata } from 'astro';
-import type { Oferta } from '../data/confirmado/ofertas-supermercado';
-
+// - Es un elemento personalizado (<copol-ofertas>): se activa aunque su HTML llegue después de cargar la
+//   página (en Promociones va dentro de una server island). Las piezas se cargan en el panel
+//   (Administración Página → Ofertas).
 interface Props {
-  ofertas: Oferta[];
+  piezas: { src: string; srcset?: string; alt: string }[];
   titulo: string;
 }
-const { ofertas, titulo } = Astro.props;
-const imagenes = import.meta.glob<{ default: ImageMetadata }>('../assets/ofertas/*.webp', { eager: true });
-const imagen = (n: string) => imagenes[`../assets/ofertas/${n}.webp`].default;
+const { piezas, titulo } = Astro.props;
 ---
-<div class="ofertas" data-ofertas role="region" aria-roledescription="carrusel" aria-label={titulo}>
+<copol-ofertas class="ofertas" data-ofertas role="region" aria-roledescription="carrusel" aria-label={titulo}>
   <div class="ofertas__ventana" data-ventana tabindex="0" aria-label="Ofertas: se desplazan solas; pasá el mouse para detenerlas o usá las flechas izquierda y derecha">
     <ul class="ofertas__pista" data-pista>
-      {ofertas.map((o, i) => (
-        <li class="oferta" aria-roledescription="diapositiva" aria-label={`${o.producto}`}>
-          <Image
-            src={imagen(o.imagen)}
-            alt={`Oferta de octubre: ${o.producto}, a ${o.precio}.`}
-            widths={[280, 400, 560]}
+      {piezas.map((p, i) => (
+        <li class="oferta" aria-roledescription="diapositiva">
+          <img
+            src={p.src}
+            srcset={p.srcset}
             sizes="(min-width: 1200px) 280px, (min-width: 900px) 24vw, (min-width: 600px) 36vw, 72vw"
+            alt={p.alt}
+            width="800"
+            height="1000"
             loading={i < 5 ? 'eager' : 'lazy'}
             decoding="async"
             draggable="false"
@@ -39,11 +38,11 @@ const imagen = (n: string) => imagenes[`../assets/ofertas/${n}.webp`].default;
       ))}
     </ul>
   </div>
-  <p class="ofertas__ayuda" data-ayuda hidden>{ofertas.length} ofertas · pasá el mouse por encima para detenerlas</p>
-</div>
+  <p class="ofertas__ayuda" data-ayuda hidden>{piezas.length} ofertas · pasá el mouse por encima para detenerlas</p>
+</copol-ofertas>
 
 <script>
-  document.querySelectorAll<HTMLElement>('[data-ofertas]').forEach((raiz) => {
+  const iniciar = (raiz: HTMLElement) => {
     const ventana = raiz.querySelector<HTMLElement>('[data-ventana]')!;
     const pista = raiz.querySelector<HTMLElement>('[data-pista]')!;
     const originales = [...pista.children] as HTMLElement[];
@@ -156,10 +155,20 @@ const imagen = (n: string) => imagenes[`../assets/ofertas/${n}.webp`].default;
     ventana.addEventListener('dragstart', (e) => e.preventDefault());
 
     requestAnimationFrame(cuadro);
-  });
+  };
+  if (!customElements.get('copol-ofertas')) {
+    customElements.define('copol-ofertas', class extends HTMLElement {
+      connectedCallback() {
+        if (this.dataset.listo) return;
+        this.dataset.listo = '1';
+        iniciar(this);
+      }
+    });
+  }
 </script>
 
-<style>
+<!-- Globales: el componente se muestra dentro de una server island. -->
+<style is:global>
   .ofertas { position: relative; display: grid; gap: 16px; }
   .ofertas__ventana {
     overflow-x: auto; scroll-snap-type: x mandatory; overscroll-behavior-x: contain; scrollbar-width: none;
@@ -175,7 +184,7 @@ const imagen = (n: string) => imagenes[`../assets/ofertas/${n}.webp`].default;
   @media (max-width: 759px) { .ofertas__pista { grid-auto-columns: calc((100% - 14px) / 2); gap: 14px; } }
   @media (max-width: 479px) { .ofertas__pista { grid-auto-columns: 72%; } }
   .oferta { scroll-snap-align: start; min-width: 0; }
-  .oferta :global(.oferta__img) {
+  .oferta .oferta__img {
     display: block; width: 100%; height: auto; aspect-ratio: 4 / 5; object-fit: cover;
     border-radius: var(--radio-lg); box-shadow: var(--anillo), var(--sombra-suave); background: #f3c3dc;
     user-select: none; -webkit-user-drag: none;
@@ -192,13 +201,13 @@ const imagen = (n: string) => imagenes[`../assets/ofertas/${n}.webp`].default;
   .ofertas--arrastrando .ofertas__ventana { cursor: grabbing; }
   .ofertas--js .oferta { scroll-snap-align: none; }
   @media (prefers-reduced-motion: no-preference) {
-    .ofertas--js .oferta :global(.oferta__img) {
+    .ofertas--js .oferta .oferta__img {
       transition: transform 500ms var(--resorte), box-shadow 400ms var(--ease-out-quart), filter 400ms var(--ease-out-quart);
     }
     @media (hover: hover) and (pointer: fine) {
       /* La pieza bajo el puntero se eleva; las demás bajan apenas el brillo para darle protagonismo. */
-      .ofertas--js .ofertas__ventana:hover .oferta :global(.oferta__img) { filter: saturate(0.85) brightness(0.97); }
-      .ofertas--js .ofertas__ventana:hover .oferta:hover :global(.oferta__img) {
+      .ofertas--js .ofertas__ventana:hover .oferta .oferta__img { filter: saturate(0.85) brightness(0.97); }
+      .ofertas--js .ofertas__ventana:hover .oferta:hover .oferta__img {
         transform: translateY(-8px) scale(1.02); filter: none;
         box-shadow: var(--anillo), 0 24px 40px -18px rgb(0 51 26 / 0.45);
       }

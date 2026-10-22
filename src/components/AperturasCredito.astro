@@ -1,15 +1,23 @@
 ---
-// Fechas editables en src/data/confirmado/creditos.json. Solo se muestran las futuras (según la fecha del build).
-import { proximasAperturas } from '../lib/datos';
+// Aperturas de crédito (server island: se genera en el servidor y la CDN la guarda hasta el próximo cambio).
+// Las fechas se cargan en el panel (Administración Página → Créditos); solo se muestran las de hoy en
+// adelante (hora de Uruguay), así que una fecha pasada desaparece sola sin volver a publicar el sitio.
+// Se usa con server:defer y un hueco del mismo tamaño como fallback (ver .creditos-esqueleto en global.css).
+import { hoyUruguay, leerAperturas, partesFecha, proximas } from '../lib/contenido';
+import { cachearEnCdn, ETIQUETAS_WEB, sinCache } from '../lib/cache-publica';
 import Icono from './Icono.astro';
 import Button from './ui/Button.astro';
 import Badge from './ui/Badge.astro';
 
-const aperturas = proximasAperturas();
-const anio = new Date().getFullYear();
+const { valor, enVivo } = await leerAperturas();
+if (enVivo) cachearEnCdn(Astro.response.headers, ETIQUETAS_WEB.creditos);
+else sinCache(Astro.response.headers);
+const hoy = hoyUruguay();
+const aperturas = proximas(valor, hoy).map((a) => ({ ...a, ...partesFecha(a.fecha), iso: a.fecha }));
+const anio = hoy.slice(0, 4);
 ---
 <section class="contenedor creditos" aria-labelledby="creditos-titulo">
-  <div class="creditos__caja sobre-verde aparecer">
+  <div class="creditos__caja sobre-verde">
     <div class="creditos__texto">
       <span class="creditos__antetitulo">Aperturas de crédito</span>
       <h2 id="creditos-titulo">Lo que queda de {anio}</h2>

@@ -228,6 +228,35 @@
     actualizar();
   }
 
+  // ── Ofertas: las piezas se suben de a una (cada pedido queda lejos del límite de tamaño de Vercel) ──
+  const subida = document.querySelector('[data-subir-piezas]');
+  subida?.addEventListener('submit', async (e) => {
+    const entrada = subida.querySelector('input[type="file"]');
+    const archivos = [...(entrada?.files ?? [])].sort((a, b) => a.name.localeCompare(b.name, 'es', { numeric: true }));
+    if (!archivos.length || typeof fetch === 'undefined') return;
+    e.preventDefault();
+    const estado = subida.querySelector('[data-subir-estado]');
+    const boton = subida.querySelector('button[type="submit"]');
+    boton.disabled = true;
+    boton.setAttribute('aria-busy', 'true');
+    let fallidas = 0;
+    for (const [i, archivo] of archivos.entries()) {
+      estado.textContent = `Subiendo ${i + 1} de ${archivos.length}…`;
+      const fd = new FormData();
+      fd.set('_csrf', subida.querySelector('[name="_csrf"]').value);
+      fd.set('piezas', await achicar(archivo).catch(() => archivo));
+      try {
+        const res = await fetch(subida.action, { method: 'POST', body: fd, headers: { Accept: 'application/json' }, credentials: 'same-origin' });
+        if (res.redirected || res.status === 401) { location.href = `${document.documentElement.dataset.base || ''}/ingresar?aviso=sesion-vencida`; return; }
+        const datos = await res.json().catch(() => ({ ok: false }));
+        if (!datos.ok) fallidas++;
+      } catch {
+        fallidas++;
+      }
+    }
+    location.href = `${subida.action.replace(/\/piezas$/, '')}?aviso=${fallidas ? 'ofertas-error-subida' : 'ofertas-agregadas'}`;
+  });
+
   // ── Fotos grandes: se achican en el navegador antes de enviarlas ──
   // Vercel rechaza pedidos de más de ~4,5 MB; una foto de celular ronda los 3-6 MB. Se reducen a 1800 px
   // (WebP). Si el navegador no puede, se envían tal cual y el servidor informa si son demasiado grandes.

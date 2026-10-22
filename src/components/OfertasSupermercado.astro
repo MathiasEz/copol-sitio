@@ -1,0 +1,33 @@
+---
+// Ofertas del supermercado en Promociones (server island: se genera en el servidor y la CDN la guarda hasta
+// el próximo cambio en el panel). Las piezas, el título, el período y la fecha de vencimiento se cargan en
+// "Administración Página → Ofertas". Vencidas o sin piezas, la sección no se muestra.
+// EXCEPCIÓN APROBADA (14/10/2026): es la única sección del sitio con precios (los que traen las piezas).
+import Button from './ui/Button.astro';
+import Icono from './Icono.astro';
+import CarruselOfertas from './CarruselOfertas.astro';
+import { imagenPieza, leerOfertas, piezasVigentes } from '../lib/contenido';
+import { cachearEnCdn, ETIQUETAS_WEB, sinCache } from '../lib/cache-publica';
+
+const { valor: ofertas, enVivo } = await leerOfertas();
+if (enVivo) cachearEnCdn(Astro.response.headers, ETIQUETAS_WEB.ofertas);
+else sinCache(Astro.response.headers);
+const piezas = piezasVigentes(ofertas).map((p) => ({ ...imagenPieza(p.imagen), alt: p.alt || `${ofertas.titulo}: pieza del supermercado` }));
+---
+{piezas.length > 0 && (
+  <section class="contenedor seccion supermercado" aria-labelledby="super-titulo">
+    <div class="encabezado-seccion">
+      <div>
+        <span class="eyebrow">Promociones del supermercado</span>
+        <h2 id="super-titulo">{ofertas.titulo}</h2>
+        {ofertas.mes && <p class="lead">Ofertas del supermercado de COPOL para {ofertas.mes}.</p>}
+      </div>
+      <Button href="/hipermercado/tienda/" variant="outline">Horarios y ubicación <Icono nombre="flecha" tamano={18} /></Button>
+    </div>
+    <CarruselOfertas piezas={piezas} titulo={`Promociones del supermercado: ${ofertas.titulo}`} />
+  </section>
+)}
+
+<style is:global>
+  .supermercado { display: grid; gap: clamp(20px, 2.6vw, 28px); }
+</style>

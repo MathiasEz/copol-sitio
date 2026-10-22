@@ -13,6 +13,9 @@ import { ahora, conectar, una, type Db } from '../src/db.ts';
 import { almacenConfigurado } from '../src/imagenes.ts';
 import { novedadesPublicadas } from '../src/novedades.ts';
 import { htmlBanner, obtenerBanner, vigentes } from '../src/banner.ts';
+import { obtenerOfertas, piezasVigentes } from '../src/ofertas.ts';
+import { obtenerAperturas, proximas } from '../src/creditos.ts';
+import { cifrar, descifrar, exportarDatos, secretoValido } from '../src/respaldo.ts';
 import { crearUsuario } from '../src/usuarios.ts';
 import { guardarPin } from '../src/acceso.ts';
 import { BASE as RUTA } from '../src/config.ts';
@@ -172,7 +175,7 @@ describe('autorización por rol (del lado del servidor)', () => {
   it('el editor no administra usuarios, novedades ni registro', async () => {
     const n = new Navegador();
     await n.ingresar('editor');
-    for (const ruta of [`${RUTA}/usuarios`, `${RUTA}/registro`, `${RUTA}/novedades`, `${RUTA}/banner`, `${RUTA}/banner/nueva`]) assert.equal((await n.pedir(ruta)).status, 403, ruta);
+    for (const ruta of [`${RUTA}/usuarios`, `${RUTA}/registro`, `${RUTA}/novedades`, `${RUTA}/banner`, `${RUTA}/banner/nueva`, `${RUTA}/ofertas`, `${RUTA}/creditos`]) assert.equal((await n.pedir(ruta)).status, 403, ruta);
     await n.pedir(`${RUTA}/productos`);
     assert.equal((await n.post(`${RUTA}/usuarios`, { usuario: 'xx-1', rol: 'administrador', clave: 'Clave-Larga-123!' })).status, 403);
   });
@@ -365,6 +368,89 @@ describe('administración página: banner de inicio', () => {
     assert.equal((await obtenerBanner(db)).diapositivas.length, 4);
     const acciones = (await db.execute("SELECT accion FROM auditoria WHERE accion LIKE 'banner.%'")).rows.map((x) => x.accion);
     for (const a of ['banner.alta', 'banner.orden', 'banner.despublicacion', 'banner.edicion', 'banner.ajustes', 'banner.baja']) assert.ok(acciones.includes(a), a);
+  });
+});
+
+describe('administración página: ofertas, créditos y novedades programadas', () => {
+  it('ofertas: muestra las iniciales, sube piezas, describe, ordena, quita, vence y vacía', async () => {
+    const n = new Navegador();
+    await n.ingresar('principal');
+    const inicial = await obtenerOfertas(db);
+    assert.equal(inicial.piezas.length, 29);
+    assert.match(await (await n.pedir(`${RUTA}/ofertas`)).text(), /Ofertas de octubre/);
+    // Subida (como la hace el navegador: de a una, pidiendo JSON) y subida múltiple sin JavaScript.
+    const r1 = await n.post(`${RUTA}/ofertas/piezas`, { piezas: await png(1080, 1350) }, json);
+    assert.deepEqual(await r1.json(), { ok: true, agregadas: 1, error: null });
+    const falso = new File([new TextEncoder().encode('no soy imagen')], 'x.jpg', { type: 'image/jpeg' });
+    assert.equal((await n.post(`${RUTA}/ofertas/piezas`, { piezas: falso })).headers.get('location'), `${RUTA}/ofertas?aviso=ofertas-error-subida`);
+    let o = await obtenerOfertas(db);
+    assert.equal(o.piezas.length, 30);
+    const nueva = o.piezas.at(-1)!;
+    assert.match(nueva.imagen, /\/media\/ofertas\/x-[0-9a-f]{10}-800\.webp$/);
+    // Guardar: título, vencimiento, descripción (con precio: excepción aprobada), orden y quitar.
+    await n.pedir(`${RUTA}/ofertas`);
+    assert.match(await (await n.post(`${RUTA}/ofertas`, { titulo: 'X', mes: 'noviembre de 2026', hasta: '2026-11-30', accion: 'guardar' })).text(), /título de 3 a 80/);
+    const campos: Record<string, string> = { titulo: 'Ofertas de noviembre', mes: 'noviembre de 2026', hasta: '2026-11-30', accion: `arriba:${nueva.id}`, [`alt_${nueva.id}`]: 'Oferta: Yerba 1 kg, a $ 199.', [`quitar_${o.piezas[0].id}`]: '1' };
+    assert.equal((await n.post(`${RUTA}/ofertas`, campos)).status, 302);
+    o = await obtenerOfertas(db);
+    assert.deepEqual([o.titulo, o.hasta, o.piezas.length, o.piezas.at(-2)!.id, o.piezas.at(-2)!.alt], ['Ofertas de noviembre', '2026-11-30', 29, nueva.id, 'Oferta: Yerba 1 kg, a $ 199.']);
+    assert.equal(piezasVigentes(o, '2026-11-30').length, 29);
+    assert.equal(piezasVigentes(o, '2026-12-01').length, 0, 'vencidas: la sección se retira sola');
+    await n.pedir(`${RUTA}/ofertas`);
+    assert.equal((await n.post(`${RUTA}/ofertas/vaciar`, {})).status, 302);
+    assert.equal((await obtenerOfertas(db)).piezas.length, 0);
+  });
+
+  it('créditos: agrega, confirma, quita y oculta las fechas pasadas', async () => {
+    const n = new Navegador();
+    await n.ingresar('principal');
+    assert.deepEqual((await obtenerAperturas(db)).map((a) => a.fecha), ['2026-11-10', '2026-12-08']);
+    await n.pedir(`${RUTA}/creditos`);
+    assert.match(await (await n.post(`${RUTA}/creditos`, { fecha: '2020-01-01' })).text(), /ya pasó/);
+    assert.match(await (await n.post(`${RUTA}/creditos`, { fecha: '2099-02-30' })).text(), /fecha válida/);
+    assert.equal((await n.post(`${RUTA}/creditos`, { fecha: '2099-01-12' })).status, 302);
+    assert.match(await (await n.post(`${RUTA}/creditos`, { fecha: '2099-01-12', confirmada: '1' })).text(), /ya está cargada/);
+    assert.equal((await n.post(`${RUTA}/creditos/confirmar`, { fecha: '2099-01-12', confirmada: '1' })).status, 302);
+    let lista = await obtenerAperturas(db);
+    assert.deepEqual(lista.at(-1), { fecha: '2099-01-12', confirmada: true });
+    assert.deepEqual(proximas(lista, '2026-12-01').map((a) => a.fecha), ['2026-12-08', '2099-01-12']);
+    await n.pedir(`${RUTA}/creditos`);
+    assert.equal((await n.post(`${RUTA}/creditos/quitar`, { fecha: '2099-01-12' })).status, 302);
+    lista = await obtenerAperturas(db);
+    assert.equal(lista.length, 2);
+  });
+
+  it('novedades programadas: solo se muestran entre sus fechas', async () => {
+    const n = new Navegador();
+    await n.ingresar('principal');
+    await n.pedir(`${RUTA}/novedades/nueva`);
+    assert.match(await (await n.post(`${RUTA}/novedades/nueva`, { titulo: 'Fechas mal', plantilla: 'texto', desde: '2026-12-10', hasta: '2026-12-01' })).text(), /anterior a la de inicio/);
+    assert.equal((await n.post(`${RUTA}/novedades/nueva`, { titulo: 'De diciembre', texto: 'Solo en diciembre', plantilla: 'texto', publicado: '1', desde: '2099-12-01', hasta: '2099-12-31' })).status, 302);
+    const titulos = async (hoy: string) => (await novedadesPublicadas(db, hoy)).map((x) => x.titulo);
+    assert.ok(!(await titulos('2099-11-30')).includes('De diciembre'));
+    assert.ok((await titulos('2099-12-15')).includes('De diciembre'));
+    assert.ok(!(await titulos('2100-01-01')).includes('De diciembre'));
+  });
+});
+
+describe('respaldo diario cifrado', () => {
+  it('exporta los ajustes, cifra con autenticación y valida el secreto del Cron', async () => {
+    const datos = await exportarDatos(db);
+    assert.ok(Array.isArray(datos.tablas.ajustes) && datos.tablas.ajustes.length > 0, 'incluye ajustes');
+    assert.ok(!('sesiones' in datos.tablas), 'sin sesiones');
+    const clave = crypto.randomBytes(24).toString('base64url');
+    const archivo = cifrar(JSON.stringify(datos), clave);
+    assert.ok(!archivo.includes(Buffer.from('scrypt$')), 'los hash no quedan legibles');
+    assert.deepEqual(JSON.parse(descifrar(archivo, clave)), datos);
+    assert.throws(() => descifrar(archivo, `${clave}x`), /no coincide/);
+    const alterado = Buffer.from(archivo);
+    alterado[alterado.length - 1] ^= 1;
+    assert.throws(() => descifrar(alterado, clave), /dañado/);
+    assert.throws(() => cifrar('x', 'corta'), /24 caracteres/);
+    assert.ok(secretoValido('Bearer abc123', 'abc123'));
+    assert.ok(!secretoValido('Bearer abc124', 'abc123'));
+    assert.ok(!secretoValido(null, 'abc123'));
+    assert.ok(!secretoValido('Bearer ', undefined));
   });
 });
 

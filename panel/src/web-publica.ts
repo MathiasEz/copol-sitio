@@ -4,7 +4,7 @@
 // Fuera de Vercel (desarrollo y pruebas) no hay CDN: no hace nada.
 import { dangerouslyDeleteByTag } from '@vercel/functions';
 
-export const ETIQUETAS_WEB = { bazar: 'bazar', novedades: 'novedades', empleados: 'empleados', banner: 'banner' } as const;
+export const ETIQUETAS_WEB = { bazar: 'bazar', novedades: 'novedades', empleados: 'empleados', banner: 'banner', ofertas: 'ofertas', creditos: 'creditos' } as const;
 export type EtiquetaWeb = (typeof ETIQUETAS_WEB)[keyof typeof ETIQUETAS_WEB];
 
 /** Etiquetas afectadas por una acción del registro (auditoria.ts), o [] si no cambia nada público. */
@@ -13,6 +13,8 @@ export function etiquetasDe(accion: string): EtiquetaWeb[] {
   if (accion.startsWith('novedad.')) return [ETIQUETAS_WEB.novedades];
   if (accion.startsWith('empleados.')) return [ETIQUETAS_WEB.empleados];
   if (accion.startsWith('banner.')) return [ETIQUETAS_WEB.banner];
+  if (accion.startsWith('ofertas.')) return [ETIQUETAS_WEB.ofertas];
+  if (accion.startsWith('creditos.')) return [ETIQUETAS_WEB.creditos];
   return [];
 }
 

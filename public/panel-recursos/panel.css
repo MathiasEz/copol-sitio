@@ -565,4 +565,23 @@ select.input { padding-right: 28px; }
 .foco__punto:has(input:checked)::after { background: var(--primary); transform: scale(1.4); }
 .foco__punto:has(input:focus-visible) { outline: 2px solid var(--ring); outline-offset: 2px; }
 
+/* ── Administración Página: ofertas y créditos ── */
+.ofertas-form { grid-template-columns: 1fr; }
+@media (min-width: 1100px) { .ofertas-form { grid-template-columns: minmax(280px, 360px) minmax(0, 1fr); } }
+.piezas { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 190px), 1fr)); }
+.pieza { display: grid; gap: 8px; align-content: start; padding: 8px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--card); }
+.pieza img { width: 100%; aspect-ratio: 4 / 5; object-fit: cover; border-radius: var(--radius-sm); background: var(--muted); }
+.pieza .input { font-size: .8125rem; }
+.pieza__acciones { display: flex; align-items: center; gap: 4px; }
+.pieza__acciones .check { margin-left: auto; }
+.check--chico { font-size: .8125rem; font-weight: 600; }
+.check--chico input { width: 16px; height: 16px; }
+.texto-aviso { color: var(--aviso); }
+.creditos { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 8px; }
+.credito { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--radius); }
+.credito__fecha { display: inline-flex; align-items: center; gap: 8px; text-transform: capitalize; flex: 1 1 260px; }
+.credito .novedad__acciones { margin-left: auto; }
+.credito--pasada { opacity: .7; }
+details.card > summary { cursor: pointer; }
+
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; } }

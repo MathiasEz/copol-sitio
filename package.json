@@ -27,6 +27,7 @@
     "panel:admin": "node --env-file-if-exists=.env panel/scripts/crear-admin.ts",
     "panel:respaldo": "node --env-file-if-exists=.env panel/scripts/respaldo.ts",
     "panel:restaurar": "node --env-file-if-exists=.env panel/scripts/restaurar.ts",
+    "panel:descifrar": "node --env-file-if-exists=.env panel/scripts/descifrar-respaldo.ts",
     "panel:test": "node --test --test-concurrency=1 \"panel/test/**/*.test.ts\""
   },
   "dependencies": {

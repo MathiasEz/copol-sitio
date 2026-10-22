@@ -1,7 +1,6 @@
 // Acceso tipado a los datos del sitio. Las páginas importan desde acá, no desde los JSON directamente.
 import localesJson from '../data/confirmado/locales.json';
 import conveniosJson from '../data/confirmado/convenios.json';
-import creditosJson from '../data/confirmado/creditos.json';
 
 // ── Locales ──────────────────────────────────────────────────────────────
 const DEPARTAMENTOS: Record<string, string> = {
@@ -72,32 +71,4 @@ export const CONVENIOS: Convenio[] = conveniosJson.convenios
 // El catálogo y su stock vigente se leen en src/lib/inventario.ts (base de datos del panel).
 
 // ── Créditos ─────────────────────────────────────────────────────────────
-export interface Apertura {
-  fecha: Date;
-  confirmada: boolean;
-  dia: string;
-  mes: string;
-  mesCorto: string;
-  iso: string;
-}
-const MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
-
-/** Aperturas desde hoy (fecha del build) en adelante. */
-export function proximasAperturas(hoy = new Date()): Apertura[] {
-  const inicio = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
-  return creditosJson.aperturas
-    .map((a) => {
-      const [y, m, d] = a.fecha.split('-').map(Number);
-      const fecha = new Date(y, m - 1, d);
-      return {
-        fecha,
-        confirmada: a.confirmada,
-        dia: String(d).padStart(2, '0'),
-        mes: MESES[m - 1],
-        mesCorto: MESES[m - 1].slice(0, 3).toUpperCase(),
-        iso: a.fecha,
-      };
-    })
-    .filter((a) => a.fecha >= inicio)
-    .sort((a, b) => a.fecha.getTime() - b.fecha.getTime());
-}
+// Las fechas de apertura se cargan en el panel (Administración Página → Créditos): ver src/lib/contenido.ts.

@@ -6,8 +6,7 @@ import { foto } from '../../lib/imagenes';
 import { CONTACTO, REDES, whatsapp } from '../../data/confirmado/sitio';
 import Button from '../../components/ui/Button.astro';
 import Media from '../../components/ui/Media.astro';
-import CarruselOfertas from '../../components/CarruselOfertas.astro';
-import { OFERTAS_SUPERMERCADO } from '../../data/confirmado/ofertas-supermercado';
+import OfertasSupermercado from '../../components/OfertasSupermercado.astro';
 
 // Campañas vigentes: solo las que tienen pieza oficial e información publicada por la cooperativa
 // (motos Zanella en el Bazar y convenio de garantía de alquiler con Porto Seguro). Confirmar su vigencia
@@ -39,17 +38,10 @@ const campanas = [
     <Button href={REDES.instagram} variant="outline"><Icono nombre="instagram" tamano={18} /> Novedades en Instagram</Button>
   </EncabezadoPagina>
 
-  <section class="contenedor seccion supermercado" aria-labelledby="super-titulo">
-    <div class="encabezado-seccion">
-      <div>
-        <span class="eyebrow">Promociones del supermercado</span>
-        <h2 id="super-titulo"><span class="mascara"><span>{OFERTAS_SUPERMERCADO.titulo}</span></span></h2>
-        <p class="lead">Ofertas del supermercado de COPOL para {OFERTAS_SUPERMERCADO.mes}.</p>
-      </div>
-      <Button href="/hipermercado/tienda/" variant="outline">Horarios y ubicación <Icono nombre="flecha" tamano={18} /></Button>
-    </div>
-    <CarruselOfertas ofertas={OFERTAS_SUPERMERCADO.ofertas} titulo={`Promociones del supermercado: ${OFERTAS_SUPERMERCADO.titulo}`} />
-  </section>
+  <!-- Ofertas del supermercado: se cargan cada mes en el panel (Administración Página → Ofertas) -->
+  <OfertasSupermercado server:defer>
+    <div slot="fallback" class="contenedor seccion" aria-hidden="true"><div class="ofertas-esqueleto"></div></div>
+  </OfertasSupermercado>
 
   <section class="contenedor seccion" aria-labelledby="campanas-titulo">
     <h2 id="campanas-titulo"><span class="mascara"><span>Campañas vigentes</span></span></h2>
@@ -77,5 +69,5 @@ const campanas = [
   .campana { break-inside: avoid; display: grid; gap: 14px; margin-bottom: 32px; }
   .campana__texto { display: grid; gap: 8px; justify-items: start; padding-inline: 2px; }
   .campana__texto p { color: var(--muted-foreground); }
-  .supermercado { display: grid; gap: clamp(20px, 2.6vw, 28px); }
+  .ofertas-esqueleto { height: clamp(420px, 34vw, 520px); border-radius: var(--radio-xl); background: var(--muted); }
 </style>

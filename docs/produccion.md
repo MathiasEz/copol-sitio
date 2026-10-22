@@ -48,4 +48,5 @@ Pasos: (1) elegir opción; (2) crear `.env` con `PUBLIC_FORM_ENDPOINT=…` o def
 - [ ] Variables `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN` y `BLOB_READ_WRITE_TOKEN` cargadas en Vercel (Production y Preview).
 - [ ] Datos cargados en Turso y administrador principal creado, con contraseña definitiva.
 - [ ] Prueba en la URL de Vercel: cambio de stock en el panel visible en el Bazar, escaneo con cámara y una novedad publicada.
-- [ ] Respaldo programado y una restauración de prueba hecha.
+- [x] Respaldo programado: diario y cifrado (Cron de Vercel → Vercel Blob, carpeta respaldos/, 30 días; CRON_SECRET y RESPALDO_CLAVE en Vercel desde el 22/10/2026). Guardar una copia de RESPALDO_CLAVE fuera de Vercel.
+- [ ] Restauración de prueba hecha (npm run panel:descifrar + npm run panel:restaurar en una base local).
