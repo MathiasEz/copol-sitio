@@ -1,0 +1,161 @@
+/* Panel de registros · colores del Manual de marca COPOL 2026 (los mismos del sitio). */
+@font-face {
+  font-family: 'Figtree';
+  src: url('recursos/figtree.woff2') format('woff2');
+  font-weight: 300 900;
+  font-display: swap;
+}
+
+:root {
+  --verde-oscuro: #006633;
+  --verde-hover: #004d26;
+  --amarillo: #f8ea39;
+  --fondo: #fefce3;
+  --tarjeta: #ffffff;
+  --tinta: #12261a;
+  --tinta-suave: #3d5a49;
+  --borde: #dce9e1;
+  --borde-fuerte: #9cc6aa;
+  --resaltado: #fbf4c2;
+  --ok: #1b6e3a;
+  --ok-fondo: #e6f4ea;
+  --error: #b3261e;
+  --error-fondo: #fdecea;
+  --aviso-fondo: #fff6d6;
+  --radio: 0.875rem;
+  color-scheme: light;
+}
+
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  background: var(--fondo);
+  color: var(--tinta);
+  font: 16px/1.45 'Figtree', 'Segoe UI', system-ui, sans-serif;
+}
+
+[hidden] { display: none !important; }
+
+/* ── Barra superior ── */
+.barra {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 10px 24px;
+  background: var(--verde-oscuro);
+  color: #fff;
+  border-bottom: 4px solid var(--amarillo);
+}
+.logo { height: 40px; width: auto; background: #fff; border-radius: 8px; padding: 4px 8px; }
+.barra-titulo { display: flex; flex-direction: column; line-height: 1.2; }
+.barra-titulo strong { font-size: 1.15rem; }
+.barra-titulo span { font-size: 0.85rem; opacity: 0.85; }
+.barra-usuario { margin-left: auto; display: flex; align-items: center; gap: 12px; font-weight: 600; }
+.barra .btn-borde { color: #fff; border-color: rgba(255, 255, 255, 0.6); background: transparent; }
+.barra .btn-borde:hover { background: rgba(255, 255, 255, 0.12); }
+
+/* ── Contenido ── */
+.contenido { max-width: 1240px; margin: 0 auto; padding: 24px; }
+.cargando { color: var(--tinta-suave); }
+
+.tarjeta {
+  background: var(--tarjeta);
+  border: 1px solid var(--borde);
+  border-radius: var(--radio);
+  padding: 20px 22px;
+  margin-bottom: 20px;
+  box-shadow: 0 1px 2px rgba(18, 38, 26, 0.05);
+}
+h1, h2 { margin: 0 0 12px; color: var(--verde-oscuro); line-height: 1.2; }
+h1 { font-size: 1.5rem; }
+h2 { font-size: 1.2rem; }
+.opcional { font-size: 0.75rem; font-weight: 600; color: var(--tinta-suave); background: var(--resaltado); border-radius: 999px; padding: 2px 8px; vertical-align: middle; }
+.ayuda { margin: 0 0 12px; color: var(--tinta-suave); font-size: 0.95rem; }
+
+.columnas { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 20px; align-items: start; }
+.columnas .tarjeta { margin-bottom: 0; }
+.columnas + .tarjeta { margin-top: 20px; }
+
+.ingreso { max-width: 420px; margin: 40px auto; }
+
+/* ── Campos ── */
+.grilla { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 16px; }
+.campo { display: flex; flex-direction: column; gap: 5px; }
+.campo.ancho { grid-column: 1 / -1; }
+.campo > span { font-weight: 600; font-size: 0.92rem; }
+.campo small { color: var(--tinta-suave); font-size: 0.82rem; }
+.ingreso .campo { margin-bottom: 14px; }
+
+input, textarea {
+  width: 100%;
+  font: inherit;
+  color: inherit;
+  background: #fff;
+  border: 1px solid var(--borde-fuerte);
+  border-radius: 10px;
+  padding: 9px 12px;
+}
+textarea { resize: vertical; min-height: 140px; }
+input:focus, textarea:focus { outline: 3px solid rgba(0, 102, 51, 0.25); border-color: var(--verde-oscuro); }
+input.completado { background: var(--resaltado); border-color: #d9c54a; }
+input[aria-invalid="true"] { border-color: var(--error); background: var(--error-fondo); }
+.error-campo { color: var(--error); font-size: 0.85rem; font-weight: 600; }
+
+/* ── Botones ── */
+.acciones { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 42px;
+  padding: 8px 18px;
+  border: 1px solid var(--verde-oscuro);
+  border-radius: 999px;
+  background: var(--verde-oscuro);
+  color: #fff;
+  font: inherit;
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+}
+.btn:hover { background: var(--verde-hover); }
+.btn:focus-visible { outline: 3px solid var(--amarillo); outline-offset: 2px; }
+.btn[disabled] { opacity: 0.6; cursor: progress; }
+.btn-borde { background: #fff; color: var(--verde-oscuro); }
+.btn-borde:hover { background: var(--ok-fondo); }
+.btn-chico { min-height: 34px; padding: 4px 14px; font-size: 0.9rem; }
+
+/* ── Mensajes ── */
+.mensaje { margin: 14px 0 0; padding: 10px 14px; border-radius: 10px; background: #f3f6f4; }
+.mensaje.ok { background: var(--ok-fondo); color: var(--ok); font-weight: 600; }
+.mensaje.error { background: var(--error-fondo); color: var(--error); font-weight: 600; }
+.aviso {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px;
+  margin-bottom: 20px; padding: 12px 16px;
+  background: var(--aviso-fondo); border: 1px solid #ecd77a; border-radius: var(--radio);
+}
+.aviso p { margin: 0; font-weight: 600; }
+.aviso.error { background: var(--error-fondo); border-color: #f1b8b3; color: var(--error); }
+
+/* ── Últimos registros ── */
+.cabecera-seccion { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; margin-bottom: 8px; }
+.cabecera-seccion h2 { margin: 0; }
+.tabla-desliza { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 0.92rem; }
+th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--borde); vertical-align: top; }
+th { color: var(--tinta-suave); font-weight: 700; white-space: nowrap; }
+td:first-child { white-space: nowrap; }
+
+@media (max-width: 900px) {
+  .columnas { grid-template-columns: 1fr; }
+}
+@media (max-width: 560px) {
+  .contenido { padding: 16px; }
+  .barra { padding: 10px 16px; gap: 10px; flex-wrap: wrap; }
+  .barra-titulo span { display: none; }
+  .grilla { grid-template-columns: 1fr; }
+  .tarjeta { padding: 16px; }
+}

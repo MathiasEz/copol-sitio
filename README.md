@@ -137,6 +137,7 @@ docs/                    decisiones, catálogo, panel, producción, activos y pe
 - [docs/panel-stock.md](docs/panel-stock.md): panel, recorrido del stock, seguridad, respaldos.
 - [docs/catalogo-bazar.md](docs/catalogo-bazar.md): importación del catálogo, conteos y faltantes.
 - [docs/produccion.md](docs/produccion.md): requisitos para reemplazar el sitio actual.
+- [panel-registros/README.md](panel-registros/README.md): panel de registros (formulario + asistente → planilla de Excel en la nube). Proyecto de Vercel aparte; no cambia el sitio.
 - [docs/decisiones.md](docs/decisiones.md) · [docs/pendientes.md](docs/pendientes.md) · [docs/registro-de-activos.md](docs/registro-de-activos.md) · [docs/sistema-visual.md](docs/sistema-visual.md) · [docs/reemplazo-de-datos.md](docs/reemplazo-de-datos.md)
 
 ## Limitaciones conocidas

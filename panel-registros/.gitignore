@@ -1,0 +1,6 @@
+# Registros de prueba guardados en la computadora (modo local) y variables con secretos
+datos/
+.env
+.env.*
+!.env.example
+.vercel/

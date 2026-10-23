@@ -1,0 +1,5 @@
+datos/
+test/
+.env
+.env.*
+servidor-local.js

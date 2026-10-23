@@ -1,0 +1,90 @@
+// Campos del formulario: nombre en la planilla, límites y validación. Lo usan el servidor (antes de escribir
+// en Excel) y el asistente (para limpiar lo que propone el modelo). El navegador repite estas reglas en
+// public/app.js solo para avisar antes de enviar; la que vale es esta.
+
+/** Columnas de la tabla de Excel, en orden. Fecha y Cargado por las completa el servidor. */
+export const COLUMNAS = ['Fecha', 'Nombre', 'N° de socio', 'Cédula', 'Dirección', 'Service', 'Producto', 'Código interno', 'Cargado por'];
+
+export const CAMPOS = {
+  nombre: { etiqueta: 'Nombre', min: 3, max: 120, obligatorio: true },
+  socio: { etiqueta: 'N° de socio', min: 1, max: 12, obligatorio: true },
+  cedula: { etiqueta: 'Cédula', min: 7, max: 11, obligatorio: true },
+  direccion: { etiqueta: 'Dirección', min: 5, max: 200, obligatorio: true },
+  service: { etiqueta: 'Service', min: 0, max: 300, obligatorio: false },
+  producto: { etiqueta: 'Producto', min: 2, max: 200, obligatorio: true },
+  codigo: { etiqueta: 'Código interno', min: 1, max: 40, obligatorio: true },
+};
+
+/** Espacios simples, sin caracteres de control. */
+export const limpiarTexto = (v) => (typeof v === 'string' || typeof v === 'number' ? String(v) : '')
+  .replace(/[\u0000-\u001f\u007f]/g, ' ')
+  .replace(/\s+/g, ' ')
+  .trim();
+
+/** Dígito verificador de la cédula uruguaya para los 6 o 7 dígitos sin verificador. */
+export function digitoCedula(base) {
+  const d = base.padStart(7, '0');
+  const pesos = [2, 9, 8, 7, 6, 3, 4];
+  const suma = pesos.reduce((s, p, i) => s + p * Number(d[i]), 0);
+  return (10 - (suma % 10)) % 10;
+}
+
+/** Cédula con puntos y guion (1.234.567-8) o null si no es válida. Acepta 7 u 8 dígitos con el verificador. */
+export function formatoCedula(valor) {
+  const digitos = limpiarTexto(valor).replace(/[\s.\-_/]/g, '');
+  if (!/^\d{7,8}$/.test(digitos)) return null;
+  const base = digitos.slice(0, -1);
+  if (digitoCedula(base) !== Number(digitos.at(-1))) return null;
+  return `${Number(base).toLocaleString('es-UY')}-${digitos.at(-1)}`;
+}
+
+/** Valida y normaliza un registro. Devuelve { datos } o { errores: { campo: mensaje } }. */
+export function validarRegistro(entrada) {
+  const e = entrada && typeof entrada === 'object' ? entrada : {};
+  const datos = {};
+  const errores = {};
+  for (const [campo, regla] of Object.entries(CAMPOS)) {
+    let v = limpiarTexto(e[campo]);
+    if (!v) {
+      if (regla.obligatorio) errores[campo] = `Falta ${regla.etiqueta.toLowerCase()}.`;
+      datos[campo] = '';
+      continue;
+    }
+    if (campo === 'socio') {
+      v = v.replace(/[\s.]/g, '');
+      if (!/^\d{1,12}$/.test(v)) { errores[campo] = 'El número de socio lleva solo números.'; continue; }
+    } else if (campo === 'cedula') {
+      const c = formatoCedula(v);
+      if (!c) { errores[campo] = 'La cédula no es válida: revisá los números y el dígito verificador (el que va después del guion).'; continue; }
+      v = c;
+    } else if (campo === 'codigo') {
+      if (!/^[\p{L}\p{N}][\p{L}\p{N} ._/-]*$/u.test(v)) { errores[campo] = 'El código interno lleva letras, números, guiones o puntos.'; continue; }
+    } else if (campo === 'nombre') {
+      if (!/^[\p{L}][\p{L}\p{M} .'-]*$/u.test(v)) { errores[campo] = 'El nombre lleva solo letras.'; continue; }
+    }
+    if (v.length < regla.min) errores[campo] = `${regla.etiqueta} es demasiado corto.`;
+    else if (v.length > regla.max) errores[campo] = `${regla.etiqueta} admite hasta ${regla.max} caracteres.`;
+    datos[campo] = v;
+  }
+  return Object.keys(errores).length ? { errores } : { datos };
+}
+
+/**
+ * Texto seguro para una celda de Excel: lo que empieza con = + - @ se escribiría como fórmula; con el
+ * apóstrofo delante Excel lo guarda como texto (el apóstrofo no se ve en la celda).
+ */
+export const celda = (v) => (/^[=+\-@\t\r]/.test(v) ? `'${v}` : v);
+
+/** Fecha y hora de Montevideo como 2026-10-23 14:05 (Excel la reconoce como fecha en cualquier idioma). */
+export function fechaMontevideo(d = new Date()) {
+  const p = Object.fromEntries(new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Montevideo', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
+  }).formatToParts(d).map((x) => [x.type, x.value]));
+  return `${p.year}-${p.month}-${p.day} ${p.hour}:${p.minute}`;
+}
+
+/** Fila para la planilla, en el orden de COLUMNAS. Un N° de socio con ceros adelante va como texto para no perderlos. */
+export const filaPlanilla = (datos, cargadoPor, fecha = new Date()) => [
+  fechaMontevideo(fecha), datos.nombre, /^0\d/.test(datos.socio) ? `'${datos.socio}` : datos.socio, datos.cedula, datos.direccion,
+  datos.service, datos.producto, datos.codigo, cargadoPor,
+].map((v, i) => (i === 2 ? String(v) : celda(String(v ?? ''))));
