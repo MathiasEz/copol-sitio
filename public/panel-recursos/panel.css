@@ -618,3 +618,36 @@ details.card > summary { cursor: pointer; }
 .ranking__barra rect { fill: var(--primary); opacity: .75; }
 
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; } }
+
+/* ── Notificaciones de la app ── */
+.metricas-avisos { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); }
+.metrica-aviso { display: flex; gap: 12px; align-items: center; padding: 14px 16px; }
+.metrica-aviso .i { color: var(--marca); }
+.metrica-aviso strong { display: block; font-size: 1.125rem; }
+.metrica-aviso span { font-size: .8125rem; }
+.agenda-avisos { display: grid; gap: 14px; margin-top: 8px; }
+.agenda-avisos__dia h3 { margin: 0 0 6px; font-size: .875rem; color: var(--muted-foreground); }
+.agenda-avisos__dia h3::first-letter { text-transform: uppercase; }
+.avisos-app { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 8px; }
+.aviso-app { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--radius); }
+.aviso-app--apagado { opacity: .65; }
+.aviso-app__hora { display: inline-flex; align-items: center; gap: 6px; font-weight: 700; font-variant-numeric: tabular-nums; min-width: 72px; }
+.aviso-app__texto { display: grid; gap: 2px; flex: 1 1 260px; min-width: 0; }
+.aviso-app__texto .muted { font-size: .8125rem; overflow-wrap: anywhere; }
+.aviso-app__marcas { display: flex; flex-wrap: wrap; gap: 6px; }
+.aviso-app .novedad__acciones, .aviso-app > form { margin-left: auto; }
+.sangria { padding-left: 28px; align-items: end; }
+.opciones-cuando { display: grid; gap: 8px; border: 0; padding: 0; margin: 0; }
+.opcion-cuando { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--radius); cursor: pointer; }
+.opcion-cuando:has(input:checked) { border-color: var(--primary); background: var(--accent); }
+.opcion-cuando input { width: 18px; height: 18px; margin-top: 2px; accent-color: var(--primary); }
+.opcion-cuando span { display: grid; gap: 2px; }
+.dias-semana { display: flex; flex-wrap: wrap; gap: 8px 16px; }
+.previa-aviso__pantalla { margin-top: 10px; padding: 28px 14px; border-radius: var(--radius-lg); background: linear-gradient(160deg, #0b3d24, #1d5c3b 55%, #2f7a50); }
+.previa-aviso__burbuja { background: #fff; color: #1f1f1f; border-radius: 18px; padding: 12px 14px; display: grid; gap: 4px; box-shadow: 0 6px 18px rgb(0 0 0 / .25); font-family: Roboto, 'Segoe UI', system-ui, sans-serif; }
+.previa-aviso__app { display: flex; align-items: center; gap: 6px; font-size: .75rem; color: #5f6368; }
+.previa-aviso__app img { border-radius: 50%; }
+.previa-aviso__burbuja strong { font-size: .9375rem; overflow-wrap: anywhere; }
+.previa-aviso__burbuja p { font-size: .875rem; color: #3c4043; overflow-wrap: anywhere; }
+.previa-aviso__boton { justify-self: start; margin-top: 6px; font-size: .8125rem; font-weight: 700; color: #006633; }
+.agenda-avisos__mas { margin: 18px 0 0; font-size: .875rem; color: var(--muted-foreground); }

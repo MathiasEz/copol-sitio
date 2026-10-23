@@ -4,17 +4,19 @@
 // Fuera de Vercel (desarrollo y pruebas) no hay CDN: no hace nada.
 import { dangerouslyDeleteByTag } from '@vercel/functions';
 
-export const ETIQUETAS_WEB = { bazar: 'bazar', novedades: 'novedades', empleados: 'empleados', banner: 'banner', ofertas: 'ofertas', creditos: 'creditos' } as const;
+export const ETIQUETAS_WEB = { bazar: 'bazar', novedades: 'novedades', empleados: 'empleados', banner: 'banner', ofertas: 'ofertas', creditos: 'creditos', notificaciones: 'notificaciones' } as const;
 export type EtiquetaWeb = (typeof ETIQUETAS_WEB)[keyof typeof ETIQUETAS_WEB];
 
 /** Etiquetas afectadas por una acción del registro (auditoria.ts), o [] si no cambia nada público. */
 export function etiquetasDe(accion: string): EtiquetaWeb[] {
   if (/^(stock|producto)\./.test(accion)) return [ETIQUETAS_WEB.bazar];
-  if (accion.startsWith('novedad.')) return [ETIQUETAS_WEB.novedades];
+  if (accion.startsWith('novedad.')) return [ETIQUETAS_WEB.novedades, ETIQUETAS_WEB.notificaciones];
   if (accion.startsWith('empleados.')) return [ETIQUETAS_WEB.empleados];
   if (accion.startsWith('banner.')) return [ETIQUETAS_WEB.banner];
-  if (accion.startsWith('ofertas.')) return [ETIQUETAS_WEB.ofertas];
-  if (accion.startsWith('creditos.')) return [ETIQUETAS_WEB.creditos];
+  if (accion.startsWith('ofertas.')) return [ETIQUETAS_WEB.ofertas, ETIQUETAS_WEB.notificaciones];
+  // Las aperturas de crédito generan avisos automáticos: también cambia la agenda de la app.
+  if (accion.startsWith('creditos.')) return [ETIQUETAS_WEB.creditos, ETIQUETAS_WEB.notificaciones];
+  if (accion.startsWith('notificacion.')) return [ETIQUETAS_WEB.notificaciones];
   return [];
 }
 

@@ -140,6 +140,20 @@ const MIGRACIONES: string[] = [
   CREATE TABLE estadisticas_dia (fecha TEXT NOT NULL, tipo TEXT NOT NULL, clave TEXT NOT NULL, valor INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (fecha, tipo, clave));
   CREATE TABLE visitantes_dia (fecha TEXT NOT NULL, hash TEXT NOT NULL, PRIMARY KEY (fecha, hash))
   `,
+  /* 9 · notificaciones de la app (notificaciones.ts): programadas y enviadas; celulares registrados para avisos
+     instantáneos (solo el identificador anónimo de Expo y las categorías elegidas) y envíos para revisar recibos. */ `
+  CREATE TABLE notificaciones (
+    id INTEGER PRIMARY KEY, titulo TEXT NOT NULL, texto TEXT NOT NULL, destino TEXT NOT NULL, con_boton INTEGER NOT NULL DEFAULT 0,
+    categoria TEXT NOT NULL, origen TEXT NOT NULL DEFAULT 'manual',
+    repeticion TEXT NOT NULL CHECK (repeticion IN ('una-vez', 'diaria')), fecha TEXT NOT NULL, hora TEXT NOT NULL, dias TEXT, hasta TEXT,
+    estado TEXT NOT NULL CHECK (estado IN ('programada', 'enviada', 'cancelada')), enviada_en TEXT, alcance INTEGER,
+    creado_en TEXT NOT NULL, actualizado_en TEXT NOT NULL, actualizado_por TEXT
+  );
+  CREATE UNIQUE INDEX notificaciones_origen ON notificaciones(origen) WHERE origen <> 'manual';
+  CREATE INDEX notificaciones_estado ON notificaciones(estado, enviada_en);
+  CREATE TABLE dispositivos (token TEXT PRIMARY KEY, plataforma TEXT NOT NULL CHECK (plataforma IN ('android', 'ios')), categorias TEXT NOT NULL, creado_en TEXT NOT NULL, visto_en TEXT NOT NULL);
+  CREATE TABLE envios_push (ticket TEXT PRIMARY KEY, token TEXT NOT NULL, notificacion_id INTEGER, enviado_en TEXT NOT NULL)
+  `,
 ];
 
 /** Versión del esquema en una tabla propia (PRAGMA user_version no se conserva igual en todos los destinos). */

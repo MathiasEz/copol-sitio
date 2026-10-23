@@ -18,6 +18,8 @@ import * as N from './novedades.ts';
 import * as B from './banner.ts';
 import * as OF from './ofertas.ts';
 import * as CR from './creditos.ts';
+import * as NT from './notificaciones.ts';
+import * as EN from './envio-notificaciones.ts';
 import * as ES from './estadisticas.ts';
 import { fechaValida, hoyUruguay } from './fechas.ts';
 import * as E from './empleados.ts';
@@ -69,6 +71,11 @@ const AVISOS: Record<string, V.Contexto['aviso']> = {
   'sesion-cerrada': { tipo: 'ok', texto: 'Sesión cerrada: esa persona tendrá que volver a ingresar.' },
   'equipo-olvidado': { tipo: 'ok', texto: 'Equipo olvidado: la próxima vez se le pedirán el PIN y el código por correo.' },
   'empleados-guardado': { tipo: 'ok', texto: 'Información para empleados actualizada.' },
+  'notificacion-programada': { tipo: 'ok', texto: 'Notificación programada. Los celulares ya están recibiendo la agenda nueva.' },
+  'notificacion-enviada': { tipo: 'ok', texto: 'Notificación enviada a los celulares registrados.' },
+  'notificacion-cancelada': { tipo: 'ok', texto: 'Notificación cancelada: no va a salir.' },
+  'notificacion-eliminada': { tipo: 'ok', texto: 'Notificación eliminada del historial.' },
+  'notificaciones-ajustes': { tipo: 'ok', texto: 'Ajustes de notificaciones guardados.' },
 };
 
 export interface OpcionesApp {
@@ -81,9 +88,11 @@ export interface OpcionesApp {
   asistente?: { fetch?: typeof fetch; token?: string | null };
   /** Envío del código por correo; por defecto Resend si RESEND_API_KEY está configurada (null = sin envío). */
   correo?: AC.EnviarCorreo | null;
+  /** Solo para pruebas: `fetch` del servicio de push y esperar los envíos. */
+  push?: EN.OpcionesEnvio;
 }
 
-export function crearApp({ db: fuenteDb, config, almacen, asistente, correo }: OpcionesApp) {
+export function crearApp({ db: fuenteDb, config, almacen, asistente, correo, push = {} }: OpcionesApp) {
   const app = new Hono<Env>({ strict: false }).basePath(BASE);
   const obtenerDb = typeof fuenteDb === 'function' ? fuenteDb : async () => fuenteDb;
   const guardarEn = almacen ?? almacenConfigurado(config.dirImagenes, r('/media'));
@@ -695,6 +704,8 @@ export function crearApp({ db: fuenteDb, config, almacen, asistente, correo }: O
     if (i >= 0 && (accion === 'arriba' || accion === 'abajo') && j >= 0 && j < quedan.length) [quedan[i], quedan[j]] = [quedan[j], quedan[i]];
     await OF.guardarOfertas(db, { titulo, mes, hasta, piezas: quedan });
     await registrar(db, actor(c), 'ofertas.edicion', 'ofertas', null, { titulo, hasta: hasta || null, piezas: quedan.length, quitadas: piezas.length - quedan.length, ...(i >= 0 && accion !== 'guardar' ? { orden: accion } : {}) });
+    // Ofertas nuevas = cambió el título (otro mes) y hay piezas vigentes: aviso automático (una vez por título).
+    if (titulo !== o.titulo) await avisarOfertas(c);
     return c.redirect(`${r('/ofertas')}?aviso=ofertas-guardadas`);
   });
   app.post('/ofertas/piezas', requiere('novedades'), async (c) => {
@@ -717,8 +728,11 @@ export function crearApp({ db: fuenteDb, config, almacen, asistente, correo }: O
       }
     }
     if (agregadas) {
+      const estabaVacia = o.piezas.length === agregadas;
       await OF.guardarOfertas(db, o);
       await registrar(db, actor(c), 'ofertas.piezas', 'ofertas', null, { agregadas, total: o.piezas.length });
+      // Primeras piezas después de vaciar las del mes anterior: ofertas nuevas.
+      if (estabaVacia) await avisarOfertas(c);
     }
     if (quiereJson) return c.json({ ok: !error, agregadas, error }, error && !agregadas ? 400 : 200);
     return c.redirect(`${r('/ofertas')}?aviso=${error ? 'ofertas-error-subida' : 'ofertas-agregadas'}`);
@@ -746,6 +760,7 @@ export function crearApp({ db: fuenteDb, config, almacen, asistente, correo }: O
     const confirmada = b.confirmada === '1';
     await CR.guardarAperturas(db, [...lista, { fecha, confirmada }]);
     await registrar(db, actor(c), 'creditos.alta', 'creditos', fecha, { fecha, confirmada });
+    await EN.sincronizar(db, push);
     return c.redirect(`${r('/creditos')}?aviso=creditos-guardado`);
   });
   app.post('/creditos/confirmar', requiere('novedades'), async (c) => {
@@ -757,6 +772,7 @@ export function crearApp({ db: fuenteDb, config, almacen, asistente, correo }: O
     a.confirmada = b.confirmada === '1';
     await CR.guardarAperturas(db, lista);
     await registrar(db, actor(c), 'creditos.edicion', 'creditos', a.fecha, { fecha: a.fecha, confirmada: a.confirmada });
+    await EN.sincronizar(db, push);
     return c.redirect(`${r('/creditos')}?aviso=creditos-guardado`);
   });
   app.post('/creditos/quitar', requiere('novedades'), async (c) => {
@@ -766,6 +782,7 @@ export function crearApp({ db: fuenteDb, config, almacen, asistente, correo }: O
     if (!lista.some((a) => a.fecha === fecha)) return c.notFound();
     await CR.guardarAperturas(db, lista.filter((a) => a.fecha !== fecha));
     await registrar(db, actor(c), 'creditos.baja', 'creditos', fecha, { fecha });
+    await EN.sincronizar(db, push);
     return c.redirect(`${r('/creditos')}?aviso=creditos-guardado`);
   });
 
@@ -793,6 +810,7 @@ export function crearApp({ db: fuenteDb, config, almacen, asistente, correo }: O
     }
     const n = existente ? await N.editarNovedad(db, existente.id, datos, imagen, c.get('usuario')!.usuario) : await N.crearNovedad(db, datos, imagen ?? null, c.get('usuario')!.usuario);
     await registrar(db, actor(c), existente ? 'novedad.edicion' : 'novedad.alta', 'novedad', String(n!.id), { titulo: n!.titulo, publicado: n!.publicado, plantilla: n!.plantilla });
+    if (n!.publicado) await avisarNovedad(c, n!);
     return c.redirect(`${r('/novedades')}?aviso=novedad-guardada`);
   };
   app.post('/novedades/nueva', requiere('novedades'), (c) => guardarNovedad(c, null));
@@ -812,6 +830,7 @@ export function crearApp({ db: fuenteDb, config, almacen, asistente, correo }: O
     if (publicado && N.PLANTILLAS[n.plantilla].requiereImagen && !n.imagen) return c.html(V.vistaError(ctx(c), 400, 'Falta la imagen', 'Esta novedad usa una plantilla con imagen: subí una antes de publicarla.'), 400);
     const act = await N.publicar(c.get('db'), n.id, publicado, c.get('usuario')!.usuario);
     await registrar(c.get('db'), actor(c), publicado ? 'novedad.publicacion' : 'novedad.despublicacion', 'novedad', String(n.id), { titulo: n.titulo });
+    if (act?.publicado) await avisarNovedad(c, act);
     return c.redirect(`${r('/novedades')}?aviso=${act?.publicado ? 'novedad-publicada' : 'novedad-despublicada'}`);
   });
   app.post('/novedades/:id/mover', requiere('novedades'), async (c) => {
@@ -827,6 +846,136 @@ export function crearApp({ db: fuenteDb, config, almacen, asistente, correo }: O
     await N.eliminarNovedad(c.get('db'), n.id);
     await registrar(c.get('db'), actor(c), 'novedad.baja', 'novedad', String(n.id), { titulo: n.titulo });
     return c.redirect(`${r('/novedades')}?aviso=novedad-eliminada`);
+  });
+
+  // ── Administración Página: notificaciones de la app ──
+  async function avisarOfertas(c: C) {
+    const o = await OF.obtenerOfertas(c.get('db'));
+    if (!OF.piezasVigentes(o).length || !o.titulo) return;
+    await EN.avisoAutomatico(c.get('db'), actor(c), 'ofertas', `auto:ofertas:${slug(o.titulo)}`, {
+      titulo: 'Nuevas ofertas del supermercado',
+      texto: `${o.titulo}${o.mes ? `, vigentes en ${o.mes}` : ''}. Miralas en la app.`,
+      destino: 'promociones',
+    }, push);
+  }
+  async function avisarNovedad(c: C, n: N.Novedad) {
+    const estado = N.estadoNovedad(n);
+    if (estado !== 'publicada' && estado !== 'programada') return;
+    await EN.avisoAutomatico(c.get('db'), actor(c), 'novedades', `auto:novedad:${n.id}`, {
+      titulo: n.titulo,
+      texto: n.texto?.trim() || 'Nueva novedad de COPOL. Mirala en la app.',
+      destino: 'inicio',
+    }, push, estado === 'programada' ? n.desde : null);
+  }
+  const datosNotificaciones = async (c: C) => {
+    const db = c.get('db');
+    const [{ agenda, ajustes, enviadas }, lista, dispositivos] = await Promise.all([NT.agendaDe(db, await CR.obtenerAperturas(db)), NT.listarNotificaciones(db), NT.contarDispositivos(db)]);
+    return { agenda, ajustes, enviadasHoy: enviadas, lista, dispositivos };
+  };
+  app.get('/notificaciones', requiere('novedades'), async (c) => c.html(V.vistaNotificaciones(ctx(c), await datosNotificaciones(c))));
+  /** Propuesta para una nueva: mañana a las 10 (o al inicio del horario permitido). */
+  const sugerencia = (a: NT.Ajustes) => ({ fecha: NT.sumarDias(hoyUruguay(), 1), hora: NT.dentroDelHorario('10:00', a) ? '10:00' : a.desde });
+  app.get('/notificaciones/nueva', requiere('novedades'), async (c) => {
+    const db = c.get('db');
+    const a = await NT.obtenerAjustes(db);
+    return c.html(V.vistaFormNotificacion(ctx(c), { cuando: 'programar', destino: 'inicio', categoria: 'avisos', con_boton: 1, ...sugerencia(a) }, {}, a, await NT.contarDispositivos(db)));
+  });
+  const guardarNotificacion = async (c: C, existente: NT.Notificacion | null) => {
+    const db = c.get('db');
+    const b = await cuerpo(c);
+    const ajustes = await NT.obtenerAjustes(db);
+    const { datos, errores, cuando } = NT.validarNotificacion(b, ajustes);
+    if (!Object.keys(errores).length) {
+      if (cuando === 'ahora') {
+        const { usados } = await EN.usadosHoy(db);
+        if (usados >= ajustes.maxPorDia) errores.cuando = `Hoy ya salieron o van a salir ${usados} avisos (máximo ${ajustes.maxPorDia}). Programala para otro día o subí el máximo en Ajustes.`;
+      } else if (!ajustes.activas) {
+        errores.cuando = 'Las notificaciones están en pausa: activalas en Ajustes para programar.';
+      } else {
+        // Se arma la agenda con esta notificación para ver si algún día se pasa del máximo.
+        const id = existente?.id ?? -1;
+        const otras = (await NT.listarNotificaciones(db)).filter((n) => n.id !== id);
+        const candidata = {
+          ...(existente ?? {}), id, titulo: datos.titulo, texto: datos.texto, destino: datos.destino, con_boton: datos.conBoton ? 1 : 0, categoria: datos.categoria,
+          origen: existente?.origen ?? 'manual', repeticion: datos.repeticion, fecha: datos.fecha, hora: datos.hora, dias: datos.dias?.join(',') ?? null, hasta: datos.hasta, estado: 'programada',
+        } as NT.Notificacion;
+        // Se revisan los días de esta notificación (aunque estén más allá de los 14 de la agenda).
+        const hoy = hoyUruguay();
+        const agenda = NT.armarAgenda({ hoy: datos.fecha, dias: datos.repeticion === 'diaria' ? 120 : 1, aperturas: await CR.obtenerAperturas(db), ajustes, notificaciones: [...otras, candidata], enviadasHoy: datos.fecha === hoy ? await NT.enviadasHoy(db) : 0 });
+        const llenos = NT.diasExcedidos(agenda, id);
+        if (llenos.length) errores.cuando = `Estos días ya tienen el máximo de ${ajustes.maxPorDia} avisos: ${llenos.slice(0, 5).map(NT.fechaLarga).join(', ')}${llenos.length > 5 ? '…' : ''}. Elegí otro día o subí el máximo en Ajustes.`;
+      }
+    }
+    if (Object.keys(errores).length) {
+      const previo = { ...existente, ...b, cuando, con_boton: datos.conBoton ? 1 : 0, dias: datos.dias?.join(',') ?? null } as V.NotificacionForm;
+      return c.html(V.vistaFormNotificacion(ctx(c), previo, errores, ajustes, await NT.contarDispositivos(db)), 400);
+    }
+    const usuario = c.get('usuario')!.usuario;
+    const n = existente ? (await NT.editarNotificacion(db, existente.id, datos, usuario))! : await NT.crearNotificacion(db, datos, usuario);
+    if (cuando === 'ahora') {
+      const alcance = await EN.enviarYa(db, n, push);
+      await registrar(db, actor(c), 'notificacion.envio', 'notificacion', String(n.id), { titulo: n.titulo, categoria: n.categoria, alcance });
+      if (existente) await EN.sincronizar(db, push); // estaba en la agenda: se retira de los celulares
+      return c.redirect(`${r('/notificaciones')}?aviso=notificacion-enviada`);
+    }
+    await registrar(db, actor(c), existente ? 'notificacion.edicion' : 'notificacion.alta', 'notificacion', String(n.id), { titulo: n.titulo, repeticion: n.repeticion, fecha: n.fecha, hora: n.hora });
+    await EN.sincronizar(db, push);
+    return c.redirect(`${r('/notificaciones')}?aviso=notificacion-programada`);
+  };
+  app.post('/notificaciones/nueva', requiere('novedades'), (c) => guardarNotificacion(c, null));
+  app.post('/notificaciones/ajustes', requiere('novedades'), async (c) => {
+    const db = c.get('db');
+    const b = await cuerpo(c);
+    const desde = NT.horaValida(b.desde);
+    const hasta = NT.horaValida(b.hasta);
+    const horaCredito = NT.horaValida(b.credito_hora);
+    const max = Number(b.max_por_dia);
+    const errores: Record<string, string> = {};
+    if (!desde || !hasta || hasta <= desde) errores.horario = 'Elegí un horario válido: la hora de fin tiene que ser posterior a la de inicio.';
+    if (!Number.isInteger(max) || max < 1 || max > NT.LIMITES.maxPorDia) errores.max_por_dia = `Elegí entre 1 y ${NT.LIMITES.maxPorDia} avisos por día.`;
+    if (!horaCredito) errores.credito_hora = 'Elegí la hora de los avisos de crédito.';
+    else if (desde && hasta && !NT.dentroDelHorario(horaCredito, { desde, hasta })) errores.credito_hora = 'La hora de los avisos de crédito tiene que estar dentro del horario permitido.';
+    const ajustes: NT.Ajustes = {
+      activas: b.activas === '1', maxPorDia: max, desde, hasta,
+      credito: { activo: b.credito_activo === '1', diaAnterior: b.credito_anterior === '1', mismoDia: b.credito_dia === '1', hora: horaCredito },
+      ofertas: { activo: b.ofertas_activo === '1' },
+      novedades: { activo: b.novedades_activo === '1' },
+    };
+    if (Object.keys(errores).length) return c.html(V.vistaNotificaciones(ctx(c), { ...(await datosNotificaciones(c)), ajustes }, errores), 400);
+    await NT.guardarAjustes(db, ajustes);
+    await registrar(db, actor(c), 'notificacion.ajustes', 'notificaciones', null, ajustes);
+    await EN.sincronizar(db, push);
+    return c.redirect(`${r('/notificaciones')}?aviso=notificaciones-ajustes`);
+  });
+  const notificacionDe = (c: C) => NT.obtenerNotificacion(c.get('db'), Number(c.req.param('id')) || 0);
+  app.get('/notificaciones/:id', requiere('novedades'), async (c) => {
+    const n = await notificacionDe(c);
+    if (!n) return c.notFound();
+    if (n.estado !== 'programada') return c.redirect(r('/notificaciones'));
+    const db = c.get('db');
+    return c.html(V.vistaFormNotificacion(ctx(c), { ...n, cuando: n.repeticion === 'diaria' ? 'repetir' : 'programar' }, {}, await NT.obtenerAjustes(db), await NT.contarDispositivos(db)));
+  });
+  app.post('/notificaciones/:id', requiere('novedades'), async (c) => {
+    const n = await notificacionDe(c);
+    return n && n.estado === 'programada' ? guardarNotificacion(c, n) : c.notFound();
+  });
+  app.post('/notificaciones/:id/cancelar', requiere('novedades'), async (c) => {
+    const n = await notificacionDe(c);
+    if (!n) return c.notFound();
+    const db = c.get('db');
+    await NT.cancelarNotificacion(db, n.id, c.get('usuario')!.usuario);
+    await registrar(db, actor(c), 'notificacion.cancelacion', 'notificacion', String(n.id), { titulo: n.titulo });
+    await EN.sincronizar(db, push);
+    return c.redirect(`${r('/notificaciones')}?aviso=notificacion-cancelada`);
+  });
+  app.post('/notificaciones/:id/eliminar', requiere('novedades'), async (c) => {
+    const n = await notificacionDe(c);
+    if (!n) return c.notFound();
+    const db = c.get('db');
+    await NT.eliminarNotificacion(db, n.id);
+    await registrar(db, actor(c), 'notificacion.baja', 'notificacion', String(n.id), { titulo: n.titulo });
+    if (n.estado === 'programada') await EN.sincronizar(db, push);
+    return c.redirect(`${r('/notificaciones')}?aviso=notificacion-eliminada`);
   });
 
   // ── Información empleados: la ve todo el personal; la editan los administradores ──

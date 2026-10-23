@@ -10,6 +10,10 @@ import { GRUPOS, qrSvg, type Grupo, type ImagenPortal, type Portal } from './emp
 import { estadoNovedad, PLANTILLAS, type Novedad, type Plantilla } from './novedades.ts';
 import { MAX_PIEZAS, vencidas, type Ofertas } from './ofertas.ts';
 import { proximas, type Apertura } from './creditos.ts';
+import {
+  CATEGORIAS as CATEGORIAS_NOTIFICACION, DESTINOS as DESTINOS_NOTIFICACION, DIAS_SEMANA, LIMITES as LIMITES_NOTIFICACION,
+  type Ajustes as AjustesNotificaciones, type Categoria as CategoriaNotificacion, type Destino as DestinoNotificacion, type Instancia, type Notificacion,
+} from './notificaciones.ts';
 import { nombreRuta, type Resumen } from './estadisticas.ts';
 import { DISENOS, estadoDiapositiva, FOCOS, hoyUruguay, htmlBanner, MAX_DIAPOSITIVAS, SEGUNDOS, tituloCompleto, vigentes, type Banner, type Diapositiva, type Diseno, type Foco } from './banner.ts';
 import type * as AC from './acceso.ts';
@@ -73,6 +77,7 @@ const ICONOS: Record<string, string> = {
   pagina: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M7 13h6M7 16h4"/><rect x="14" y="12.5" width="3.5" height="4" rx=".5"/>',
   monitor: '<rect x="2" y="4" width="20" height="13" rx="2"/><path d="M8 21h8M12 17v4"/>',
   celular: '<rect x="7" y="2" width="10" height="20" rx="2"/><path d="M11 18h2"/>',
+  campana: '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>',
   calendario: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/>',
 };
 export const icono = (n: string, t = 18) => raw(`<svg class="i" width="${t}" height="${t}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONOS[n] ?? ''}</svg>`);
@@ -111,7 +116,7 @@ const alerta = (a: Contexto['aviso']) =>
 
 export function layout(c: Contexto, titulo: string, cuerpo: H, acciones: H | '' = '', extra: Recursos = {}) {
   const u = c.usuario!;
-  const activo = (p: string) => (p === '/productos' ? c.ruta === r() || c.ruta.startsWith(r('/productos')) || c.ruta.startsWith(r('/?')) : p === '/banner' ? ['/banner', '/ofertas', '/creditos', '/novedades'].some((s) => c.ruta.startsWith(r(s))) : c.ruta.startsWith(r(p)));
+  const activo = (p: string) => (p === '/productos' ? c.ruta === r() || c.ruta.startsWith(r('/productos')) || c.ruta.startsWith(r('/?')) : p === '/banner' ? ['/banner', '/ofertas', '/creditos', '/novedades', '/notificaciones'].some((s) => c.ruta.startsWith(r(s))) : c.ruta.startsWith(r(p)));
   const item = (p: string, texto: string, ic: string) => html`<a href="${r(p === '/productos' ? '' : p)}" class="nav__item" ${si(activo(p), 'aria-current="page"')}>${icono(ic)}<span>${texto}</span></a>`;
   return html`${cabeza(titulo, extra)}
 <body class="app">
@@ -459,8 +464,8 @@ const evento = (e: Evento) => {
 };
 
 // ── Administración Página: banner de Inicio y novedades ──
-type SeccionPagina = 'banner' | 'ofertas' | 'creditos' | 'novedades';
-const SECCIONES_PAGINA: [SeccionPagina, string, string][] = [['banner', 'Banner de inicio', 'imagen'], ['ofertas', 'Ofertas', 'etiqueta'], ['creditos', 'Créditos', 'calendario'], ['novedades', 'Novedades', 'noticia']];
+type SeccionPagina = 'banner' | 'ofertas' | 'creditos' | 'novedades' | 'notificaciones';
+const SECCIONES_PAGINA: [SeccionPagina, string, string][] = [['banner', 'Banner de inicio', 'imagen'], ['ofertas', 'Ofertas', 'etiqueta'], ['creditos', 'Créditos', 'calendario'], ['novedades', 'Novedades', 'noticia'], ['notificaciones', 'Notificaciones', 'campana']];
 const tabsPagina = (activo: SeccionPagina) => html`<nav class="tabs" aria-label="Secciones de la web">
   ${SECCIONES_PAGINA.map(([k, texto, ic]) => html`<a class="tabs__item" href="${r(`/${k}`)}" ${si(activo === k, 'aria-current="true"')}>${icono(ic, 16)}${texto}</a>`)}
 </nav>`;
@@ -837,6 +842,170 @@ ${Object.keys(errores).length ? html`<div class="alert alert--error" role="alert
   </div>
 </form>
 ${n.id ? html`<form method="post" action="${r(`/novedades/${n.id}/eliminar`)}" class="zona-peligro" data-confirmar="¿Eliminar la novedad “${n.titulo}”?">${csrfCampo(c)}<button class="btn btn--peligro btn--sm" type="submit">${icono('basura', 16)}Eliminar novedad</button></form>` : ''}`);
+}
+
+// ── Notificaciones de la app ──
+export type NotificacionForm = Partial<Notificacion> & { cuando?: 'ahora' | 'programar' | 'repetir' };
+type DatosVistaNotificaciones = { agenda: Instancia[]; ajustes: AjustesNotificaciones; enviadasHoy: number; lista: Notificacion[]; dispositivos: { total: number; porCategoria: Record<CategoriaNotificacion, number> } };
+const RECURSOS_NOTIFICACIONES: Recursos = { scripts: ['/panel-recursos/notificaciones.js'] };
+const diaAgenda = (f: string) => new Date(`${f}T12:00:00`).toLocaleDateString('es-UY', { weekday: 'long', day: 'numeric', month: 'long' });
+const diasTexto = (dias: string | null) => (dias ? dias.split(',').map((d) => DIAS_SEMANA[Number(d)]?.slice(0, 3)).join(', ') : 'todos los días');
+const repeticionTexto = (n: Pick<Notificacion, 'repeticion' | 'fecha' | 'hora' | 'dias' | 'hasta'>) =>
+  n.repeticion === 'diaria' ? `Se repite ${diasTexto(n.dias)} a las ${n.hora}, desde el ${fechaCorta(n.fecha)}${n.hasta ? ` hasta el ${fechaCorta(n.hasta)}` : ''}` : `${diaAgenda(n.fecha)} a las ${n.hora}`;
+
+export function vistaNotificaciones(c: Contexto, d: DatosVistaNotificaciones, errores: Record<string, string> = {}) {
+  const a = d.ajustes;
+  const err = (k: string) => (errores[k] ? html`<span class="error" id="err-${k}">${errores[k]}</span>` : '');
+  const hoy = hoyUruguay();
+  const usadosHoy = d.enviadasHoy + d.agenda.filter((x) => x.fecha === hoy && !x.omitida).length;
+  const porDia = new Map<string, Instancia[]>();
+  for (const x of d.agenda) porDia.set(x.fecha, [...(porDia.get(x.fecha) ?? []), x]);
+  const ahoraMs = Date.now();
+  const manuales = new Map(d.lista.map((n) => [n.id, n]));
+  const item = (x: Instancia) => {
+    const n = x.notificacionId ? manuales.get(x.notificacionId) : undefined;
+    const paso = Date.parse(x.en) <= ahoraMs;
+    return html`<li class="aviso-app${x.omitida || paso ? ' aviso-app--apagado' : ''}">
+      <span class="aviso-app__hora">${icono('reloj', 16)}${x.hora}</span>
+      <div class="aviso-app__texto"><strong>${x.titulo}</strong><span class="muted">${x.texto}</span>
+        ${n?.repeticion === 'diaria' ? html`<span class="tabla__sub">${repeticionTexto(n)}</span>` : ''}</div>
+      <div class="aviso-app__marcas">
+        <span class="badge badge--sin-dato">${CATEGORIAS_NOTIFICACION[x.categoria]}</span>
+        ${x.automatica ? html`<span class="badge badge--sin-stock">${icono('chispa', 14)}Automática</span>` : ''}
+        ${x.omitida ? html`<span class="badge badge--sin-stock" title="${x.motivo ?? ''}">${icono('pausa', 14)}No sale: ${x.motivo}</span>` : paso ? html`<span class="badge badge--con-stock">${icono('check', 14)}Ya salió</span>` : ''}
+      </div>
+      ${n && !x.automatica && n.estado === 'programada' ? html`<div class="novedad__acciones">
+        <a class="btn btn--ghost btn--sm" href="${r(`/notificaciones/${n.id}`)}">${icono('editar', 16)}Editar</a>
+        <form method="post" action="${r(`/notificaciones/${n.id}/cancelar`)}" data-confirmar="¿Cancelar “${n.titulo}”? ${n.repeticion === 'diaria' ? 'Se cancelan todas sus repeticiones.' : 'No va a salir.'}">${csrfCampo(c)}<button class="btn btn--ghost btn--sm" type="submit">${icono('x', 16)}Cancelar</button></form>
+      </div>` : x.categoria === 'creditos' && x.automatica ? html`<a class="btn btn--ghost btn--sm" href="${r('/creditos')}">${icono('calendario', 16)}Ver fechas</a>` : ''}
+    </li>`;
+  };
+  const historial = d.lista.filter((n) => n.estado !== 'programada').slice(0, 30);
+  // Programadas que todavía no entran en los próximos días de la agenda.
+  const enAgenda = new Set(d.agenda.map((x) => x.notificacionId));
+  const masAdelante = d.lista.filter((n) => n.estado === 'programada' && !enAgenda.has(n.id)).sort((x, y) => x.fecha.localeCompare(y.fecha));
+  const chk = (nombre: string, valor: boolean, texto: string) => html`<label class="check"><input type="checkbox" name="${nombre}" value="1" ${si(valor, 'checked')}><span>${texto}</span></label>`;
+  return layout(c, 'Administración Página', html`
+${tabsPagina('notificaciones')}
+<p class="muted subtitulo">Avisos que llegan al celular de quienes tienen la app de COPOL y los activaron. Las programadas las muestra cada celular a su hora; "Enviar ahora" llega al instante.</p>
+${!a.activas ? html`<div class="alert alert--error" role="status">${icono('pausa')}<p>Las notificaciones están en pausa: no sale ningún aviso. Activalas en Ajustes.</p></div>` : ''}
+${Object.keys(errores).length ? html`<div class="alert alert--error" role="alert">${icono('info')}<p>Revisá los ajustes marcados.</p></div>` : ''}
+<div class="metricas-avisos">
+  <div class="card metrica-aviso">${icono('celular', 20)}<div><strong>${d.dispositivos.total.toLocaleString('es-UY')}</strong><span class="muted">celulares con avisos instantáneos</span></div></div>
+  <div class="card metrica-aviso">${icono('campana', 20)}<div><strong>${usadosHoy} de ${a.maxPorDia}</strong><span class="muted">avisos hoy (máximo por día)</span></div></div>
+  <div class="card metrica-aviso">${icono('reloj', 20)}<div><strong>${a.desde} a ${a.hasta}</strong><span class="muted">horario permitido</span></div></div>
+</div>
+<section class="card" aria-labelledby="agenda-titulo">
+  <h2 class="card__titulo" id="agenda-titulo">Próximos ${LIMITES_NOTIFICACION.diasAgenda} días</h2>
+  ${porDia.size
+    ? html`<div class="agenda-avisos">${[...porDia].map(([fecha, lista]) => html`<div class="agenda-avisos__dia"><h3>${fecha === hoy ? 'Hoy' : diaAgenda(fecha)}</h3><ul class="avisos-app">${lista.map(item)}</ul></div>`)}</div>`
+    : html`<p class="muted">No hay avisos programados. Las aperturas de crédito confirmadas generan sus avisos solas.</p>`}
+  ${masAdelante.length ? html`<h3 class="agenda-avisos__mas">Más adelante</h3><ul class="avisos-app">${masAdelante.map((n) => html`<li class="aviso-app">
+    <span class="aviso-app__hora">${icono('calendario', 16)}${fechaCorta(n.fecha)}</span>
+    <div class="aviso-app__texto"><strong>${n.titulo}</strong><span class="tabla__sub">${repeticionTexto(n)}</span></div>
+    ${n.origen === 'manual' ? html`<div class="novedad__acciones">
+      <a class="btn btn--ghost btn--sm" href="${r(`/notificaciones/${n.id}`)}">${icono('editar', 16)}Editar</a>
+      <form method="post" action="${r(`/notificaciones/${n.id}/cancelar`)}" data-confirmar="¿Cancelar “${n.titulo}”?">${csrfCampo(c)}<button class="btn btn--ghost btn--sm" type="submit">${icono('x', 16)}Cancelar</button></form>
+    </div>` : html`<span class="badge badge--sin-stock">${icono('chispa', 14)}Automática</span>`}
+  </li>`)}</ul>` : ''}
+</section>
+<form class="card form" method="post" action="${r('/notificaciones/ajustes')}" aria-labelledby="ajustes-titulo">
+  ${csrfCampo(c)}
+  <h2 class="card__titulo" id="ajustes-titulo">Ajustes</h2>
+  ${chk('activas', a.activas, 'Notificaciones activas (desmarcá para poner todo en pausa)')}
+  <div class="fila">
+    <label class="campo"><span class="label">Máximo de avisos por día</span><select class="input" name="max_por_dia">${Array.from({ length: LIMITES_NOTIFICACION.maxPorDia }, (_, i) => i + 1).map((n) => html`<option value="${n}" ${si(n === a.maxPorDia, 'selected')}>${n}</option>`)}</select>${err('max_por_dia')}</label>
+    <label class="campo"><span class="label">Desde las</span><input class="input" type="time" name="desde" value="${a.desde}" required></label>
+    <label class="campo"><span class="label">Hasta las</span><input class="input" type="time" name="hasta" value="${a.hasta}" required>${err('horario')}</label>
+  </div>
+  <p class="ayuda">Ningún aviso sale fuera de ese horario. Si un día se pasa del máximo, primero salen los de crédito, después los tuyos, las ofertas y las novedades.</p>
+  <fieldset class="campo"><legend class="label">Avisos automáticos</legend>
+    ${chk('credito_activo', a.credito.activo, 'Aperturas de crédito (solo fechas confirmadas)')}
+    <div class="fila sangria">
+      ${chk('credito_anterior', a.credito.diaAnterior, 'El día anterior')}
+      ${chk('credito_dia', a.credito.mismoDia, 'El mismo día')}
+      <label class="campo"><span class="label">A las</span><input class="input" type="time" name="credito_hora" value="${a.credito.hora}" required>${err('credito_hora')}</label>
+    </div>
+    ${chk('ofertas_activo', a.ofertas.activo, 'Ofertas del supermercado nuevas (al cargar las de un mes nuevo)')}
+    ${chk('novedades_activo', a.novedades.activo, 'Novedades (al publicar una)')}
+  </fieldset>
+  <div class="acciones-form"><button class="btn" type="submit">${icono('check')}Guardar ajustes</button></div>
+</form>
+<section class="card" aria-labelledby="historial-titulo">
+  <h2 class="card__titulo" id="historial-titulo">Enviadas y canceladas</h2>
+  ${historial.length ? html`<ul class="avisos-app">${historial.map((n) => html`<li class="aviso-app">
+    <span class="aviso-app__hora">${icono(n.estado === 'enviada' ? 'enviar' : 'x', 16)}${n.enviada_en ? fecha(n.enviada_en) : fechaCorta(n.fecha)}</span>
+    <div class="aviso-app__texto"><strong>${n.titulo}</strong><span class="muted">${n.texto}</span></div>
+    <div class="aviso-app__marcas">
+      ${n.estado === 'enviada' ? html`<span class="badge badge--con-stock">${icono('check', 14)}Enviada${n.alcance != null ? ` a ${n.alcance.toLocaleString('es-UY')} celulares` : ''}</span>` : html`<span class="badge badge--sin-stock">Cancelada</span>`}
+      ${n.origen !== 'manual' ? html`<span class="badge badge--sin-stock">${icono('chispa', 14)}Automática</span>` : ''}
+    </div>
+    <form method="post" action="${r(`/notificaciones/${n.id}/eliminar`)}" data-confirmar="¿Quitar “${n.titulo}” del historial?">${csrfCampo(c)}<button class="btn btn--ghost btn--sm" type="submit" aria-label="Quitar ${n.titulo} del historial">${icono('basura', 16)}</button></form>
+  </li>`)}</ul>` : html`<p class="muted">Todavía no salió ninguna.</p>`}
+</section>`, html`<a class="btn" href="${r('/notificaciones/nueva')}">${icono('mas')}Nueva notificación</a>`);
+}
+
+export function vistaFormNotificacion(c: Contexto, n: NotificacionForm, errores: Record<string, string>, a: AjustesNotificaciones, dispositivos: { total: number; porCategoria: Record<CategoriaNotificacion, number> }) {
+  const err = (k: string) => (errores[k] ? html`<span class="error" id="err-${k}">${errores[k]}</span>` : '');
+  const inv = (k: string) => (errores[k] ? raw(`aria-invalid="true" aria-describedby="err-${k}"`) : '');
+  const cuando = n.cuando ?? 'programar';
+  const destino = (n.destino && n.destino in DESTINOS_NOTIFICACION ? n.destino : 'inicio') as DestinoNotificacion;
+  const categoria = (n.categoria && n.categoria in CATEGORIAS_NOTIFICACION ? n.categoria : 'avisos') as CategoriaNotificacion;
+  const dias = n.dias ? String(n.dias).split(',') : n.id ? [] : ['1', '2', '3', '4', '5'];
+  const accion = n.id ? r(`/notificaciones/${n.id}`) : r('/notificaciones/nueva');
+  const opcionCuando = (v: string, titulo: string, ayuda: string) => html`<label class="opcion-cuando"><input type="radio" name="cuando" value="${v}" ${si(cuando === v, 'checked')}><span><strong>${titulo}</strong><small class="muted">${ayuda}</small></span></label>`;
+  const alcance = (cat: CategoriaNotificacion) => dispositivos.porCategoria[cat] ?? 0;
+  return layout(c, n.id ? 'Editar notificación' : 'Nueva notificación', html`
+${tabsPagina('notificaciones')}
+${Object.keys(errores).length ? html`<div class="alert alert--error" role="alert">${icono('info')}<p>${errores.cuando ?? 'Revisá los campos marcados.'}</p></div>` : ''}
+<form method="post" action="${accion}" novalidate class="grid-form" data-form-notificacion data-alcance='${JSON.stringify(dispositivos.porCategoria)}'>
+  ${csrfCampo(c)}
+  <div class="col">
+    <section class="card form"><h2 class="card__titulo">Mensaje</h2>
+      <label class="campo"><span class="label">Título</span><input class="input" name="titulo" value="${n.titulo ?? ''}" required maxlength="${LIMITES_NOTIFICACION.titulo}" placeholder="Hoy hay apertura de créditos" ${inv('titulo')} data-np="titulo">${err('titulo')}</label>
+      <label class="campo"><span class="label">Texto</span><textarea class="input" name="texto" rows="3" required maxlength="${LIMITES_NOTIFICACION.texto}" ${inv('texto')} data-np="texto">${n.texto ?? ''}</textarea><span class="ayuda">Corto y claro: se lee en la pantalla bloqueada. Máximo ${LIMITES_NOTIFICACION.texto} caracteres.</span>${err('texto')}</label>
+      <div class="fila">
+        <label class="campo"><span class="label">Tipo de aviso</span><select class="input" name="categoria" data-np="categoria">${(Object.keys(CATEGORIAS_NOTIFICACION) as CategoriaNotificacion[]).map((k) => html`<option value="${k}" ${si(k === categoria, 'selected')}>${CATEGORIAS_NOTIFICACION[k]} (${alcance(k)})</option>`)}</select><span class="ayuda">Cada persona elige en la app qué tipos recibe. Entre paréntesis: celulares que lo reciben al instante.</span></label>
+        <label class="campo"><span class="label">Al tocarlo abre</span><select class="input" name="destino" data-np="destino">${(Object.keys(DESTINOS_NOTIFICACION) as DestinoNotificacion[]).map((k) => html`<option value="${k}" data-boton="${DESTINOS_NOTIFICACION[k].boton}" ${si(k === destino, 'selected')}>${DESTINOS_NOTIFICACION[k].nombre}</option>`)}</select></label>
+      </div>
+      <label class="check"><input type="checkbox" name="con_boton" value="1" ${si(n.con_boton ?? 1, 'checked')} data-np="boton"><span>Mostrar un botón en el aviso (“<span data-np-boton>${DESTINOS_NOTIFICACION[destino].boton}</span>”)</span></label>
+    </section>
+    <section class="card form"><h2 class="card__titulo">Cuándo</h2>
+      <fieldset class="campo opciones-cuando"><legend class="sr">Cuándo sale</legend>
+        ${opcionCuando('ahora', 'Enviar ahora', 'Llega en segundos a los celulares registrados.')}
+        ${opcionCuando('programar', 'Programar', 'Un día y una hora.')}
+        ${opcionCuando('repetir', 'Repetir', 'Todos los días o algunos días de la semana, a la misma hora.')}
+      </fieldset>
+      <div class="fila" data-cuando="programar repetir">
+        <label class="campo"><span class="label" data-cuando-texto>${cuando === 'repetir' ? 'Desde el día' : 'Día'}</span><input class="input" type="date" name="fecha" value="${n.fecha ?? ''}" min="${hoyUruguay()}" ${inv('fecha')}>${err('fecha')}</label>
+        <label class="campo"><span class="label">Hora</span><input class="input" type="time" name="hora" value="${n.hora ?? ''}" min="${a.desde}" max="${a.hasta}" ${inv('hora')}>${err('hora')}</label>
+      </div>
+      <div data-cuando="repetir">
+        <fieldset class="campo"><legend class="label">Días de la semana</legend>
+          <div class="dias-semana">${[1, 2, 3, 4, 5, 6, 0].map((i) => html`<label class="check check--chico"><input type="checkbox" name="dias" value="${i}" ${si(dias.includes(String(i)), 'checked')}><span>${DIAS_SEMANA[i]}</span></label>`)}</div>${err('dias')}
+        </fieldset>
+        <label class="campo"><span class="label">Hasta el día <span class="opcional">(opcional)</span></span><input class="input" type="date" name="hasta" value="${n.hasta ?? ''}" ${inv('hasta')}>${err('hasta')}</label>
+      </div>
+      <p class="ayuda">Horario permitido: ${a.desde} a ${a.hasta} · máximo ${a.maxPorDia} ${a.maxPorDia === 1 ? 'aviso' : 'avisos'} por día (se cambia en Ajustes). Conviene programar con un día de anticipación para que llegue a todos los celulares.</p>
+    </section>
+  </div>
+  <div class="col">
+    <section class="card previa-aviso" aria-label="Vista previa del aviso">
+      <h2 class="card__titulo">Vista previa</h2>
+      <p class="ayuda">Así se ve en la pantalla de un celular Android.</p>
+      <div class="previa-aviso__pantalla">
+        <div class="previa-aviso__burbuja">
+          <div class="previa-aviso__app"><img src="/favicon.png" alt="" width="18" height="18"><span>COPOL · ahora</span></div>
+          <strong data-np-ver="titulo">${n.titulo || 'Título del aviso'}</strong>
+          <p data-np-ver="texto">${n.texto || 'Texto del aviso.'}</p>
+          <span class="previa-aviso__boton" data-np-ver="boton" ${si(!(n.con_boton ?? 1), 'hidden')}>${DESTINOS_NOTIFICACION[destino].boton}</span>
+        </div>
+      </div>
+    </section>
+    <div class="acciones-form"><button class="btn btn--lg" type="submit" data-boton-enviar>${cuando === 'ahora' ? html`${icono('enviar')}Enviar ahora` : n.id ? 'Guardar cambios' : 'Programar'}</button><a class="btn btn--ghost" href="${r('/notificaciones')}">Volver</a></div>
+  </div>
+</form>
+${n.id && n.estado === 'programada' ? html`<form method="post" action="${r(`/notificaciones/${n.id}/cancelar`)}" class="zona-peligro" data-confirmar="¿Cancelar “${n.titulo}”?">${csrfCampo(c)}<button class="btn btn--peligro btn--sm" type="submit">${icono('x', 16)}Cancelar esta notificación</button></form>` : ''}`, '', RECURSOS_NOTIFICACIONES);
 }
 
 // ── Usuarios ──

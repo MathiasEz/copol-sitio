@@ -3,7 +3,7 @@
   "framework": "astro",
   "buildCommand": "npm run build",
   "installCommand": "npm ci",
-  "crons": [{ "path": "/api/cron/respaldo", "schedule": "0 7 * * *" }],
+  "crons": [{ "path": "/api/cron/respaldo", "schedule": "0 7 * * *" }, { "path": "/api/cron/notificaciones", "schedule": "0 11 * * *" }],
   "headers": [
     {
       "source": "/(.*)",

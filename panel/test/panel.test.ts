@@ -18,6 +18,7 @@ import { obtenerAperturas, proximas } from '../src/creditos.ts';
 import { cifrar, descifrar, exportarDatos, secretoValido } from '../src/respaldo.ts';
 import * as ES from '../src/estadisticas.ts';
 import { crearUsuario } from '../src/usuarios.ts';
+import * as NT from '../src/notificaciones.ts';
 import { guardarPin } from '../src/acceso.ts';
 import { BASE as RUTA } from '../src/config.ts';
 
@@ -1257,5 +1258,106 @@ describe('acceso: PIN, código por correo, equipos recordados y Accesos', () => 
     const mcp = await conCorreo.request(`${BASE}${RUTA}/mcp`, { method: 'POST', body: '{}', headers: { 'content-type': 'application/json' } });
     assert.notEqual(mcp.status, 401, 'no responde como servidor MCP');
     assert.ok(!mcp.headers.get('www-authenticate'));
+  });
+});
+
+describe('notificaciones de la app', () => {
+  // Servicio de push falso: registra lo que se mandaría y marca un token como dado de baja.
+  const enviados: { to: string; title?: string; data?: Record<string, unknown> }[][] = [];
+  const pushFalso: typeof fetch = async (url, init) => {
+    if (String(url).endsWith('/getReceipts')) return Response.json({ data: {} });
+    const lote = JSON.parse(String(init?.body)) as { to: string }[];
+    enviados.push(lote);
+    return Response.json({ data: lote.map((m, i) => (m.to.includes('Vencido') ? { status: 'error', details: { error: 'DeviceNotRegistered' } } : { status: 'ok', id: `ticket-${enviados.length}-${i}` })) });
+  };
+  let appPush: ReturnType<typeof crearApp>;
+  before(async () => {
+    appPush = crearApp({ db, config, correo: null, push: { fetch: pushFalso, esperar: true, token: null } });
+    await NT.registrarDispositivo(db, 'ExponentPushToken[celularDePrueba01]', 'android', ['avisos', 'creditos', 'ofertas', 'novedades']);
+    await NT.registrarDispositivo(db, 'ExponentPushToken[soloCreditos0002]', 'android', ['creditos']);
+    await NT.registrarDispositivo(db, 'ExponentPushToken[celularVencido003]', 'ios', ['avisos']);
+  });
+
+  it('agenda: créditos automáticos, repetición, horario y máximo por día', () => {
+    const ajustes = { ...NT.AJUSTES_INICIALES, maxPorDia: 2 };
+    const base = { estado: 'programada', con_boton: 1, origen: 'manual', destino: 'inicio', categoria: 'avisos', dias: null, hasta: null } as const;
+    const notificaciones = [
+      { ...base, id: 1, titulo: 'Una vez', texto: 't', repeticion: 'una-vez', fecha: '2099-03-02', hora: '12:00' },
+      { ...base, id: 2, titulo: 'Lunes', texto: 't', repeticion: 'diaria', fecha: '2099-03-01', hora: '09:30', dias: '1', hasta: '2099-03-14' },
+      { ...base, id: 3, titulo: 'De noche', texto: 't', repeticion: 'una-vez', fecha: '2099-03-03', hora: '23:00' },
+    ] as unknown as NT.Notificacion[];
+    const agenda = NT.armarAgenda({ hoy: '2099-03-01', aperturas: [{ fecha: '2099-03-02', confirmada: true }, { fecha: '2099-03-05', confirmada: false }], ajustes, notificaciones, enviadasHoy: 0 });
+    const del2 = agenda.filter((x) => x.fecha === '2099-03-02');
+    // 2 de marzo (lunes): crédito del día (prioridad), lunes 09:30 y la de una vez → la tercera queda afuera.
+    assert.deepEqual(del2.map((x) => [x.id, x.omitida]), [['n2-2099-03-02', false], ['credito-2099-03-02-dia', false], ['n1', true]]);
+    assert.ok(agenda.some((x) => x.id === 'credito-2099-03-02-antes' && x.fecha === '2099-03-01' && /Mañana/.test(x.titulo)));
+    assert.ok(!agenda.some((x) => x.id.startsWith('credito-2099-03-05')), 'fecha a confirmar: sin aviso');
+    assert.equal(agenda.find((x) => x.id === 'n3')!.motivo, 'Fuera del horario permitido');
+    assert.deepEqual(agenda.filter((x) => x.notificacionId === 2).map((x) => x.fecha), ['2099-03-02', '2099-03-09'], 'solo lunes, hasta el 14');
+    const publica = NT.agendaPublica(agenda, new Date('2099-03-01T00:00:00-03:00'));
+    assert.ok(publica.every((x) => !('omitida' in x)) && !publica.some((x) => x.id === 'n1' || x.id === 'n3'));
+    assert.equal(NT.armarAgenda({ hoy: '2099-03-01', aperturas: [], ajustes: { ...ajustes, activas: false }, notificaciones, enviadasHoy: 0 }).filter((x) => !x.omitida).length, 0, 'pausa general');
+  });
+
+  it('panel: programa, valida horario y máximo, edita y cancela; el editor no tiene acceso', async () => {
+    const editor = new Navegador(appPush);
+    await editor.ingresar('editor');
+    assert.equal((await editor.pedir(`${RUTA}/notificaciones`)).status, 403);
+    const n = new Navegador(appPush);
+    await n.ingresar('principal');
+    assert.equal((await n.pedir(`${RUTA}/notificaciones`)).status, 200);
+    await n.pedir(`${RUTA}/notificaciones/nueva`);
+    const campos = { titulo: 'Asamblea de socios', texto: 'Te esperamos el sábado en Casa Central.', categoria: 'avisos', destino: 'contacto', con_boton: '1', cuando: 'programar', fecha: '2099-05-05', hora: '10:00' };
+    assert.match(await (await n.post(`${RUTA}/notificaciones/nueva`, { ...campos, hora: '23:30' })).text(), /horario permitido/);
+    assert.match(await (await n.post(`${RUTA}/notificaciones/nueva`, { ...campos, fecha: '2020-01-01' })).text(), /ya pasó/);
+    const antes = enviados.length;
+    assert.equal((await n.post(`${RUTA}/notificaciones/nueva`, campos)).status, 302);
+    assert.equal(enviados.length, antes + 1, 'aviso silencioso de sincronización');
+    assert.ok(enviados.at(-1)!.every((m) => m.data?.tipo === 'sincronizar' && !m.title));
+    const fila = (await NT.listarNotificaciones(db)).find((x) => x.titulo === 'Asamblea de socios')!;
+    assert.equal(fila.estado, 'programada');
+    // Máximo por día (2): una segunda entra, la tercera no.
+    await n.pedir(`${RUTA}/notificaciones/nueva`);
+    assert.equal((await n.post(`${RUTA}/notificaciones/nueva`, { ...campos, titulo: 'Segunda del día', hora: '11:00' })).status, 302);
+    await n.pedir(`${RUTA}/notificaciones/nueva`);
+    assert.match(await (await n.post(`${RUTA}/notificaciones/nueva`, { ...campos, titulo: 'Tercera del día', hora: '12:00' })).text(), /ya tienen el máximo/);
+    await n.pedir(`${RUTA}/notificaciones/${fila.id}`);
+    assert.equal((await n.post(`${RUTA}/notificaciones/${fila.id}`, { ...campos, fecha: '2099-05-06' })).status, 302);
+    assert.equal((await NT.obtenerNotificacion(db, fila.id))!.fecha, '2099-05-06');
+    await n.pedir(`${RUTA}/notificaciones`);
+    assert.equal((await n.post(`${RUTA}/notificaciones/${fila.id}/cancelar`, {})).status, 302);
+    assert.equal((await NT.obtenerNotificacion(db, fila.id))!.estado, 'cancelada');
+  });
+
+  it('enviar ahora: solo a quienes eligieron esa categoría, y borra los celulares dados de baja', async () => {
+    const n = new Navegador(appPush);
+    await n.ingresar('principal');
+    await n.pedir(`${RUTA}/notificaciones`);
+    // Horario amplio para que la prueba no dependa de la hora del día.
+    assert.equal((await n.post(`${RUTA}/notificaciones/ajustes`, { activas: '1', max_por_dia: '6', desde: '00:00', hasta: '23:59', credito_activo: '1', credito_anterior: '1', credito_dia: '1', credito_hora: '10:00', ofertas_activo: '1', novedades_activo: '1' })).status, 302);
+    await NT.registrarDispositivo(db, 'ExponentPushToken[celularVencido003]', 'ios', ['avisos']);
+    await n.pedir(`${RUTA}/notificaciones/nueva`);
+    const r = await n.post(`${RUTA}/notificaciones/nueva`, { titulo: 'Aviso urgente', texto: 'Hoy Casa Central cierra a las 15 h.', categoria: 'avisos', destino: 'locales', con_boton: '1', cuando: 'ahora' });
+    assert.equal(r.status, 302);
+    const lote = enviados.at(-1)!;
+    assert.deepEqual(lote.map((m) => m.to).sort(), ['ExponentPushToken[celularDePrueba01]', 'ExponentPushToken[celularVencido003]']);
+    assert.ok(lote.every((m) => m.title === 'Aviso urgente' && m.data?.destino === 'locales'));
+    const fila = (await NT.listarNotificaciones(db)).find((x) => x.titulo === 'Aviso urgente')!;
+    assert.deepEqual([fila.estado, fila.alcance], ['enviada', 2]);
+    assert.deepEqual(await NT.tokensPara(db, 'avisos'), ['ExponentPushToken[celularDePrueba01]'], 'el vencido se borró');
+  });
+
+  it('avisos automáticos: una sola vez al publicar una novedad', async () => {
+    const n = new Navegador(appPush);
+    await n.ingresar('principal');
+    await n.pedir(`${RUTA}/novedades/nueva`);
+    assert.equal((await n.post(`${RUTA}/novedades/nueva`, { titulo: 'Nueva sucursal en Rivera', texto: 'Abrimos en el centro.', plantilla: 'texto', publicado: '1' })).status, 302);
+    const nov = (await novedadesPublicadas(db)).find((x) => x.titulo === 'Nueva sucursal en Rivera')!;
+    const autos = (await NT.listarNotificaciones(db)).filter((x) => x.origen === `auto:novedad:${nov.id}`);
+    assert.equal(autos.length, 1);
+    assert.equal(autos[0].categoria, 'novedades');
+    await n.pedir(`${RUTA}/novedades/${nov.id}`);
+    await n.post(`${RUTA}/novedades/${nov.id}`, { titulo: 'Nueva sucursal en Rivera', texto: 'Abrimos en el centro (editada).', plantilla: 'texto', publicado: '1' });
+    assert.equal((await NT.listarNotificaciones(db)).filter((x) => x.origen === `auto:novedad:${nov.id}`).length, 1, 'editar no vuelve a avisar');
   });
 });

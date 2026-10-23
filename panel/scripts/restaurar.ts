@@ -20,6 +20,8 @@ const ORDEN = ['rubros', 'categorias', 'productos', 'novedades', 'usuarios', 'au
 for (const t of ORDEN) if (!Array.isArray(respaldo.tablas[t])) throw new Error(`El respaldo no tiene la tabla ${t}`);
 // Respaldos desde el 22/10/2026: también traen los ajustes (banner, ofertas, créditos, empleados y PIN).
 if (Array.isArray(respaldo.tablas.ajustes)) ORDEN.push('ajustes');
+// Desde las notificaciones de la app: también traen las programadas y enviadas.
+if (Array.isArray(respaldo.tablas.notificaciones)) ORDEN.push('notificaciones');
 console.log(`Respaldo del ${respaldo.exportado}: ${ORDEN.map((t) => `${t} ${respaldo.tablas[t].length}`).join(' · ')}`);
 if (!values.confirmar) {
   console.log('Revisión sin cambios. Para restaurar de verdad, repetí el comando con --confirmar.');
