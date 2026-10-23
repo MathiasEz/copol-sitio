@@ -320,6 +320,16 @@ const actual = (href: string) => ruta === href;
     }
     .nav__item--cta { margin-left: 10px; }
     :global(.nav__acceso-movil) { display: none !important; }
+    /* El menú ocupa el espacio libre: secciones al centro y "Hacete socio" en el extremo derecho. */
+    .nav, .nav__pista { flex: 1; min-width: 0; }
+    .nav__lista { gap: 6px; }
+    .nav__item:first-child { margin-left: auto; }
+    .nav__item:last-child { margin-right: auto; }
+    .nav__item--cta { order: 1; margin-left: 16px; }
+  }
+  @media (min-width: 1280px) {
+    .nav__lista { gap: 12px; }
+    .nav__enlace { padding-inline: 14px; }
   }
   :global(html.sin-scroll) { overflow: hidden; }
 </style>
