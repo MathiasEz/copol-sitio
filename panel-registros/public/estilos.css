@@ -85,6 +85,16 @@ h2 { font-size: 1.2rem; }
 .campo { display: flex; flex-direction: column; gap: 5px; }
 .campo.ancho { grid-column: 1 / -1; }
 .campo > span { font-weight: 600; font-size: 0.92rem; }
+.opciones { margin: 0; padding: 0; border: 0; min-width: 0; }
+.opciones legend { padding: 0; margin-bottom: 5px; font-weight: 600; font-size: 0.92rem; }
+.opciones-fila { display: flex; gap: 10px; }
+.opciones-fila label {
+  display: inline-flex; align-items: center; gap: 8px; min-height: 42px; padding: 8px 16px;
+  border: 1px solid var(--borde-fuerte); border-radius: 10px; background: #fff; cursor: pointer; font-weight: 600;
+}
+.opciones-fila label:has(input:checked) { border-color: var(--verde-oscuro); background: var(--ok-fondo); color: var(--verde-oscuro); }
+.opciones-fila input { accent-color: var(--verde-oscuro); width: 18px; height: 18px; margin: 0; }
+.opciones.completado .opciones-fila label:has(input:checked) { background: var(--resaltado); border-color: #d9c54a; color: var(--tinta); }
 .campo small { color: var(--tinta-suave); font-size: 0.82rem; }
 .ingreso .campo { margin-bottom: 14px; }
 

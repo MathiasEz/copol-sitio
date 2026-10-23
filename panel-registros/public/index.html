@@ -54,7 +54,7 @@
         <section class="tarjeta asistente" id="seccion-asistente" aria-labelledby="t-asistente">
           <h2 id="t-asistente">Asistente <span class="opcional">opcional</span></h2>
           <p class="ayuda">Pegá o escribí los datos como te llegaron (un mensaje, un correo, lo que dictó el socio) y el asistente completa el formulario. Revisalo antes de guardar.</p>
-          <textarea id="a-texto" rows="7" maxlength="4000" placeholder="Ej.: Juan Pérez, socio 12345, CI 1.234.567-2, vive en Av. Italia 3456 apto 2, Montevideo. Compró heladera Samsung RT38, cód. 457939. Pide service de instalación."></textarea>
+          <textarea id="a-texto" rows="7" maxlength="4000" placeholder="Ej.: Juan Pérez, socio 12345, CI 1.234.567-2, vive en Av. Italia 3456 apto 2, Montevideo. Compró heladera Samsung RT38, cód. 457939. Va con flete y pide service de instalación."></textarea>
           <div class="acciones">
             <button type="button" class="btn" id="btn-asistente">Completar formulario</button>
             <button type="button" class="btn btn-borde" id="btn-asistente-borrar">Borrar texto</button>
@@ -90,6 +90,13 @@
                 <span>Código interno</span>
                 <input name="codigo" maxlength="40" required>
               </label>
+              <fieldset class="campo opciones" id="campo-flete">
+                <legend>Flete</legend>
+                <div class="opciones-fila">
+                  <label><input type="radio" name="flete" value="Sí"> Sí</label>
+                  <label><input type="radio" name="flete" value="No" checked> No</label>
+                </div>
+              </fieldset>
               <label class="campo ancho">
                 <span>Service <span class="opcional">opcional</span></span>
                 <input name="service" maxlength="300" placeholder="Ej.: instalación, reparación en garantía">
@@ -116,7 +123,7 @@
         <p id="ultimos-vacio" class="ayuda">Todavía no se cargó nada en esta sesión.</p>
         <div class="tabla-desliza">
           <table id="ultimos" hidden>
-            <thead><tr><th>Fecha</th><th>Nombre</th><th>Socio</th><th>Cédula</th><th>Dirección</th><th>Producto</th><th>Código</th><th>Service</th><th>Cargado por</th></tr></thead>
+            <thead><tr><th>Fecha</th><th>Nombre</th><th>Socio</th><th>Cédula</th><th>Dirección</th><th>Producto</th><th>Código</th><th>Service</th><th>Flete</th><th>Cargado por</th></tr></thead>
             <tbody></tbody>
           </table>
         </div>

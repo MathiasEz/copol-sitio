@@ -64,7 +64,7 @@ export const vaciarPrueba = () => almacen.vaciarLista(LISTA);
 export function xlsxPrueba(registros) {
   const filas = registros.map((r) => [
     r.fecha, r.nombre, /^[1-9]\d{0,14}$/.test(r.socio ?? '') ? Number(r.socio) : r.socio, r.cedula, r.direccion,
-    r.service, r.producto, r.codigo, r.cargadoPor,
+    r.service, r.flete ?? '', r.producto, r.codigo, r.cargadoPor,
   ]);
-  return libroXlsx({ hoja: 'Registros', columnas: COLUMNAS, filas, anchos: [17, 28, 12, 13, 36, 26, 34, 15, 18] });
+  return libroXlsx({ hoja: 'Registros', columnas: COLUMNAS, filas, anchos: [17, 28, 12, 13, 36, 26, 8, 34, 15, 18] });
 }

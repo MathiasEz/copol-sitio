@@ -169,11 +169,14 @@ function mostrarErrores(errores) {
 
 function limpiarFormulario() {
   form.reset();
+  $('#campo-flete').classList.remove('completado');
   for (const campo of CAMPOS) {
     marcarError(campo, '');
     input(campo).classList.remove('completado');
   }
 }
+
+form.elements.flete.forEach((radio) => radio.addEventListener('change', () => $('#campo-flete').classList.remove('completado')));
 
 for (const campo of CAMPOS) {
   input(campo).addEventListener('input', () => {
@@ -198,6 +201,7 @@ form.addEventListener('submit', async (ev) => {
     return;
   }
   const datos = Object.fromEntries(CAMPOS.map((c) => [c, input(c).value.trim()]));
+  datos.flete = form.elements.flete.value || 'No';
   const boton = $('#btn-guardar');
   boton.disabled = true;
   mensaje(estado, 'Guardando en la planilla…');
@@ -235,8 +239,13 @@ $('#btn-asistente').addEventListener('click', async () => {
     return;
   }
   limpiarFormulario();
-  const completados = Object.entries(r.campos ?? {}).filter(([campo]) => CAMPOS.includes(campo));
+  const completados = Object.entries(r.campos ?? {}).filter(([campo]) => CAMPOS.includes(campo) || campo === 'flete');
   for (const [campo, valor] of completados) {
+    if (campo === 'flete') {
+      form.elements.flete.value = valor;
+      $('#campo-flete').classList.add('completado');
+      continue;
+    }
     input(campo).value = valor;
     input(campo).classList.add('completado');
   }
@@ -285,7 +294,7 @@ function dibujarUltimos(lista = leerUltimos(), total = lista.length) {
   const cuerpo = tabla.querySelector('tbody');
   cuerpo.replaceChildren(...lista.map((r) => {
     const fila = document.createElement('tr');
-    for (const v of [r.fecha, r.nombre, r.socio, r.cedula, r.direccion, r.producto, r.codigo, r.service, r.cargadoPor]) {
+    for (const v of [r.fecha, r.nombre, r.socio, r.cedula, r.direccion, r.producto, r.codigo, r.service, r.flete, r.cargadoPor]) {
       const celda = document.createElement('td');
       celda.textContent = v || '—';
       fila.append(celda);

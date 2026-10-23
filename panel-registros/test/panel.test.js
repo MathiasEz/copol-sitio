@@ -38,7 +38,7 @@ async function ingresar() {
   return r.headers.get('set-cookie').split(';')[0];
 }
 
-const REGISTRO = { nombre: 'Juan Pérez', socio: '12345', cedula: '1.234.567-2', direccion: 'Av. Italia 3456 apto 2', producto: 'Heladera Samsung RT38', codigo: '457939', service: '' };
+const REGISTRO = { nombre: 'Juan Pérez', socio: '12345', cedula: '1.234.567-2', direccion: 'Av. Italia 3456 apto 2', producto: 'Heladera Samsung RT38', codigo: '457939', service: '', flete: 'Sí' };
 
 // ── fetch simulado ──
 let llamadas = [];
@@ -103,7 +103,11 @@ describe('campos', () => {
   });
 
   test('registro: obligatorios, socio numérico y service opcional', () => {
-    assert.deepEqual(Object.keys(campos.validarRegistro({}).errores).sort(), ['cedula', 'codigo', 'direccion', 'nombre', 'producto', 'socio']);
+    assert.deepEqual(Object.keys(campos.validarRegistro({}).errores).sort(), ['cedula', 'codigo', 'direccion', 'flete', 'nombre', 'producto', 'socio']);
+    assert.equal(campos.validarRegistro({ ...REGISTRO, flete: 'si' }).datos.flete, 'Sí');
+    assert.equal(campos.validarRegistro({ ...REGISTRO, flete: 'NO' }).datos.flete, 'No');
+    assert.equal(campos.validarRegistro({ ...REGISTRO, flete: false }).datos.flete, 'No');
+    assert.ok(campos.validarRegistro({ ...REGISTRO, flete: 'tal vez' }).errores.flete);
     assert.ok(campos.validarRegistro({ ...REGISTRO, socio: '12a' }).errores.socio);
     const { datos } = campos.validarRegistro({ ...REGISTRO, socio: '12.345', cedula: '12345672' });
     assert.equal(datos.socio, '12345');
@@ -117,9 +121,10 @@ describe('campos', () => {
     assert.equal(fila[0], '2026-10-23 12:05');
     assert.equal(fila[2], "'0123");
     assert.equal(fila[5], `'=HYPERLINK("http://x")`);
-    assert.equal(fila[6], "'+54");
-    assert.equal(fila[7], "'@a");
-    assert.equal(fila[8], 'Ana');
+    assert.equal(fila[6], 'Sí', 'flete');
+    assert.equal(fila[7], "'+54");
+    assert.equal(fila[8], "'@a");
+    assert.equal(fila[9], 'Ana');
   });
 });
 
@@ -180,6 +185,7 @@ describe('planilla de prueba (sin Microsoft)', () => {
     assert.equal(lista.registros[0].nombre, 'María Gómez', 'la más nueva primero');
     assert.equal(lista.registros[1].service, 'Instalación');
     assert.equal(lista.registros[1].cargadoPor, 'Ana');
+    assert.equal(lista.registros[1].flete, 'Sí');
     assert.match(lista.registros[1].fecha, /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/);
 
     const xlsx = await planillaApi.GET(pedido('/api/planilla?formato=xlsx', { cookie }));
@@ -188,6 +194,7 @@ describe('planilla de prueba (sin Microsoft)', () => {
     const hoja = delZip(Buffer.from(await xlsx.arrayBuffer()), 'xl/worksheets/sheet1.xml');
     for (const c of campos.COLUMNAS) assert.ok(hoja.includes(`<t xml:space="preserve">${c}</t>`), c);
     assert.ok(hoja.includes('<v>12345</v>'), 'el socio va como número');
+    assert.ok(hoja.includes('<t xml:space="preserve">Sí</t>'), 'flete');
     assert.ok(hoja.includes('<t xml:space="preserve">=1+1</t>') && !hoja.includes('<f>'), 'nada se escribe como fórmula');
 
     assert.equal((await planillaApi.GET(pedido('/api/planilla'))).status, 401);
@@ -243,12 +250,12 @@ function graphFalso({ tabla = false } = {}) {
     if (camino.endsWith('Registros COPOL.xlsx:') && metodo === 'GET') return responder({ name: 'Registros COPOL.xlsx', webUrl: 'https://onedrive.test/abrir' });
     if (camino.endsWith('/tables/Registros/headerRowRange')) return estado.tabla ? responder({ values: [campos.COLUMNAS] }) : responder({ error: { code: 'ItemNotFound' } }, 404);
     if (camino.endsWith('/worksheets/add')) { estado.hojas.push(cuerpo.name); return responder({ name: cuerpo.name }); }
-    if (camino.includes("range(address='A1:I1')") && metodo === 'PATCH') return responder({});
-    if (camino.endsWith('/worksheets/Registros/tables/add')) { estado.tabla = true; estado.vacia = 'A2:I2'; return responder({ id: '{T1}', name: 'Tabla1' }); }
+    if (camino.includes("range(address='A1:J1')") && metodo === 'PATCH') return responder({});
+    if (camino.endsWith('/worksheets/Registros/tables/add')) { estado.tabla = true; estado.vacia = 'A2:J2'; return responder({ id: '{T1}', name: 'Tabla1' }); }
     if (camino.endsWith('/tables/{T1}') && metodo === 'PATCH') return responder({ name: cuerpo.name });
     if (camino.endsWith('/format/font')) return responder({});
-    if (camino.endsWith('/tables/Registros/dataBodyRange')) return responder({ address: 'Registros!A2:I2', values: [Array(9).fill('')] });
-    if (camino.includes("range(address='A2:I2')") && metodo === 'PATCH') { estado.filas.push(cuerpo.values[0]); estado.vacia = null; return responder({}); }
+    if (camino.endsWith('/tables/Registros/dataBodyRange')) return responder({ address: 'Registros!A2:J2', values: [Array(10).fill('')] });
+    if (camino.includes("range(address='A2:J2')") && metodo === 'PATCH') { estado.filas.push(cuerpo.values[0]); estado.vacia = null; return responder({}); }
     if (camino.endsWith('/tables/Registros/rows/add') && metodo === 'POST') { estado.filas.push(cuerpo.values[0]); return responder({ index: estado.filas.length - 1 }); }
     return responder({ error: { code: 'Desconocido', message: camino } }, 400);
   }, estado];
@@ -363,13 +370,13 @@ describe('asistente', () => {
       assert.equal(o.headers.authorization, 'Bearer clave-ia');
       assert.equal(c.tool_choice.name, 'completar_formulario');
       assert.match(c.messages[0].content, /Juan/);
-      return responder({ content: [{ type: 'tool_use', name: 'completar_formulario', input: { nombre: 'Juan Pérez', socio: '12.345', cedula: '12345672', direccion: 'Av. Italia 3456', service: '', producto: 'Heladera', codigo: '', faltan: ['codigo'], notas: '', extra: 'x' } }], stop_reason: 'tool_use' });
+      return responder({ content: [{ type: 'tool_use', name: 'completar_formulario', input: { nombre: 'Juan Pérez', socio: '12.345', cedula: '12345672', direccion: 'Av. Italia 3456', service: '', flete: 'si', producto: 'Heladera', codigo: '', faltan: ['codigo'], notas: '', extra: 'x' } }], stop_reason: 'tool_use' });
     }]);
     const cookie = await ingresar();
     const r = await asistenteApi.POST(pedido('/api/asistente', { metodo: 'POST', datos: { texto: 'Juan Pérez socio 12.345 ci 12345672 Av. Italia 3456 heladera' }, cookie }));
     assert.equal(r.status, 200);
     const datos = await r.json();
-    assert.deepEqual(datos.campos, { nombre: 'Juan Pérez', socio: '12345', cedula: '1.234.567-2', direccion: 'Av. Italia 3456', producto: 'Heladera' });
+    assert.deepEqual(datos.campos, { nombre: 'Juan Pérez', socio: '12345', cedula: '1.234.567-2', direccion: 'Av. Italia 3456', flete: 'Sí', producto: 'Heladera' });
     assert.deepEqual(datos.faltan, ['Código interno']);
   });
 

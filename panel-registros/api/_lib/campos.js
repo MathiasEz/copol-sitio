@@ -3,7 +3,7 @@
 // public/app.js solo para avisar antes de enviar; la que vale es esta.
 
 /** Columnas de la tabla de Excel, en orden. Fecha y Cargado por las completa el servidor. */
-export const COLUMNAS = ['Fecha', 'Nombre', 'N° de socio', 'Cédula', 'Dirección', 'Service', 'Producto', 'Código interno', 'Cargado por'];
+export const COLUMNAS = ['Fecha', 'Nombre', 'N° de socio', 'Cédula', 'Dirección', 'Service', 'Flete', 'Producto', 'Código interno', 'Cargado por'];
 
 export const CAMPOS = {
   nombre: { etiqueta: 'Nombre', min: 3, max: 120, obligatorio: true },
@@ -11,6 +11,7 @@ export const CAMPOS = {
   cedula: { etiqueta: 'Cédula', min: 7, max: 11, obligatorio: true },
   direccion: { etiqueta: 'Dirección', min: 5, max: 200, obligatorio: true },
   service: { etiqueta: 'Service', min: 0, max: 300, obligatorio: false },
+  flete: { etiqueta: 'Flete', min: 2, max: 2, obligatorio: true }, // «Sí» o «No»
   producto: { etiqueta: 'Producto', min: 2, max: 200, obligatorio: true },
   codigo: { etiqueta: 'Código interno', min: 1, max: 40, obligatorio: true },
 };
@@ -38,12 +39,27 @@ export function formatoCedula(valor) {
   return `${Number(base).toLocaleString('es-UY')}-${digitos.at(-1)}`;
 }
 
+/** «Sí», «No» o '' para lo que no se entiende (acepta si/sí/no, true/false). */
+export function siNo(v) {
+  if (v === true) return 'Sí';
+  if (v === false) return 'No';
+  const t = limpiarTexto(v).toLowerCase();
+  if (['sí', 'si', 's'].includes(t)) return 'Sí';
+  if (['no', 'n'].includes(t)) return 'No';
+  return '';
+}
+
 /** Valida y normaliza un registro. Devuelve { datos } o { errores: { campo: mensaje } }. */
 export function validarRegistro(entrada) {
   const e = entrada && typeof entrada === 'object' ? entrada : {};
   const datos = {};
   const errores = {};
   for (const [campo, regla] of Object.entries(CAMPOS)) {
+    if (campo === 'flete') {
+      datos.flete = siNo(e.flete);
+      if (!datos.flete) errores.flete = 'Elegí si lleva flete: Sí o No.';
+      continue;
+    }
     let v = limpiarTexto(e[campo]);
     if (!v) {
       if (regla.obligatorio) errores[campo] = `Falta ${regla.etiqueta.toLowerCase()}.`;
@@ -86,5 +102,5 @@ export function fechaMontevideo(d = new Date()) {
 /** Fila para la planilla, en el orden de COLUMNAS. Un N° de socio con ceros adelante va como texto para no perderlos. */
 export const filaPlanilla = (datos, cargadoPor, fecha = new Date()) => [
   fechaMontevideo(fecha), datos.nombre, /^0\d/.test(datos.socio) ? `'${datos.socio}` : datos.socio, datos.cedula, datos.direccion,
-  datos.service, datos.producto, datos.codigo, cargadoPor,
+  datos.service, datos.flete, datos.producto, datos.codigo, cargadoPor,
 ].map((v, i) => (i === 2 ? String(v) : celda(String(v ?? ''))));

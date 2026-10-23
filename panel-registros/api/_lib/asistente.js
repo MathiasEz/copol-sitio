@@ -3,7 +3,7 @@
 // Usa Vercel AI Gateway (API compatible con Anthropic Messages) igual que el asistente del panel de stock:
 // en Vercel se autentica con el token OIDC del despliegue, sin claves. El modelo se cambia con IA_MODELO;
 // por defecto Gemini 2.5 Flash, porque el crédito gratuito de AI Gateway no habilita los modelos de Claude.
-import { CAMPOS, formatoCedula, limpiarTexto } from './campos.js';
+import { CAMPOS, formatoCedula, limpiarTexto, siNo } from './campos.js';
 
 const GATEWAY = 'https://ai-gateway.vercel.sh/v1/messages';
 export const MAX_TEXTO = 4000;
@@ -29,6 +29,8 @@ formulario llamando a la herramienta completar_formulario. Reglas:
 - direccion: calle, número, apartamento y localidad o departamento si aparecen.
 - service: solo si el texto pide o menciona un service (servicio técnico, reparación, garantía, instalación,
   visita técnica); resumilo en pocas palabras. Si no, vacío.
+- flete: "Sí" si el texto pide flete, envío o entrega a domicilio (que se lo lleven, mandárselo a la casa);
+  "No" si dice que lo retira, se lo lleva él o pasa a buscarlo. Si no dice nada, vacío.
 - producto: descripción del producto (marca, modelo, color, capacidad).
 - codigo: código interno del producto (código, cód., art., artículo, SKU). No uses el número de socio ni la cédula.
 - Si el texto trae varios socios o productos, completá solo el primero y avisalo en "notas".
@@ -45,12 +47,13 @@ const HERRAMIENTA = {
       cedula: { type: 'string' },
       direccion: { type: 'string' },
       service: { type: 'string' },
+      flete: { type: 'string', description: '"Sí", "No" o vacío si el texto no lo dice.' },
       producto: { type: 'string' },
       codigo: { type: 'string' },
       faltan: { type: 'array', items: { type: 'string' }, description: 'Campos que no aparecen en el texto.' },
       notas: { type: 'string' },
     },
-    required: ['nombre', 'socio', 'cedula', 'direccion', 'service', 'producto', 'codigo', 'faltan', 'notas'],
+    required: ['nombre', 'socio', 'cedula', 'direccion', 'service', 'flete', 'producto', 'codigo', 'faltan', 'notas'],
   },
 };
 
@@ -59,13 +62,17 @@ export function limpiarPropuesta(entrada) {
   const e = entrada && typeof entrada === 'object' ? entrada : {};
   const campos = {};
   for (const [campo, regla] of Object.entries(CAMPOS)) {
+    if (campo === 'flete') {
+      if (siNo(e.flete)) campos.flete = siNo(e.flete); // si el texto no lo dice, el formulario queda en «No»
+      continue;
+    }
     let v = limpiarTexto(e[campo]).slice(0, regla.max);
     if (campo === 'socio') v = v.replace(/[\s.]/g, '');
     if (campo === 'cedula' && v) v = formatoCedula(v) ?? v; // si no es válida queda como vino y el formulario lo marca
     if (v) campos[campo] = v;
   }
   const notas = limpiarTexto(e.notas).slice(0, 300);
-  const faltan = Object.keys(CAMPOS).filter((c) => CAMPOS[c].obligatorio && !campos[c]).map((c) => CAMPOS[c].etiqueta);
+  const faltan = Object.keys(CAMPOS).filter((c) => c !== 'flete' && CAMPOS[c].obligatorio && !campos[c]).map((c) => CAMPOS[c].etiqueta);
   return { campos, faltan, notas };
 }
 

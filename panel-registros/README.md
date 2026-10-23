@@ -6,11 +6,12 @@ despliegue con ellos. Se publica en Vercel como **proyecto propio** (`copol-regi
 
 ## Qué hace
 
-- **Formulario**: Nombre, N° de socio, Cédula, Dirección, Producto, Código interno y Service (opcional).
+- **Formulario**: Nombre, N° de socio, Cédula, Dirección, Producto, Código interno, Flete (Sí/No, por defecto No)
+  y Service (opcional).
   Cada registro se agrega como una fila nueva en una **planilla de Excel en la nube** (OneDrive o SharePoint),
   que se abre desde cualquier computadora en https://excel.cloud.microsoft.
 - **Asistente de IA (opcional)**: se pega o escribe el texto como llegó (WhatsApp, correo, lo que dictó el socio)
-  y completa el formulario. Los campos que completó quedan en amarillo; la persona los revisa y guarda. La IA
+  y completa el formulario (marca «Flete: Sí» si pide envío a domicilio). Los campos que completó quedan en amarillo; la persona los revisa y guarda. La IA
   nunca guarda sola.
 - Valida antes de guardar: la cédula con su dígito verificador (y la guarda como `1.234.567-8`), el N° de socio
   solo con números y los campos obligatorios. Lo que empieza con `=`, `+`, `-` o `@` se guarda como texto
@@ -24,8 +25,8 @@ despliegue con ellos. Se publica en Vercel como **proyecto propio** (`copol-regi
 
 ### Columnas de la planilla
 
-| Fecha | Nombre | N° de socio | Cédula | Dirección | Service | Producto | Código interno | Cargado por |
-|---|---|---|---|---|---|---|---|---|
+| Fecha | Nombre | N° de socio | Cédula | Dirección | Service | Flete | Producto | Código interno | Cargado por |
+|---|---|---|---|---|---|---|---|---|---|
 
 «Fecha» (hora de Montevideo) y «Cargado por» (el nombre puesto al ingresar) las completa el panel. La primera
 vez que se guarda, el panel crea en el archivo una hoja **Registros** con una tabla **Registros** y esas columnas;
