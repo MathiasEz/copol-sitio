@@ -2,7 +2,7 @@
 //
 // Dos formas de conectarse (ver README):
 // - Modo «cuenta» (MS_CUENTA): una persona inicia sesión una vez con la cuenta de Microsoft dueña del archivo
-//   (personal u organizacional) desde el panel. Microsoft entrega un permiso renovable que se guarda en Upstash.
+//   (personal u organizacional) desde el panel. Microsoft entrega un permiso renovable que se guarda en el almacén (Blob privado o Upstash).
 //   Solo se acepta la cuenta indicada en MS_CUENTA y el permiso alcanza a los archivos de esa cuenta.
 // - Modo «aplicación» (MS_USUARIO, solo Microsoft 365 empresa): la aplicación de Entra ID entra con su propio
 //   secreto, sin inicio de sesión, al OneDrive de MS_USUARIO. Requiere el permiso Files.ReadWrite.All
@@ -49,7 +49,7 @@ export function modoMicrosoft() {
 export function faltaConfigurar() {
   const modo = modoMicrosoft();
   if (modo === 'aplicacion' && ['common', 'organizations', 'consumers'].includes(tenant())) return 'En el modo aplicación, MS_TENANT tiene que ser el ID del inquilino (Directory/tenant ID) de Microsoft 365.';
-  if (modo === 'cuenta' && !almacen.almacenConfigurado()) return 'Falta conectar Upstash for Redis al proyecto de Vercel (Storage): ahí se guarda la conexión con la cuenta de Microsoft.';
+  if (modo === 'cuenta' && !almacen.almacenConfigurado()) return 'Falta conectar un almacén al proyecto de Vercel (Storage → Blob privado, o Upstash for Redis): ahí se guarda la conexión con la cuenta de Microsoft.';
   return null;
 }
 

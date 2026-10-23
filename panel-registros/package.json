@@ -10,5 +10,8 @@
   "scripts": {
     "dev": "node --env-file-if-exists=.env servidor-local.js",
     "test": "node --test \"test/*.test.js\""
+  },
+  "dependencies": {
+    "@vercel/blob": "^2.8.2"
   }
 }

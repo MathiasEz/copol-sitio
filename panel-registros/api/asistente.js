@@ -13,7 +13,7 @@ export async function POST(request) {
   if (texto.length < 5) return error('Escribí o pegá los datos del socio y del producto.');
   if (texto.length > MAX_TEXTO) return error(`El texto es demasiado largo (máximo ${MAX_TEXTO} caracteres).`);
   const limite = Number(process.env.IA_LIMITE_DIA) || 300;
-  if ((await contar(`ia:${fechaMontevideo().slice(0, 10)}`, 86_400)) > limite) return error('Se llegó al límite de consultas al asistente de hoy. Completá el formulario a mano.', 429);
+  if ((await contar(`ia-${fechaMontevideo().slice(0, 10)}`, 86_400)) > limite) return error('Se llegó al límite de consultas al asistente de hoy. Completá el formulario a mano.', 429);
   const token = tokenGateway(request.headers.get('x-vercel-oidc-token'));
   if (!token) return error('El asistente no está disponible en esta computadora (falta AI_GATEWAY_API_KEY).', 503);
   try {

@@ -11,7 +11,7 @@ const ORIGEN = 'http://localhost:4400';
 
 function configurar(extra = {}) {
   for (const k of Object.keys(process.env)) if (!(k in BASE_ENV)) delete process.env[k];
-  for (const k of ['VERCEL', 'MS_CLIENT_ID', 'MS_CLIENT_SECRET', 'MS_USUARIO', 'MS_CUENTA', 'MS_TENANT', 'KV_REST_API_URL', 'KV_REST_API_TOKEN', 'AI_GATEWAY_API_KEY', 'VERCEL_OIDC_TOKEN', 'IA_APAGADA']) delete process.env[k];
+  for (const k of ['BLOB_READ_WRITE_TOKEN', 'VERCEL', 'MS_CLIENT_ID', 'MS_CLIENT_SECRET', 'MS_USUARIO', 'MS_CUENTA', 'MS_TENANT', 'KV_REST_API_URL', 'KV_REST_API_TOKEN', 'AI_GATEWAY_API_KEY', 'VERCEL_OIDC_TOKEN', 'IA_APAGADA']) delete process.env[k];
   Object.assign(process.env, { PANEL_CLAVE: 'clave-de-prueba-123', REGISTROS_CSV: join(dir, `r-${Math.random()}.csv`) }, extra);
 }
 
@@ -22,6 +22,7 @@ const asistenteApi = await import('../api/asistente.js');
 const conectarApi = await import('../api/microsoft/conectar.js');
 const vueltaApi = await import('../api/microsoft/vuelta.js');
 const ms = await import('../api/_lib/microsoft.js');
+const almacen = await import('../api/_lib/almacen.js');
 
 const pedido = (ruta, { metodo = 'GET', datos, cookie, origen = ORIGEN } = {}) => new Request(`${ORIGEN}${ruta}`, {
   method: metodo,
@@ -315,5 +316,55 @@ describe('asistente', () => {
     const r = await asistenteApi.POST(pedido('/api/asistente', { metodo: 'POST', datos: { texto: 'Juan Pérez socio 1' }, cookie: await ingresar() }));
     assert.equal(r.status, 502);
     assert.match((await r.json()).error, /crédito/);
+  });
+});
+
+describe('almacén en Vercel Blob privado', () => {
+  function blobFalso() {
+    const datos = new Map();
+    const opciones = [];
+    return {
+      datos, opciones,
+      get: async (ruta, o) => { opciones.push(o); return datos.has(ruta) ? { statusCode: 200, stream: new Blob([datos.get(ruta)]).stream() } : null; },
+      put: async (ruta, cuerpo, o) => { opciones.push(o); datos.set(ruta, cuerpo); return { pathname: ruta }; },
+      del: async (ruta) => { datos.delete(ruta); },
+    };
+  }
+
+  test('guarda privado, respeta el vencimiento y cuenta', async () => {
+    configurar({ BLOB_READ_WRITE_TOKEN: 'vercel_blob_rw_prueba' });
+    const falso = blobFalso();
+    almacen.usarBlob(falso);
+    assert.equal(almacen.almacenConfigurado(), true);
+    await almacen.guardar('ms:renovacion', 'renovar-1');
+    assert.equal(await almacen.leer('ms:renovacion'), 'renovar-1');
+    assert.ok(falso.opciones.every((o) => o.access === 'private'));
+    assert.ok([...falso.datos.keys()].every((k) => /^registros\/[a-z0-9._-]+\.json$/i.test(k)));
+    await almacen.guardar('temporal', 'x', 1);
+    falso.datos.set('registros/temporal.json', JSON.stringify({ v: 'x', vence: Date.now() - 1 }));
+    assert.equal(await almacen.leer('temporal'), null);
+    assert.equal(await almacen.contar('prueba', 60), 1);
+    assert.equal(await almacen.contar('prueba', 60), 2);
+    assert.equal(await almacen.contador('prueba'), 2);
+    await almacen.borrar('ms:renovacion');
+    assert.equal(await almacen.leer('ms:renovacion'), null);
+  });
+
+  test('bloquea la IP tras 10 claves equivocadas y con la cuenta de Microsoft usa el token guardado', async () => {
+    configurar({ BLOB_READ_WRITE_TOKEN: 'vercel_blob_rw_prueba', MS_CLIENT_ID: 'id', MS_CLIENT_SECRET: 's', MS_CUENTA: 'planillas@outlook.com', EXCEL_RUTA: 'Registros COPOL.xlsx' });
+    const falso = blobFalso();
+    almacen.usarBlob(falso);
+    await almacen.guardar('ms:cuenta', 'planillas@outlook.com');
+    await almacen.guardar('ms:acceso', JSON.stringify({ valor: 'acceso-guardado', vence: Date.now() + 3_600_000 }));
+    const [pGraph, mGraph, estado] = graphFalso({ tabla: true });
+    rutas.push([pGraph, (u, o, c) => {
+      assert.equal(o.headers.authorization, 'Bearer acceso-guardado');
+      return mGraph(u, o, c);
+    }]);
+    const cookie = await ingresar();
+    assert.equal((await registroApi.POST(pedido('/api/registro', { metodo: 'POST', datos: REGISTRO, cookie }))).status, 200);
+    assert.equal(estado.filas.length, 1);
+    for (let i = 0; i < 10; i++) await sesionApi.POST(pedido('/api/sesion', { metodo: 'POST', datos: { nombre: 'Ana', clave: 'mal' } }));
+    assert.equal((await sesionApi.POST(pedido('/api/sesion', { metodo: 'POST', datos: { nombre: 'Ana', clave: 'clave-de-prueba-123' } }))).status, 429);
   });
 });

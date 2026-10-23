@@ -33,8 +33,9 @@ no cambiar la cantidad de columnas de la tabla.
    `copol-registros`. En *Root Directory* elegir `panel-registros`. *Framework Preset*: **Other**. No lleva
    comando de compilación.
 2. *Settings → Environment Variables*: cargar `PANEL_CLAVE` (10 caracteres o más) y las de Microsoft (abajo).
-3. *Storage → Create → Upstash for Redis* (plan gratuito) → conectarlo al proyecto. Crea `KV_REST_API_URL` y
-   `KV_REST_API_TOKEN`. Hace falta para el modo cuenta; además limita los intentos de clave y el uso diario del asistente.
+3. *Storage → Create → Blob* con acceso **Private** → conectarlo al proyecto (crea `BLOB_READ_WRITE_TOKEN`).
+   Guarda la conexión con Microsoft (modo cuenta) y los contadores de intentos de clave y de uso del asistente.
+   También sirve *Upstash for Redis* (`KV_REST_API_URL`, `KV_REST_API_TOKEN`); si están las dos, usa Upstash.
 4. *AI Gateway*: el mismo de la cuenta de Vercel que usa el panel de stock. No lleva clave (usa el token OIDC
    del despliegue). Para apagar el asistente: `IA_APAGADA=1`.
 5. *Deployments → Redeploy*.
@@ -65,7 +66,7 @@ Variables: `MS_CLIENT_ID` (*Application (client) ID*) y `MS_CLIENT_SECRET` (el *
 
 ### 3a. Modo cuenta (recomendado)
 
-- `MS_CUENTA` = correo de la cuenta dueña del archivo.
+- `MS_CUENTA` = correo de la cuenta dueña del archivo. Requiere el almacén del paso 3 de «Publicar».
 - En la aplicación de Entra ID → *API permissions*: `Files.ReadWrite`, `User.Read`, `offline_access` (delegados).
 - Entrar al panel → aviso «Falta conectar la cuenta» → **Conectar cuenta de Microsoft** → iniciar sesión con esa
   cuenta y aceptar. Solo se acepta la cuenta de `MS_CUENTA`. Queda conectada mientras el panel se use (Microsoft
@@ -78,7 +79,7 @@ a todos los OneDrive de la organización, por eso es la segunda opción.
 
 - *API permissions* → *Application permissions* → `Files.ReadWrite.All` → *Grant admin consent*.
 - `MS_USUARIO` = dueño del OneDrive (ej.: `registros@cooperativapolicial.com.uy`) y `MS_TENANT` = *Directory (tenant) ID*.
-- No hace falta Upstash para guardar (sí para limitar los intentos de clave).
+- No hace falta el almacén para guardar (sí para limitar los intentos de clave).
 
 ## Variables
 
@@ -93,7 +94,8 @@ Ver [.env.example](.env.example).
 | `EXCEL_RUTA` | Ruta del archivo en ese OneDrive (por defecto `Registros COPOL.xlsx`). |
 | `EXCEL_TABLA` | Nombre de la tabla y de la hoja (por defecto `Registros`). |
 | `MS_REDIRECT_URI` | Solo con dominio propio: dirección de vuelta registrada en Entra ID. |
-| `KV_REST_API_URL`, `KV_REST_API_TOKEN` | Upstash for Redis (se crean solas). |
+| `BLOB_READ_WRITE_TOKEN` | Vercel Blob privado: almacén (se crea sola al conectar el Blob). |
+| `KV_REST_API_URL`, `KV_REST_API_TOKEN` | Upstash for Redis, en lugar del Blob (se crean solas). |
 | `IA_MODELO`, `IA_LIMITE_DIA`, `IA_APAGADA` | Asistente: modelo de AI Gateway (por defecto `google/gemini-2.5-flash`), consultas por día (300), apagarlo. |
 | `PANEL_SESION_HORAS` | Duración de la sesión (12 h). |
 
@@ -103,7 +105,7 @@ Ver [.env.example](.env.example).
 cd panel-registros
 cp .env.example .env   # completar PANEL_CLAVE; sin variables MS_… guarda en datos/registros.csv
 npm run dev            # http://localhost:4400
-npm test               # pruebas (Microsoft, Upstash y la IA simulados)
+npm test               # pruebas (Microsoft, el almacén y la IA simulados)
 ```
 
 Para probar el asistente en la computadora hace falta `AI_GATEWAY_API_KEY` (Vercel → AI Gateway → API Keys).
@@ -116,7 +118,7 @@ api/sesion.js      Ingreso, salida y estado del panel
 api/registro.js    Guarda una fila en la planilla
 api/asistente.js   La IA propone los campos a partir de un texto
 api/microsoft/     Conectar la cuenta de Microsoft (modo cuenta)
-api/_lib/          Campos y validación, sesión, Microsoft Graph, Upstash, asistente
+api/_lib/          Campos y validación, sesión, Microsoft Graph, almacén (Blob o Upstash), asistente
 servidor-local.js  Servidor para `npm run dev`
 test/              Pruebas
 ```
