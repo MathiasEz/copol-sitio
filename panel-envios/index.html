@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="es-UY">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Envíos · Documentos de venta</title>
+  <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
+  <link rel="stylesheet" href="estilos.css">
+</head>
+<body>
+  <nav class="menu" aria-label="Menú principal">
+    <span class="menu-item">Socios <span class="caret" aria-hidden="true">▾</span></span>
+    <span class="menu-item">Facturación <span class="caret" aria-hidden="true">▾</span></span>
+    <span class="menu-item">Control Horario Interior <span class="caret" aria-hidden="true">▾</span></span>
+  </nav>
+  <div class="migas">
+    <span><a href="./">Home</a> / <a href="./">...cumentos de venta</a></span>
+    <span class="prueba"><span class="insignia calle">MODO PRUEBA · datos ficticios</span> <button type="button" id="btn-prueba" class="enlace">Cargar socio de prueba</button></span>
+  </div>
+
+  <main class="contenido">
+    <form id="form-envio" autocomplete="off" novalidate>
+      <h2 class="titulo">Datos de la Factura/Boleta</h2>
+      <div class="fila-factura">
+        <label>Fecha <input id="f-fecha" type="date" class="plano grande"></label>
+        <label>Serie <input id="f-serie" class="plano grande corto" value="HD" maxlength="4"></label>
+        <label>Nro. <input id="f-nro" class="plano grande medio" inputmode="numeric" placeholder="00000"></label>
+        <label>Socio <input id="f-socio" class="plano grande medio" inputmode="numeric" placeholder="0000"></label>
+        <label>C.I. <input id="f-ci" class="plano grande medio" inputmode="numeric" placeholder="0000000"></label>
+        <label class="crece">Nombre <input id="f-nombre" class="plano grande" placeholder="Nombre del socio"></label>
+      </div>
+
+      <h2 class="titulo">Datos para el ENVÍO</h2>
+      <div class="grilla-envio">
+        <label for="f-domicilio">Domicilio para envío</label>
+        <div class="campo-buscar">
+          <input id="f-domicilio" class="caja" placeholder="Ej.: Aparicio Saravia 3441" aria-describedby="ayuda-domicilio" aria-controls="resultados" enterkeyhint="search">
+          <button type="button" id="btn-buscar" class="lupa" title="Buscar la dirección en el mapa" aria-label="Buscar dirección">
+            <svg viewBox="0 0 20 20" width="14" height="14" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M13 13l5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          </button>
+        </div>
+        <label for="f-localidad">Localidad</label>
+        <input id="f-localidad" class="caja">
+        <label for="f-depto">Cod. Depto.</label>
+        <select id="f-depto" class="caja"><option value="">Seleccionar</option></select>
+        <label for="f-telefono">Teléfono</label>
+        <input id="f-telefono" class="caja" inputmode="tel">
+
+        <label for="f-recibe">recibe</label>
+        <input id="f-recibe" class="caja">
+        <label for="f-obs">Observaciones</label>
+        <input id="f-obs" class="caja ancho">
+      </div>
+      <p id="ayuda-domicilio" class="ayuda">Escribí calle y número: abajo aparecen las direcciones encontradas para elegir la correcta. Si hay muchas, agregá la ciudad (ej.: «18 de Julio 1234 Las Piedras»).</p>
+
+      <section id="resultados" class="resultados" hidden aria-live="polite">
+        <div class="resultados-cabecera">
+          <strong id="resultados-titulo">Resultados</strong>
+          <button type="button" id="btn-mas" class="enlace">Buscar más resultados</button>
+        </div>
+        <p id="resultados-estado" class="estado"></p>
+        <ul id="resultados-lista" class="lista"></ul>
+      </section>
+
+      <section id="ubicacion" class="ubicacion" hidden>
+        <h3 class="subtitulo">Ubicación confirmada</h3>
+        <div class="ubicacion-cuerpo">
+          <div class="ubicacion-datos">
+            <p class="dir-principal" id="u-linea1"></p>
+            <p class="dir-secundaria" id="u-linea2"></p>
+            <p class="insignias" id="u-insignias"></p>
+            <div id="mapa" class="mapa" role="application" aria-label="Mapa de la ubicación. Arrastrá el pin para corregirla."></div>
+            <p class="ayuda" id="u-ayuda-mapa">Si el pin no está en la puerta correcta, arrastralo (o tocá el mapa): el QR pasa a usar ese punto exacto.</p>
+          </div>
+          <div class="ubicacion-qr">
+            <div class="qr-caja"><canvas id="qr" width="232" height="232" aria-label="Código QR hacia Google Maps"></canvas></div>
+            <fieldset class="destino">
+              <legend>El QR abre en Google Maps:</legend>
+              <label><input type="radio" name="destino" value="coordenadas"> El punto exacto del mapa</label>
+              <label><input type="radio" name="destino" value="direccion"> La dirección escrita</label>
+            </fieldset>
+            <a id="u-enlace" class="btn btn-claro" target="_blank" rel="noopener">Probar en Google Maps</a>
+            <button type="button" id="btn-descargar" class="btn btn-claro">Descargar QR</button>
+            <p class="url" id="u-url"></p>
+          </div>
+        </div>
+      </section>
+
+      <h2 class="titulo">Productos que compra</h2>
+      <table class="productos">
+        <thead><tr><th class="col-cod">Código de Producto</th><th>Descripción completa</th><th class="col-quitar"><span class="sr">Quitar</span></th></tr></thead>
+        <tbody id="productos"></tbody>
+      </table>
+      <button type="button" id="btn-agregar" class="enlace agregar">+ Agregar producto</button>
+
+      <div id="aviso" class="aviso" hidden role="status"></div>
+
+      <h2 class="titulo accion">Confirmar envío y actualizar Domicilio en Ficha del Socio si fuera diferente</h2>
+      <button type="button" class="btn" data-accion="actualiza">Confirma y Actualiza</button>
+
+      <h2 class="titulo accion">Confirmar envío pero NO actualizar Domicilio en Ficha del Socio, éste envío no va para su dirección</h2>
+      <button type="button" class="btn" data-accion="no-actualiza">Confirma y &nbsp;NO Actualiza</button>
+
+      <h2 class="titulo accion">Salir SIN confirmar NI actualizar</h2>
+      <button type="button" class="btn" id="btn-salir">Salir</button>
+    </form>
+  </main>
+
+  <section id="etiqueta" class="etiqueta" aria-hidden="true"></section>
+
+  <script src="vendor/qrcode.js"></script>
+  <script src="vendor/leaflet/leaflet.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
