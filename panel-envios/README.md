@@ -9,6 +9,9 @@ Es una página estática (HTML + CSS + JS, sin compilación) que se publica en V
 - Al escribir el domicilio busca la dirección y muestra abajo los resultados para elegir la correcta
   (ej.: «Aparicio Saravia 3441» → «Bv. Aparicio Saravia 3441, Montevideo, Uruguay»). Al elegirla completa
   domicilio, localidad (barrio) y departamento.
+- Entiende el número de puerta escrito de varias formas («Cañas 229bis», «Cañas 229 bis apto 2», «Bv. Artigas N° 1500»).
+  Además del texto completo busca la calle sola: si el mapa no tiene ese número (o es un «bis»), igual aparece la
+  calle con el número escrito, marcada «N° aproximado». Lo que va después del número (apto, piso…) queda en el domicilio.
 - Muestra la ubicación en un mapa con un pin que se puede arrastrar para corregirla.
 - Genera un **QR que abre Google Maps**:
   - con el punto exacto (coordenadas) cuando el número de puerta está verificado o el pin se ajustó a mano;

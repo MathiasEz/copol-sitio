@@ -26,6 +26,7 @@ const estado = {
   elegida: null,       // dirección seleccionada (objeto de normalizar())
   lat: null, lon: null, // punto actual del pin
   pinMovido: false,
+  unidad: '',          // «apto 2», «piso 3»… escrito después del número
   destino: 'coordenadas',
   pedido: 0,
   abortar: null,
@@ -49,11 +50,34 @@ function abreviar(calle) {
     .replace(/^avenida\s+/i, 'Av. ');
 }
 
-// Número de puerta que escribió el usuario (el último número del texto, ej. «3441» o «3441 bis»).
-function numeroEscrito(texto) {
-  const m = texto.match(/(?:^|\s)(\d{1,5})(\s*bis)?(?=\s|,|$)/gi);
-  return m ? m[m.length - 1].trim() : '';
+const RE_UNIDAD = /\b(?:apto?|apt|ap|dpto|depto|piso|block|bl|torre|esc|local|of|oficina|unidad|casa)\.?\s*[\w-]*/gi;
+
+/* Separa lo escrito en calle, número de puerta y el resto:
+ * «Cañas 229bis apto 2» → { calle: 'Cañas', numero: '229 bis', extra: 'apto 2', zona: '' }
+ * «18 de Julio 1234 Las Piedras» → { calle: '18 de Julio', numero: '1234', extra: 'Las Piedras', zona: 'Las Piedras' }
+ * Se toma el primer número que va después del nombre de la calle, que no sea parte del nombre
+ * («8 de Octubre», «18 de Julio») ni de la unidad («apto 2», «piso 3»). */
+function partirDireccion(texto) {
+  const t = texto.trim().replace(/\s+/g, ' ');
+  const re = /(?:^|[\s,])(?:n[°º.]?\s*)?(\d{1,5})\s*(bis|ter)?(?=[\s,]|$)/gi;
+  for (const m of t.matchAll(re)) {
+    const antes = t.slice(0, m.index);
+    const despues = t.slice(m.index + m[0].length);
+    if (!/[a-záéíóúñü]/i.test(antes)) continue;
+    if (/^\s*de\b/i.test(despues)) continue;
+    if (/\b(?:apto?|apt|ap|dpto|depto|piso|block|bl|torre|esc|local|of|oficina|unidad|casa|km)\.?\s*$/i.test(antes)) continue;
+    const extra = despues.replace(/^[\s,]+/, '').trim();
+    return {
+      calle: antes.replace(/[\s,]+$/, '').trim(),
+      numero: m[1] + (m[2] ? ' ' + m[2].toLowerCase() : ''),
+      extra,
+      zona: extra.replace(RE_UNIDAD, '').replace(/^[\s,]+|[\s,]+$/g, '').trim(),
+    };
+  }
+  return { calle: t, numero: '', extra: '', zona: '' };
 }
+
+const soloDigitos = (n) => String(n).replace(/\D/g, '');
 
 function unicos(lista) {
   const vistos = new Set();
@@ -143,6 +167,8 @@ async function buscarNominatim(q, signal) {
 /* ---------- Textos de una dirección ---------- */
 // Número a mostrar: el verificado del mapa o, si el resultado es la calle, el que escribió el usuario.
 function numeroPara(d, escrito) {
+  // «229 bis» escrito y el mapa tiene el 229: es la misma puerta, se conserva el «bis».
+  if (d.numero && escrito && soloDigitos(d.numero) === soloDigitos(escrito) && escrito.length > d.numero.length) return escrito;
   return d.numero || (d.precision === 'calle' ? escrito : '');
 }
 
@@ -178,7 +204,7 @@ function ordenar(resultados, escrito) {
   const depto = campos.depto.value;
   const puntaje = (d) => {
     let p = { exacta: 1, calle: 2, zona: 4 }[d.precision];
-    if (escrito && d.numero && sinTildes(d.numero) === sinTildes(escrito)) p = 0;
+    if (escrito && d.numero && soloDigitos(d.numero) === soloDigitos(escrito)) p = 0;
     else if (escrito && d.numero) p = 3;
     if (depto && d.departamento !== depto) p += 0.5;
     return p;
@@ -216,12 +242,19 @@ async function buscar(completa) {
   $('#btn-mas').hidden = completa;
   mostrarEstado(completa ? 'Buscando en todos los mapas…' : 'Buscando…');
 
-  const fuentes = [buscarPhoton(q, ctrl.signal)];
-  if (completa) fuentes.push(buscarNominatim(q, ctrl.signal));
+  // Además del texto completo se busca la calle sola: si el mapa no tiene ese número de puerta
+  // (o es un «bis»), la búsqueda completa no encuentra nada, pero la calle sí.
+  const partes = partirDireccion(q);
+  const calleSola = [partes.calle, partes.zona].filter(Boolean).join(' ');
+  const textoLimpio = [partes.calle, soloDigitos(partes.numero), partes.zona].filter(Boolean).join(' ');
+  const fuentes = [buscarPhoton(textoLimpio, ctrl.signal)];
+  if (partes.numero && calleSola.length >= 3) fuentes.push(buscarPhoton(calleSola, ctrl.signal));
+  if (completa) fuentes.push(buscarNominatim(textoLimpio, ctrl.signal));
   const respuestas = await Promise.allSettled(fuentes);
   if (id !== estado.pedido) return; // llegó una búsqueda más nueva
 
-  const escrito = numeroEscrito(q);
+  const escrito = partes.numero;
+  estado.unidad = (partes.extra.match(RE_UNIDAD) || []).join(' ');
   const todos = respuestas.flatMap((r) => (r.status === 'fulfilled' ? r.value : []));
   const fallaron = respuestas.filter((r) => r.status === 'rejected' && r.reason?.name !== 'AbortError');
   const lista = quitarRepetidos(ordenar(todos, escrito), escrito).slice(0, 12);
@@ -269,7 +302,9 @@ function seleccionar(d, escrito) {
   estado.destino = d.precision === 'exacta' ? 'coordenadas' : 'direccion';
 
   const e = estado.elegida;
-  campos.domicilio.value = (e.calleCorta ? `${e.calleCorta}${e.numeroFinal ? ' ' + e.numeroFinal : ''}` : linea1(e, escrito)).toUpperCase();
+  const base = e.calleCorta ? `${e.calleCorta}${e.numeroFinal ? ' ' + e.numeroFinal : ''}` : linea1(e, escrito);
+  // Lo que se escribió después del número (apto, piso…) se mantiene en el domicilio.
+  campos.domicilio.value = [base, estado.unidad].filter(Boolean).join(' ').toUpperCase();
   campos.localidad.value = (e.barrio || e.ciudad).toUpperCase();
   if (e.departamento) campos.depto.value = e.departamento;
 
