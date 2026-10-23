@@ -199,7 +199,8 @@ function htmlDiapositiva(d: Diapositiva, i: number, total: number, o: OpcionesHt
   const oculto = (vacio: boolean) => (vacio ? ' hidden' : '');
   const campo = (n: string) => (ed ? ` data-bi-campo="${n}"` : '');
   const ancha = d.diseno !== 'lateral';
-  const sizes = ancha ? '(min-width: 1280px) 1216px, 100vw' : '(min-width: 1280px) 760px, (min-width: 720px) 62vw, 100vw';
+  // En la web el banner va de borde a borde desde 784 px (src/styles/global.css): la imagen lateral ocupa ~2/3.
+  const sizes = ancha ? '100vw' : '(min-width: 784px) 68vw, 100vw';
   const primera = i === 0;
   const carga = primera ? `loading="eager"${o.prioridad ? ' fetchpriority="high"' : ''}` : 'loading="lazy"';
   const sinImagen = ed && !d.imagen;

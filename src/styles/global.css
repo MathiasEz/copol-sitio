@@ -68,7 +68,8 @@
   --anillo: inset 0 0 0 1px rgb(0 51 26 / 0.1);
   --anillo-fuerte: inset 0 0 0 1px rgb(0 51 26 / 0.2);
 
-  --ancho: 1280px;
+  /* Ancho del contenido (diseño extendido; el anterior, de 1280 px, quedó en la marca diseno-anterior-2026-10-23). */
+  --ancho: 1520px;
   --gutter: clamp(16px, 4vw, 32px);
   --seccion: clamp(56px, 8vw, 104px);
 
@@ -89,8 +90,8 @@
 /* ── Textura lateral (trama de íconos del Manual de marca) ──────────────────────────────────
    Cubre todo el espacio vacío a cada lado del contenido, desde el borde de la ventana hasta el
    margen interno del contenido, al ~10 %. Solo aparece cuando sobra espacio a los costados
-   (pantallas de 1360 px o más); nunca queda detrás de textos, productos ni fotos. */
-@media (min-width: 1360px) {
+   (pantallas de 1600 px o más); nunca queda detrás de textos, productos ni fotos. */
+@media (min-width: 1600px) {
   body::before,
   body::after {
     content: '';
@@ -588,6 +589,22 @@ a:hover > .media::after { box-shadow: var(--anillo-fuerte); }
 
 @media print {
   .no-imprimir { display: none !important; }
+}
+
+/* ── Banner de Inicio a todo el ancho en computadora ──────────────────────────────────────────
+   Desde 784 px el banner va de borde a borde, sin esquinas, y el texto queda alineado con el
+   contenido de la página; la imagen ocupa el resto. En celular sigue dentro del margen, redondeado.
+   (Server island: estos estilos son globales.) */
+@media (min-width: 784px) {
+  .banner-inicio { max-width: none; padding-inline: 0; }
+  .banner-inicio .bi { --bi-radio: 0px; }
+  .banner-inicio .bi__diapo { box-shadow: none; min-height: min(37.5cqi, 680px); }
+  .banner-inicio .bi__diapo--lateral { grid-template-columns: max(36%, calc((100vw - var(--ancho)) / 2 + 520px)) minmax(0, 1fr); }
+  .banner-inicio .bi__diapo--lateral .bi__texto {
+    padding-left: max(var(--gutter), calc((100vw - var(--ancho)) / 2 + var(--gutter)));
+    padding-right: clamp(24px, 3vw, 48px);
+  }
+  .banner-inicio .bi__diapo--tarjeta .bi__texto { margin-left: max(var(--gutter), calc((100vw - var(--ancho)) / 2 + var(--gutter))); }
 }
 
 /* ── Bloques de Inicio (banner + contenido); globales porque los usan también las server islands ── */
