@@ -1347,6 +1347,20 @@ describe('notificaciones de la app', () => {
     assert.deepEqual(await NT.tokensPara(db, 'avisos'), ['ExponentPushToken[celularDePrueba01]'], 'el vencido se borró');
   });
 
+  it('agenda pública: incluye lo de las últimas horas y los "Enviar ahora" recientes, para el celular que se conecta tarde', async () => {
+    const ajustes = { ...NT.AJUSTES_INICIALES, maxPorDia: 3 };
+    const base = { estado: 'programada', con_boton: 0, origen: 'manual', destino: 'inicio', categoria: 'avisos', dias: null, hasta: null, repeticion: 'una-vez', texto: 't' } as const;
+    const agenda = NT.armarAgenda({ hoy: '2099-03-01', aperturas: [], ajustes, enviadasHoy: 0, notificaciones: [
+      { ...base, id: 1, titulo: 'Temprano', fecha: '2099-03-01', hora: '09:00' },
+      { ...base, id: 2, titulo: 'Tarde', fecha: '2099-03-01', hora: '20:00' },
+    ] as unknown as NT.Notificacion[] });
+    const ids = (hora: string) => NT.agendaPublica(agenda, new Date(`2099-03-01T${hora}:00-03:00`)).map((x) => x.id);
+    assert.deepEqual(ids('12:00'), ['n1', 'n2'], 'la de las 9 sigue (3 h antes)');
+    assert.deepEqual(ids('22:00'), ['n2'], 'pasadas 12 h ya no');
+    const recientes = await NT.enviadasRecientes(db);
+    assert.ok(recientes.some((x) => x.titulo === 'Aviso urgente'), 'el envío inmediato de la prueba anterior');
+  });
+
   it('avisos automáticos: una sola vez al publicar una novedad', async () => {
     const n = new Navegador(appPush);
     await n.ingresar('principal');

@@ -35,7 +35,8 @@ export const DESTINOS: Record<Destino, { nombre: string; boton: string }> = {
 };
 export const esDestino = (v: unknown): v is Destino => typeof v === 'string' && v in DESTINOS;
 
-export const LIMITES = { titulo: 60, texto: 180, diasAgenda: 14, maxInstancias: 60, maxPorDia: 6, maxDiasRepeticion: 366 } as const;
+/** recienteHoras: los avisos que ya debían salir siguen en la agenda este tiempo, para el celular que se conecta tarde. */
+export const LIMITES = { titulo: 60, texto: 180, diasAgenda: 14, maxInstancias: 60, maxPorDia: 6, maxDiasRepeticion: 366, recienteHoras: 12 } as const;
 export const DIAS_SEMANA = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
 
 // ── Ajustes (tabla `ajustes`, clave "notificaciones") ──
@@ -240,10 +241,17 @@ export function armarAgenda({ hoy = hoyUruguay(), dias = LIMITES.diasAgenda, ape
   return salida.sort((a, b) => a.en.localeCompare(b.en)).slice(0, LIMITES.maxInstancias * 2);
 }
 
-/** Lo que recibe la app: solo lo que sale, desde ahora. */
+/** Lo que recibe la app: lo que sale (también lo de las últimas horas, para el celular que no se conectó a tiempo:
+ * la app lo muestra apenas se entera, dentro del horario permitido, y una sola vez). */
 export const agendaPublica = (agenda: Instancia[], f = new Date()) =>
-  agenda.filter((x) => !x.omitida && Date.parse(x.en) > f.getTime()).slice(0, LIMITES.maxInstancias)
+  agenda.filter((x) => !x.omitida && Date.parse(x.en) > f.getTime() - LIMITES.recienteHoras * 3_600_000).slice(0, LIMITES.maxInstancias)
     .map(({ id, titulo, texto, destino, boton, categoria, en }) => ({ id, titulo, texto, destino, boton, categoria, en }));
+
+/** "Enviar ahora" de las últimas horas: sin servicio de avisos instantáneos, cada celular los recibe al sincronizar. */
+export async function enviadasRecientes(db: Db, f = new Date()) {
+  const filas = await todas<Notificacion>(db, "SELECT * FROM notificaciones WHERE estado = 'enviada' AND enviada_en >= ? ORDER BY enviada_en", [new Date(f.getTime() - LIMITES.recienteHoras * 3_600_000).toISOString()]);
+  return filas.map((n) => ({ id: `n${n.id}`, titulo: n.titulo, texto: n.texto, destino: n.destino, boton: Boolean(n.con_boton), categoria: n.categoria, en: n.enviada_en! }));
+}
 
 /** Avisos enviados al instante hoy (cuentan para el máximo del día). */
 export async function enviadasHoy(db: Db, hoy = hoyUruguay()) {

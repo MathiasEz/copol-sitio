@@ -887,11 +887,11 @@ export function vistaNotificaciones(c: Contexto, d: DatosVistaNotificaciones, er
   const chk = (nombre: string, valor: boolean, texto: string) => html`<label class="check"><input type="checkbox" name="${nombre}" value="1" ${si(valor, 'checked')}><span>${texto}</span></label>`;
   return layout(c, 'Administración Página', html`
 ${tabsPagina('notificaciones')}
-<p class="muted subtitulo">Avisos que llegan al celular de quienes tienen la app de COPOL y los activaron. Las programadas las muestra cada celular a su hora; "Enviar ahora" llega al instante.</p>
+<p class="muted subtitulo">Avisos que llegan al celular de quienes tienen la app de COPOL y los activaron. Cada celular baja la agenda y muestra los avisos a su hora; "Enviar ahora" le llega la próxima vez que la app se actualiza (en general, en menos de una hora).</p>
 ${!a.activas ? html`<div class="alert alert--error" role="status">${icono('pausa')}<p>Las notificaciones están en pausa: no sale ningún aviso. Activalas en Ajustes.</p></div>` : ''}
 ${Object.keys(errores).length ? html`<div class="alert alert--error" role="alert">${icono('info')}<p>Revisá los ajustes marcados.</p></div>` : ''}
 <div class="metricas-avisos">
-  <div class="card metrica-aviso">${icono('celular', 20)}<div><strong>${d.dispositivos.total.toLocaleString('es-UY')}</strong><span class="muted">celulares con avisos instantáneos</span></div></div>
+  <div class="card metrica-aviso">${icono('celular', 20)}<div><strong>${d.dispositivos.total ? d.dispositivos.total.toLocaleString('es-UY') : 'Sin activar'}</strong><span class="muted">${d.dispositivos.total ? 'celulares con avisos instantáneos' : 'avisos instantáneos (necesitan Firebase): los celulares reciben todo al actualizarse'}</span></div></div>
   <div class="card metrica-aviso">${icono('campana', 20)}<div><strong>${usadosHoy} de ${a.maxPorDia}</strong><span class="muted">avisos hoy (máximo por día)</span></div></div>
   <div class="card metrica-aviso">${icono('reloj', 20)}<div><strong>${a.desde} a ${a.hasta}</strong><span class="muted">horario permitido</span></div></div>
 </div>
@@ -972,7 +972,7 @@ ${Object.keys(errores).length ? html`<div class="alert alert--error" role="alert
     </section>
     <section class="card form"><h2 class="card__titulo">Cuándo</h2>
       <fieldset class="campo opciones-cuando"><legend class="sr">Cuándo sale</legend>
-        ${opcionCuando('ahora', 'Enviar ahora', 'Llega en segundos a los celulares registrados.')}
+        ${opcionCuando('ahora', 'Enviar ahora', dispositivos.total ? 'Llega en segundos a los celulares con avisos instantáneos; al resto, cuando la app se actualiza.' : 'Le llega a cada celular la próxima vez que la app se actualiza (en general, en menos de una hora).')}
         ${opcionCuando('programar', 'Programar', 'Un día y una hora.')}
         ${opcionCuando('repetir', 'Repetir', 'Todos los días o algunos días de la semana, a la misma hora.')}
       </fieldset>

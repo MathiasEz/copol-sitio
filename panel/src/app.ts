@@ -72,7 +72,7 @@ const AVISOS: Record<string, V.Contexto['aviso']> = {
   'equipo-olvidado': { tipo: 'ok', texto: 'Equipo olvidado: la próxima vez se le pedirán el PIN y el código por correo.' },
   'empleados-guardado': { tipo: 'ok', texto: 'Información para empleados actualizada.' },
   'notificacion-programada': { tipo: 'ok', texto: 'Notificación programada. Los celulares ya están recibiendo la agenda nueva.' },
-  'notificacion-enviada': { tipo: 'ok', texto: 'Notificación enviada a los celulares registrados.' },
+  'notificacion-enviada': { tipo: 'ok', texto: 'Notificación enviada. Le llega a cada celular la próxima vez que la app se actualiza (en general, en menos de una hora).' },
   'notificacion-cancelada': { tipo: 'ok', texto: 'Notificación cancelada: no va a salir.' },
   'notificacion-eliminada': { tipo: 'ok', texto: 'Notificación eliminada del historial.' },
   'notificaciones-ajustes': { tipo: 'ok', texto: 'Ajustes de notificaciones guardados.' },

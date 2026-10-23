@@ -32,7 +32,8 @@
     let alcance = {};
     try { alcance = JSON.parse(form.dataset.alcance || '{}'); } catch {}
     const n = alcance[campo('categoria').value] ?? 0;
-    if (!confirm(`¿Enviar ahora a ${n} ${n === 1 ? 'celular' : 'celulares'}? No se puede deshacer.`)) e.preventDefault();
+    const texto = n ? `¿Enviar ahora? Llega al instante a ${n} ${n === 1 ? 'celular' : 'celulares'} y al resto cuando la app se actualiza.` : '¿Enviar ahora? Le llega a cada celular cuando la app se actualiza.';
+    if (!confirm(`${texto} No se puede deshacer.`)) e.preventDefault();
   });
   actualizar();
   mostrar();
