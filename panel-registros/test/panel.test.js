@@ -1,7 +1,8 @@
-// Pruebas del panel de registros (node --test). Microsoft, Upstash y AI Gateway se simulan: no salen pedidos.
+// Pruebas del panel de registros (node --test). Microsoft, Upstash, Blob y AI Gateway se simulan: no salen pedidos.
 import { after, beforeEach, describe, test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { mkdtemp, rm } from 'node:fs/promises';
+import { inflateRawSync } from 'node:zlib';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -12,7 +13,7 @@ const ORIGEN = 'http://localhost:4400';
 function configurar(extra = {}) {
   for (const k of Object.keys(process.env)) if (!(k in BASE_ENV)) delete process.env[k];
   for (const k of ['BLOB_READ_WRITE_TOKEN', 'VERCEL', 'MS_CLIENT_ID', 'MS_CLIENT_SECRET', 'MS_USUARIO', 'MS_CUENTA', 'MS_TENANT', 'KV_REST_API_URL', 'KV_REST_API_TOKEN', 'AI_GATEWAY_API_KEY', 'VERCEL_OIDC_TOKEN', 'IA_APAGADA']) delete process.env[k];
-  Object.assign(process.env, { PANEL_CLAVE: 'clave-de-prueba-123', REGISTROS_CSV: join(dir, `r-${Math.random()}.csv`) }, extra);
+  Object.assign(process.env, { PANEL_CLAVE: 'clave-de-prueba-123', ALMACEN_DIR: join(dir, `a-${Math.random()}`) }, extra);
 }
 
 const campos = await import('../api/_lib/campos.js');
@@ -23,6 +24,7 @@ const conectarApi = await import('../api/microsoft/conectar.js');
 const vueltaApi = await import('../api/microsoft/vuelta.js');
 const ms = await import('../api/_lib/microsoft.js');
 const almacen = await import('../api/_lib/almacen.js');
+const planillaApi = await import('../api/planilla.js');
 
 const pedido = (ruta, { metodo = 'GET', datos, cookie, origen = ORIGEN } = {}) => new Request(`${ORIGEN}${ruta}`, {
   method: metodo,
@@ -74,7 +76,22 @@ beforeEach(() => {
   llamadas = [];
   rutas = [];
   ms.usarFetch((...a) => globalThis.fetch(...a));
+  almacen.usarBlob(null);
 });
+
+/** Contenido de un archivo dentro de un .zip (para revisar el .xlsx). */
+function delZip(buf, nombre) {
+  for (let i = 0; i < buf.length - 30;) {
+    if (buf.readUInt32LE(i) !== 0x04034b50) break;
+    const tam = buf.readUInt32LE(i + 18);
+    const largoNombre = buf.readUInt16LE(i + 26);
+    const n = buf.subarray(i + 30, i + 30 + largoNombre).toString();
+    const datos = buf.subarray(i + 30 + largoNombre, i + 30 + largoNombre + tam);
+    if (n === nombre) return inflateRawSync(datos).toString();
+    i += 30 + largoNombre + tam;
+  }
+  return null;
+}
 
 describe('campos', () => {
   test('cédula: acepta con y sin puntos, rechaza el dígito verificador equivocado', () => {
@@ -145,21 +162,69 @@ describe('acceso', () => {
   });
 });
 
-describe('guardar (modo local)', () => {
-  test('valida en el servidor y escribe la fila en el CSV con quien cargó', async () => {
+describe('planilla de prueba (sin Microsoft)', () => {
+  test('valida, guarda con quien cargó, la muestra a todos y la descarga como .xlsx', async () => {
     const cookie = await ingresar();
     const malo = await registroApi.POST(pedido('/api/registro', { metodo: 'POST', datos: { ...REGISTRO, cedula: '1234567-3' }, cookie }));
     assert.equal(malo.status, 422);
     assert.ok((await malo.json()).errores.cedula);
-    const r = await registroApi.POST(pedido('/api/registro', { metodo: 'POST', datos: { ...REGISTRO, service: 'Instalación' }, cookie }));
-    assert.equal(r.status, 200);
-    const csv = await readFile(process.env.REGISTROS_CSV, 'utf8');
-    const [cabecera, fila] = csv.replace(/^﻿/, '').trim().split('\n');
-    assert.equal(cabecera, campos.COLUMNAS.join(';'));
-    assert.match(fila, /;Juan Pérez;12345;1\.234\.567-2;Av\. Italia 3456 apto 2;Instalación;Heladera Samsung RT38;457939;Ana$/);
+    const estado = await (await sesionApi.GET(pedido('/api/sesion', { cookie }))).json();
+    assert.equal(estado.planilla.modo, 'prueba');
+    assert.equal(estado.planilla.listo, true);
+
+    assert.equal((await registroApi.POST(pedido('/api/registro', { metodo: 'POST', datos: { ...REGISTRO, service: 'Instalación' }, cookie }))).status, 200);
+    assert.equal((await registroApi.POST(pedido('/api/registro', { metodo: 'POST', datos: { ...REGISTRO, nombre: 'María Gómez', service: '=1+1' }, cookie }))).status, 200);
+
+    const lista = await (await planillaApi.GET(pedido('/api/planilla', { cookie }))).json();
+    assert.equal(lista.total, 2);
+    assert.equal(lista.registros[0].nombre, 'María Gómez', 'la más nueva primero');
+    assert.equal(lista.registros[1].service, 'Instalación');
+    assert.equal(lista.registros[1].cargadoPor, 'Ana');
+    assert.match(lista.registros[1].fecha, /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/);
+
+    const xlsx = await planillaApi.GET(pedido('/api/planilla?formato=xlsx', { cookie }));
+    assert.equal(xlsx.headers.get('content-type'), 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    assert.match(xlsx.headers.get('content-disposition'), /attachment/);
+    const hoja = delZip(Buffer.from(await xlsx.arrayBuffer()), 'xl/worksheets/sheet1.xml');
+    for (const c of campos.COLUMNAS) assert.ok(hoja.includes(`<t xml:space="preserve">${c}</t>`), c);
+    assert.ok(hoja.includes('<v>12345</v>'), 'el socio va como número');
+    assert.ok(hoja.includes('<t xml:space="preserve">=1+1</t>') && !hoja.includes('<f>'), 'nada se escribe como fórmula');
+
+    assert.equal((await planillaApi.GET(pedido('/api/planilla'))).status, 401);
+    assert.equal((await planillaApi.DELETE(pedido('/api/planilla', { metodo: 'DELETE', origen: 'https://malo.example', cookie }))).status, 403);
+    assert.equal((await planillaApi.DELETE(pedido('/api/planilla', { metodo: 'DELETE', cookie }))).status, 200);
+    assert.equal((await (await planillaApi.GET(pedido('/api/planilla', { cookie }))).json()).total, 0);
   });
 
-  test('en Vercel sin Microsoft configurado avisa en lugar de guardar', async () => {
+  test('en Blob, dos guardados al mismo tiempo no se pisan', async () => {
+    configurar({ BLOB_READ_WRITE_TOKEN: 'vercel_blob_rw_prueba' });
+    const datos = new Map();
+    let version = 0;
+    almacen.usarBlob({
+      get: async (r) => {
+        await new Promise((ok) => setTimeout(ok, 5));
+        return datos.has(r) ? { statusCode: 200, stream: new Blob([datos.get(r).cuerpo]).stream(), blob: { etag: datos.get(r).etag } } : null;
+      },
+      put: async (r, cuerpo, o) => {
+        const actual = datos.get(r);
+        if (o.ifMatch ? actual?.etag !== o.ifMatch : actual && !o.allowOverwrite) throw Object.assign(new Error('precondition failed'), { name: 'BlobPreconditionFailedError' });
+        datos.set(r, { cuerpo, etag: String(++version) });
+      },
+      del: async (r) => { datos.delete(r); },
+    });
+    const cookie = await ingresar();
+    const guardados = await Promise.all([1, 2, 3, 4].map((n) => registroApi.POST(pedido('/api/registro', { metodo: 'POST', datos: { ...REGISTRO, codigo: `C${n}` }, cookie }))));
+    assert.deepEqual(guardados.map((r) => r.status), [200, 200, 200, 200]);
+    const lista = await (await planillaApi.GET(pedido('/api/planilla', { cookie }))).json();
+    assert.deepEqual(lista.registros.map((r) => r.codigo).sort(), ['C1', 'C2', 'C3', 'C4']);
+  });
+
+  test('con Microsoft conectado la planilla de prueba no se usa', async () => {
+    configurar({ MS_CLIENT_ID: 'id', MS_CLIENT_SECRET: 's', MS_USUARIO: 'u@copol.test', MS_TENANT: 'inquilino' });
+    assert.equal((await planillaApi.GET(pedido('/api/planilla', { cookie: await ingresar() }))).status, 409);
+  });
+
+  test('en Vercel sin Microsoft ni almacén avisa en lugar de guardar', async () => {
     configurar({ VERCEL: '1' });
     const cookie = await ingresar();
     const r = await registroApi.POST(pedido('/api/registro', { metodo: 'POST', datos: REGISTRO, cookie }));

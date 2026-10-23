@@ -16,6 +16,11 @@ despliegue con ellos. Se publica en Vercel como **proyecto propio** (`copol-regi
   solo con números y los campos obligatorios. Lo que empieza con `=`, `+`, `-` o `@` se guarda como texto
   para que Excel no lo tome como fórmula.
 - Acceso con una **clave compartida** y el nombre de quien carga.
+- **Modo de prueba** (mientras no se conecte Microsoft): los registros van a una planilla de prueba guardada en
+  el almacén del panel (Blob privado), compartida entre computadoras. Se ve en el panel y se descarga con
+  **«Descargar Excel (.xlsx)»** (mismas columnas, cabecera fija y filtros). «Vaciar planilla de prueba» la borra.
+  Al cargar las variables de Microsoft el panel pasa solo a escribir en Excel en la nube; lo cargado en la de
+  prueba no se copia (descargarla antes si se quiere conservar).
 
 ### Columnas de la planilla
 
@@ -103,7 +108,7 @@ Ver [.env.example](.env.example).
 
 ```bash
 cd panel-registros
-cp .env.example .env   # completar PANEL_CLAVE; sin variables MS_… guarda en datos/registros.csv
+cp .env.example .env   # completar PANEL_CLAVE; sin variables MS_… usa la planilla de prueba (archivos en datos/)
 npm run dev            # http://localhost:4400
 npm test               # pruebas (Microsoft, el almacén y la IA simulados)
 ```
@@ -116,9 +121,10 @@ Para probar el asistente en la computadora hace falta `AI_GATEWAY_API_KEY` (Verc
 public/            Página (index.html, estilos.css, app.js) y recursos (logo, tipografía)
 api/sesion.js      Ingreso, salida y estado del panel
 api/registro.js    Guarda una fila en la planilla
+api/planilla.js    Planilla de prueba: ver, descargar .xlsx, vaciar
 api/asistente.js   La IA propone los campos a partir de un texto
 api/microsoft/     Conectar la cuenta de Microsoft (modo cuenta)
-api/_lib/          Campos y validación, sesión, Microsoft Graph, almacén (Blob o Upstash), asistente
+api/_lib/          Campos y validación, sesión, Microsoft Graph, almacén (Blob o Upstash), .xlsx, asistente
 servidor-local.js  Servidor para `npm run dev`
 test/              Pruebas
 ```

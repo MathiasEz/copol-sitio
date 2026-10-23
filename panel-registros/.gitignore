@@ -1,4 +1,4 @@
-# Registros de prueba guardados en la computadora (modo local) y variables con secretos
+# Almacén y planilla de prueba de la computadora (npm run dev) y variables con secretos
 datos/
 .env
 .env.*

@@ -6,6 +6,7 @@ const $ = (sel) => document.querySelector(sel);
 const CAMPOS = ['nombre', 'socio', 'cedula', 'direccion', 'producto', 'codigo', 'service'];
 const OBLIGATORIOS = new Set(['nombre', 'socio', 'cedula', 'direccion', 'producto', 'codigo']);
 const CLAVE_ULTIMOS = 'registros-ultimos';
+let modoPrueba = false; // sin Microsoft: la tabla muestra la planilla de prueba compartida
 
 async function api(ruta, { metodo = 'GET', datos } = {}) {
   const res = await fetch(ruta, {
@@ -55,7 +56,8 @@ function mostrarPanel(estado) {
   $('#seccion-asistente').hidden = !estado.ia;
   $('.columnas').style.gridTemplateColumns = estado.ia ? '' : '1fr';
   mostrarPlanilla(estado.planilla);
-  dibujarUltimos();
+  if (modoPrueba) cargarPlanillaPrueba();
+  else dibujarUltimos();
 }
 
 function mostrarPlanilla(planilla) {
@@ -67,6 +69,11 @@ function mostrarPlanilla(planilla) {
   const enlace = $('#enlace-planilla');
   enlace.hidden = !planilla?.enlace;
   if (planilla?.enlace) enlace.href = planilla.enlace;
+  modoPrueba = Boolean(planilla?.prueba);
+  $('#t-ultimos').textContent = modoPrueba ? 'Planilla de prueba (compartida entre computadoras)' : 'Cargados desde esta computadora';
+  $('#btn-descargar').hidden = !modoPrueba;
+  $('#btn-vaciar').hidden = !modoPrueba;
+  $('#btn-guardar').textContent = modoPrueba ? 'Guardar en la planilla' : 'Guardar en Excel';
 }
 
 async function iniciar() {
@@ -202,7 +209,8 @@ form.addEventListener('submit', async (ev) => {
     if (r.status !== 401) mensaje(estado, r.error || 'No se pudo guardar.', 'error');
     return;
   }
-  guardarUltimo({ fecha: r.fecha, ...r.registro });
+  if (modoPrueba) cargarPlanillaPrueba();
+  else guardarUltimo({ fecha: r.fecha, ...r.registro });
   limpiarFormulario();
   mensaje(estado, `Guardado en la planilla: ${r.registro.nombre} · ${r.registro.producto}.`, 'ok');
   input('nombre').focus();
@@ -256,12 +264,28 @@ function guardarUltimo(registro) {
   dibujarUltimos(lista);
 }
 
-function dibujarUltimos(lista = leerUltimos()) {
+async function cargarPlanillaPrueba() {
+  const r = await api('/api/planilla').catch(() => null);
+  if (!r?.ok) {
+    if (r?.status !== 401) $('#ultimos-vacio').textContent = r?.error || 'No se pudo leer la planilla de prueba.';
+    return;
+  }
+  dibujarUltimos(r.registros, r.total);
+}
+
+$('#btn-vaciar').addEventListener('click', async () => {
+  if (!confirm('¿Borrar todas las filas de la planilla de prueba? Conviene descargarla antes en Excel.')) return;
+  const r = await api('/api/planilla', { metodo: 'DELETE' }).catch(() => null);
+  if (r?.ok) cargarPlanillaPrueba();
+  else if (r?.status !== 401) alert(r?.error || 'No se pudo vaciar la planilla.');
+});
+
+function dibujarUltimos(lista = leerUltimos(), total = lista.length) {
   const tabla = $('#ultimos');
   const cuerpo = tabla.querySelector('tbody');
   cuerpo.replaceChildren(...lista.map((r) => {
     const fila = document.createElement('tr');
-    for (const v of [r.fecha, r.nombre, r.socio, r.cedula, r.producto, r.codigo, r.service]) {
+    for (const v of [r.fecha, r.nombre, r.socio, r.cedula, r.direccion, r.producto, r.codigo, r.service, r.cargadoPor]) {
       const celda = document.createElement('td');
       celda.textContent = v || '—';
       fila.append(celda);
@@ -269,7 +293,11 @@ function dibujarUltimos(lista = leerUltimos()) {
     return fila;
   }));
   tabla.hidden = !lista.length;
-  $('#ultimos-vacio').hidden = Boolean(lista.length);
+  const vacio = $('#ultimos-vacio');
+  vacio.textContent = modoPrueba
+    ? (total ? `${total} fila${total === 1 ? '' : 's'}${total > lista.length ? ` (se muestran las últimas ${lista.length})` : ''}.` : 'La planilla de prueba está vacía.')
+    : 'Todavía no se cargó nada en esta sesión.';
+  vacio.hidden = Boolean(lista.length) && !modoPrueba;
 }
 
 iniciar();
