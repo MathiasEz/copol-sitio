@@ -54,7 +54,7 @@ export interface Ajustes {
 export const AJUSTES_INICIALES: Ajustes = {
   activas: true,
   maxPorDia: 2,
-  desde: '09:00',
+  desde: '08:00',
   hasta: '21:00',
   credito: { activo: true, diaAnterior: true, mismoDia: true, hora: '10:00' },
   ofertas: { activo: true },
