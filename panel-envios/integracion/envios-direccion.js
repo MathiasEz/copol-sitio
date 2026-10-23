@@ -26,9 +26,22 @@
  *         // document.getElementById('UrlMapa').value = dir.urlGoogleMaps;
  *       },
  *       alLimpiar: function () { // el usuario volvió a editar el domicilio: la dirección elegida ya no vale
- *       }
+ *       },
+ *       bloquear: '#BtnConfirmaActualiza, #BtnConfirmaNoActualiza'  // botones de confirmar del sistema (opcional)
  *     });
  *   </script>
+ *
+ * VALIDACIÓN (que no pase una dirección imposible o mal escrita):
+ *   - Número de puerta imposible («Aparicio Saravia 344444441», «… 0»): no se busca ni se ofrece nada para
+ *     elegir, el campo queda marcado en rojo y se explica el motivo. Límite: CONFIG.numeroMaximo (20000).
+ *   - Calle que no existe: no aparece ninguna dirección para elegir.
+ *   - Sin número de puerta: se puede elegir la calle, pero no se valida hasta que se agregue el número
+ *     (o «S/N» si la casa no tiene).
+ *   - «bloquear»: mientras la dirección no sea válida, esos botones (y el formulario si se pasa
+ *     «formulario: '#Form'») no hacen nada y se muestra el motivo. Funciona aunque el botón tenga su propio
+ *     onclick o haga postback. Única excepción: si el servicio de mapas no respondió (sin conexión), pregunta
+ *     si confirmar igual sin verificar (nunca con un número imposible).
+ *   - O a mano, en el código del botón:  var v = control.validar();  if (!v.ok) { alert(v.mensaje); return; }
  *
  * El usuario escribe «Aparicio Saravia 3441» → aparecen las direcciones encontradas → elige una →
  * se completan Domicilio («BV. APARICIO SARAVIA 3441»), Localidad (barrio) y Departamento, y se dibuja
@@ -50,6 +63,9 @@
  *   EnviosDireccion.qrSVG(url, { tamano: 200 })        // QR como texto <svg> (para innerHTML)
  *   EnviosDireccion.qrDataURL(url, { modulo: 8 })      // QR como imagen PNG (para <img src> o imprimir)
  *   EnviosDireccion.partirDireccion('Cañas 229 bis apto 2')
+ *   EnviosDireccion.problemaNumero('344444441')        // motivo si el número es imposible, o ''
+ *   EnviosDireccion.validar(dir)                       // motivo si esa dirección no sirve para un envío, o ''
+ *   (si el número es imposible, buscar() no consulta nada y devuelve r.error = { codigo, mensaje })
  *
  * ─────────────────────────────────────────────────────────────────────────────────────────────
  * OBJETO DIRECCIÓN (cada resultado)
@@ -60,6 +76,7 @@
  *   localidad      'JARDINES DEL HIPÓDROMO'         (barrio o ciudad, para el campo Localidad)
  *   departamento   'Montevideo'                     (uno de EnviosDireccion.DEPARTAMENTOS, o '')
  *   calle, calleCorta, numero, unidad, lugar, barrio, ciudad, cp
+ *   sinNumero      true si se escribió «S/N» (casa sin número de puerta)
  *   lat, lon       coordenadas (números)
  *   precision      'exacta' → el mapa tiene ese número de puerta: el QR usa las coordenadas
  *                  'calle'  → el mapa tiene la calle pero no ese número (pasa mucho en Uruguay):
@@ -85,6 +102,7 @@ var EnviosDireccion = (function () {
     centro: { lat: -34.87, lon: -56.17 }, // prioriza resultados cercanos a Montevideo
     esperaTecleo: 400, // ms sin teclear antes de buscar
     maxResultados: 12,
+    numeroMaximo: 20000, // en Uruguay los números de puerta no llegan a esto: más alto es un error de tipeo
   };
 
   var DEPARTAMENTOS = ['Artigas', 'Canelones', 'Cerro Largo', 'Colonia', 'Durazno', 'Flores', 'Florida', 'Lavalleja', 'Maldonado', 'Montevideo', 'Paysandú', 'Río Negro', 'Rivera', 'Rocha', 'Salto', 'San José', 'Soriano', 'Tacuarembó', 'Treinta y Tres'];
@@ -140,7 +158,7 @@ var EnviosDireccion = (function () {
    * («8 de Octubre») ni de la unidad («apto 2», «piso 3»). */
   function partirDireccion(texto) {
     var t = String(texto || '').trim().replace(/\s+/g, ' ');
-    var re = /(?:^|[\s,])(?:n[°º.]?\s*)?(\d{1,5})\s*(bis|ter)?(?=[\s,]|$)/gi;
+    var re = /(?:^|[\s,])(?:n[°º.]?\s*)?(\d+)\s*(bis|ter)?(?=[\s,]|$)/gi;
     var m;
     while ((m = re.exec(t)) !== null) {
       var antes = t.slice(0, m.index);
@@ -157,6 +175,32 @@ var EnviosDireccion = (function () {
       };
     }
     return { calle: t, numero: '', extra: '', zona: '' };
+  }
+
+  var RE_SIN_NUMERO = /(?:^|\s)s\s*\/\s*n(?=\s|,|$)/i; // «S/N»: casa sin número de puerta
+
+  // Motivo si el número de puerta es imposible («344444441», «0»), o '' si es posible.
+  function problemaNumero(numero) {
+    if (!numero) return '';
+    var n = Number(soloDigitos(numero));
+    if (n === 0) return 'El número de puerta no puede ser 0. Revisá el número.';
+    if (n > CONFIG.numeroMaximo) {
+      return 'El número de puerta ' + soloDigitos(numero) + ' no existe (en Uruguay no pasan de ' +
+        CONFIG.numeroMaximo.toLocaleString('es-UY') + '). Revisá el número.';
+    }
+    return '';
+  }
+
+  // Motivo por el que una dirección elegida no sirve para un envío, o '' si está bien.
+  function validar(dir) {
+    if (!dir) return 'Elegí la dirección de la lista de resultados. Si no aparece, está mal escrita o no existe.';
+    if (dir.precision === 'zona') return 'Elegiste solo una zona (barrio o ciudad). Elegí la calle con el número de puerta.';
+    var problema = problemaNumero(dir.numero);
+    if (problema) return problema;
+    if (!dir.numero && !dir.sinNumero) {
+      return 'Falta el número de puerta. Agregalo al domicilio (o escribí S/N si la casa no tiene) y elegí la dirección de nuevo.';
+    }
+    return '';
   }
 
   /* ---------- Resultados de los servicios ---------- */
@@ -244,13 +288,15 @@ var EnviosDireccion = (function () {
     var precision = r.numeroMapa ? 'exacta' : (r.calle ? 'calle' : 'zona');
     var calleCorta = r.calle ? abreviar(r.calle) : '';
     var numero = numeroPara(r, partes.numero);
-    var unidad = (partes.extra.match(RE_UNIDAD) || []).join(' ');
+    var sinNumero = !numero && !!partes.sinNumero;
+    var unidad = (partes.extra.match(RE_UNIDAD) || []).concat(sinNumero ? ['S/N'] : []).join(' ');
     var principal = calleCorta ? (numero ? calleCorta + ' ' + numero : calleCorta) : (r.lugar || r.barrio || r.ciudad || r.departamento);
     var d = {
       calle: r.calle,
       calleCorta: calleCorta,
       numero: numero,
       unidad: unidad,
+      sinNumero: sinNumero,
       lugar: r.lugar,
       barrio: r.barrio,
       ciudad: r.ciudad,
@@ -301,9 +347,17 @@ var EnviosDireccion = (function () {
    * (o es un «bis»), la búsqueda completa no encuentra nada, pero la calle sí. */
   function buscar(texto, opciones) {
     opciones = opciones || {};
-    var partes = partirDireccion(texto);
+    var sinNumero = RE_SIN_NUMERO.test(texto || '');
+    var partes = partirDireccion(String(texto || '').replace(RE_SIN_NUMERO, ' '));
+    partes.sinNumero = sinNumero && !partes.numero;
     if (partes.calle.length < 3 || !/[a-záéíóúñü]/i.test(partes.calle)) {
       return Promise.resolve({ partes: partes, resultados: [], fallaron: 0, consultas: 0 });
+    }
+    var problema = problemaNumero(partes.numero);
+    if (problema) {
+      // Número imposible: no se consulta nada ni se ofrece nada para elegir.
+      return Promise.resolve({ partes: partes, resultados: [], fallaron: 0, consultas: 0,
+        error: { codigo: 'numero-imposible', mensaje: problema } });
     }
     var calleSola = [partes.calle, partes.zona].filter(Boolean).join(' ');
     var textoLimpio = [partes.calle, soloDigitos(partes.numero), partes.zona].filter(Boolean).join(' ');
@@ -408,6 +462,7 @@ var EnviosDireccion = (function () {
     '.ed-l1{font-weight:bold;font-size:13px}.ed-l2{display:block;color:#666}',
     '.ed-precision{margin-left:8px;padding:0 6px;border:1px solid currentColor;border-radius:9px;font-size:10px;font-weight:bold;white-space:nowrap}',
     '.ed-exacta{color:#2e7d32}.ed-calle{color:#9a6700}.ed-zona{color:#666}',
+    '.ed-invalido{border-color:#b3261e!important;background:#fdecea!important}',
     '.ed-qr{display:inline-block;text-align:center;font:12px Arial,sans-serif}.ed-qr svg{display:block;margin:0 auto 4px}',
   ].join('');
 
@@ -444,9 +499,13 @@ var EnviosDireccion = (function () {
   /* Engancha la búsqueda a los campos existentes. Devuelve un control:
    *   .elegida()          la dirección elegida (OBJETO DIRECCIÓN) o null
    *   .buscar(completa)   busca ya con lo que hay en Domicilio
+   *   .validar()          { ok: true } o { ok: false, mensaje: '…' }: usar antes de confirmar el envío
    *   .limpiar()          descarta la elección, la lista y el QR
-   *   .destruir()         quita todo lo agregado (eventos, lista, QR)
+   *   .destruir()         quita todo lo agregado (eventos, lista, QR, bloqueos)
    * opciones: domicilio (obligatorio), localidad, departamento, resultados, qr, alElegir, alLimpiar,
+   *           bloquear (selector de los botones de confirmar: no hacen nada mientras la dirección no sea válida),
+   *           formulario (selector del formulario: no se envía mientras la dirección no sea válida),
+   *           alBloquear(mensaje) (opcional: en lugar del mensaje bajo el campo, mostrarlo a gusto),
    *           buscarAlEscribir (true), estilos (true: agrega un CSS mínimo con clases «ed-…»),
    *           mayusculas (true: Domicilio y Localidad en mayúsculas, como el sistema). */
   function conectar(opciones) {
@@ -480,6 +539,7 @@ var EnviosDireccion = (function () {
     caja.appendChild(lista);
 
     var elegida = null;
+    var sinConexion = false; // la última búsqueda falló por conexión: único caso en que se puede confirmar sin verificar
     var rellenando = false;
     var temporizador = null;
     var ctrl = null;
@@ -493,6 +553,55 @@ var EnviosDireccion = (function () {
     }
 
     function cerrar() { caja.hidden = true; }
+
+    // Marca el campo Domicilio como inválido (rojo, con el motivo) o lo limpia con ''.
+    function marcar(motivo) {
+      if (motivo) {
+        campoDom.setAttribute('aria-invalid', 'true');
+        campoDom.classList.add('ed-invalido');
+        campoDom.title = motivo;
+      } else if (campoDom.getAttribute('aria-invalid')) {
+        campoDom.removeAttribute('aria-invalid');
+        campoDom.classList.remove('ed-invalido');
+        campoDom.removeAttribute('title');
+      }
+    }
+
+    function validarActual() {
+      var motivo = elegida ? validar(elegida) : (problemaNumero(partirDireccion(campoDom.value.replace(RE_SIN_NUMERO, ' ')).numero) || validar(null));
+      return motivo ? { ok: false, mensaje: motivo } : { ok: true };
+    }
+
+    // Antes de confirmar: deja pasar solo una dirección válida. Si no se pudo verificar por falta de conexión
+    // (y el número no es imposible), pregunta.
+    function permitir() {
+      var v = validarActual();
+      if (v.ok) return true;
+      var numeroImposible = !elegida && problemaNumero(partirDireccion(campoDom.value).numero);
+      if (sinConexion && !elegida && !numeroImposible &&
+          window.confirm('No se pudo verificar la dirección porque el servicio de mapas no responde.\n¿Confirmar igual, sin verificar?')) {
+        return true;
+      }
+      marcar(v.mensaje);
+      if (o.alBloquear) o.alBloquear(v.mensaje);
+      else mostrar(v.mensaje, true);
+      campoDom.focus();
+      return false;
+    }
+
+    function alClicBloqueado(ev) {
+      var objetivo = ev.target && ev.target.closest ? ev.target.closest(o.bloquear) : null;
+      if (!objetivo || permitir()) return;
+      ev.preventDefault();
+      ev.stopImmediatePropagation();
+    }
+
+    function alEnviar(ev) {
+      if (ev.target === formulario && !permitir()) {
+        ev.preventDefault();
+        ev.stopImmediatePropagation();
+      }
+    }
 
     function limpiar() {
       if (ctrl) ctrl.abort();
@@ -527,6 +636,8 @@ var EnviosDireccion = (function () {
       if (ctrl) ctrl.abort();
       ctrl = typeof AbortController === 'function' ? new AbortController() : null;
       var id = ++pedido;
+      sinConexion = false;
+      marcar('');
       mostrar(completa ? 'Buscando en todos los mapas…' : 'Buscando…');
       lista.innerHTML = '';
       return buscar(texto, {
@@ -535,17 +646,25 @@ var EnviosDireccion = (function () {
         signal: ctrl ? ctrl.signal : undefined,
       }).then(function (r) {
         if (id !== pedido) return r;
+        if (r.error) {
+          mostrar(r.error.mensaje, true);
+          marcar(r.error.mensaje);
+          return r;
+        }
         if (r.consultas === 0) {
           if (completa) mostrar('Escribí al menos el nombre de la calle.', true); else cerrar();
           return r;
         }
         pintar(r.resultados);
         if (!r.resultados.length && r.fallaron === r.consultas) {
+          sinConexion = true;
           mostrar('No se pudo consultar el servicio de mapas. Revisá la conexión e intentá de nuevo.', true);
         } else if (!r.resultados.length) {
           mostrar(completa
-            ? 'Sin resultados. Revisá el nombre de la calle o agregá la ciudad (ej.: «Rivera 1234 Maldonado»).'
-            : 'Sin resultados todavía. Apretá Enter para buscar en más mapas, o agregá la ciudad.');
+            ? 'Esa dirección no aparece en el mapa: revisá el nombre de la calle o agregá la ciudad (ej.: «Rivera 1234 Maldonado»).'
+            : 'Sin resultados todavía. Apretá Enter para buscar en más mapas, o agregá la ciudad.', completa);
+        } else if (!r.partes.numero && !r.partes.sinNumero) {
+          mostrar('Elegí la dirección correcta. Falta el número de puerta: agregalo (o escribí S/N si no tiene).');
         } else {
           mostrar('Elegí la dirección correcta' + (completa ? ':' : ' (Enter busca en más mapas):'));
         }
@@ -572,6 +691,7 @@ var EnviosDireccion = (function () {
       }
       rellenando = false;
       cerrar();
+      marcar('');
       if (cajaQR) {
         cajaQR.innerHTML = '';
         var qr = crear('div', 'ed-qr');
@@ -588,6 +708,7 @@ var EnviosDireccion = (function () {
 
     function alEscribir() {
       if (rellenando) return;
+      marcar('');
       if (elegida) {
         elegida = null;
         if (cajaQR) cajaQR.innerHTML = '';
@@ -630,13 +751,21 @@ var EnviosDireccion = (function () {
     campoDom.addEventListener('input', alEscribir);
     campoDom.addEventListener('keydown', alTecla);
     lista.addEventListener('keydown', alTeclaLista);
+    // En fase de captura: corre antes que el onclick / postback propio del botón y lo puede frenar.
+    if (o.bloquear) document.addEventListener('click', alClicBloqueado, true);
+    var formulario = elemento(o.formulario);
+    if (formulario) document.addEventListener('submit', alEnviar, true);
 
     return {
       elegida: function () { return elegida; },
       buscar: function (completa) { return ejecutar(completa !== false); },
+      validar: validarActual,
       limpiar: limpiar,
       destruir: function () {
         limpiar();
+        marcar('');
+        document.removeEventListener('click', alClicBloqueado, true);
+        document.removeEventListener('submit', alEnviar, true);
         campoDom.removeEventListener('input', alEscribir);
         campoDom.removeEventListener('keydown', alTecla);
         lista.removeEventListener('keydown', alTeclaLista);
@@ -647,11 +776,13 @@ var EnviosDireccion = (function () {
   }
 
   return {
-    version: '1.0.0',
+    version: '1.1.0',
     CONFIG: CONFIG,
     DEPARTAMENTOS: DEPARTAMENTOS,
     buscar: buscar,
     partirDireccion: partirDireccion,
+    problemaNumero: problemaNumero,
+    validar: validar,
     urlGoogleMaps: urlGoogleMaps,
     qrSVG: qrSVG,
     qrDataURL: qrDataURL,

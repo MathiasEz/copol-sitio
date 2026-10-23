@@ -17,6 +17,10 @@ Es una página estática (HTML + CSS + JS, sin compilación) que se publica en V
   - con el punto exacto (coordenadas) cuando el número de puerta está verificado o el pin se ajustó a mano;
   - con la dirección escrita cuando el mapa solo encontró la calle (Google la ubica por número de puerta).
   Siempre se puede cambiar el destino y probar el enlace antes de imprimir.
+- **No deja pasar direcciones imposibles o mal escritas:** un número de puerta imposible («Aparicio Saravia
+  344444441», «… 0»; límite 20.000) no se busca y marca el campo en rojo; una calle que no existe no da nada
+  para elegir; y no se puede confirmar el envío sin elegir una dirección de la lista con número de puerta
+  (o «S/N» si la casa no tiene). Solo si el servicio de mapas no responde pregunta si confirmar igual.
 - Imprime un **ticket de 80 mm** para la impresora de facturas o una **etiqueta A4**.
   Todo lo impreso dice **«NO ES UNA FACTURA FISCAL — documento de prueba, ficticio»**.
 - Trae un **socio de prueba** precargado (Socio 123456 · C.I. 78910) y el botón «Cargar socio de prueba».

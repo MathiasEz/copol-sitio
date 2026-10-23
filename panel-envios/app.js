@@ -7,6 +7,7 @@ const DEPARTAMENTOS = ['Artigas', 'Canelones', 'Cerro Largo', 'Colonia', 'Durazn
 const URUGUAY_BBOX = '-58.5,-35.1,-53.0,-30.0'; // oeste,sur,este,norte
 const CENTRO_MVD = { lat: -34.87, lon: -56.17 };
 const ESPERA_TECLEO = 400;
+const NUMERO_MAXIMO = 20000; // en Uruguay los números de puerta no llegan a esto: más alto es un error de tipeo
 
 // Socio ficticio para probar el flujo completo, incluida la impresión.
 const SOCIO_PRUEBA = {
@@ -27,6 +28,8 @@ const estado = {
   lat: null, lon: null, // punto actual del pin
   pinMovido: false,
   unidad: '',          // «apto 2», «piso 3»… escrito después del número
+  sinNumero: false,    // se escribió «S/N» (casa sin número de puerta)
+  sinConexion: false,  // la última búsqueda falló por conexión (único caso en que se deja confirmar sin verificar)
   destino: 'coordenadas',
   pedido: 0,
   abortar: null,
@@ -59,7 +62,7 @@ const RE_UNIDAD = /\b(?:apto?|apt|ap|dpto|depto|piso|block|bl|torre|esc|local|of
  * («8 de Octubre», «18 de Julio») ni de la unidad («apto 2», «piso 3»). */
 function partirDireccion(texto) {
   const t = texto.trim().replace(/\s+/g, ' ');
-  const re = /(?:^|[\s,])(?:n[°º.]?\s*)?(\d{1,5})\s*(bis|ter)?(?=[\s,]|$)/gi;
+  const re = /(?:^|[\s,])(?:n[°º.]?\s*)?(\d+)\s*(bis|ter)?(?=[\s,]|$)/gi;
   for (const m of t.matchAll(re)) {
     const antes = t.slice(0, m.index);
     const despues = t.slice(m.index + m[0].length);
@@ -78,6 +81,17 @@ function partirDireccion(texto) {
 }
 
 const soloDigitos = (n) => String(n).replace(/\D/g, '');
+
+// Devuelve el motivo si el número de puerta es imposible («Aparicio Saravia 344444441»), o '' si es posible.
+function problemaNumero(numero) {
+  if (!numero) return '';
+  const n = Number(soloDigitos(numero));
+  if (n === 0) return 'El número de puerta no puede ser 0. Revisá el número.';
+  if (n > NUMERO_MAXIMO) return `El número de puerta ${soloDigitos(numero)} no existe (en Uruguay no pasan de ${NUMERO_MAXIMO.toLocaleString('es-UY')}). Revisá el número.`;
+  return '';
+}
+
+const RE_SIN_NUMERO = /(?:^|\s)s\s*\/\s*n(?=\s|,|$)/i; // «S/N»: casa sin número de puerta
 
 function unicos(lista) {
   const vistos = new Set();
@@ -226,8 +240,12 @@ function quitarRepetidos(resultados, escrito) {
 }
 
 async function buscar(completa) {
-  const q = campos.domicilio.value.trim();
+  const escritoCompleto = campos.domicilio.value.trim();
+  const sinNumero = RE_SIN_NUMERO.test(escritoCompleto);
+  const q = escritoCompleto.replace(RE_SIN_NUMERO, ' ').trim();
   clearTimeout(estado.temporizador);
+  estado.sinConexion = false;
+  marcarDomicilio('');
   if (q.length < 3 || !/[a-záéíóúñ]/i.test(q)) {
     if (completa) mostrarEstado('Escribí al menos el nombre de la calle.', true);
     return;
@@ -238,13 +256,25 @@ async function buscar(completa) {
   const id = ++estado.pedido;
 
   $('#resultados').hidden = false;
-  $('#resultados-titulo').textContent = `Resultados para «${q}»`;
+  $('#resultados-titulo').textContent = `Resultados para «${escritoCompleto}»`;
   $('#btn-mas').hidden = completa;
+
+  const partes = partirDireccion(q);
+  const problema = problemaNumero(partes.numero);
+  if (problema) {
+    // Número imposible: no se busca ni se ofrece nada para elegir, así no se puede confirmar.
+    estado.abortar?.abort();
+    estado.pedido++;
+    pintarResultados([], '');
+    $('#btn-mas').hidden = true;
+    mostrarEstado(problema, true);
+    marcarDomicilio(problema);
+    return;
+  }
   mostrarEstado(completa ? 'Buscando en todos los mapas…' : 'Buscando…');
 
   // Además del texto completo se busca la calle sola: si el mapa no tiene ese número de puerta
   // (o es un «bis»), la búsqueda completa no encuentra nada, pero la calle sí.
-  const partes = partirDireccion(q);
   const calleSola = [partes.calle, partes.zona].filter(Boolean).join(' ');
   const textoLimpio = [partes.calle, soloDigitos(partes.numero), partes.zona].filter(Boolean).join(' ');
   const fuentes = [buscarPhoton(textoLimpio, ctrl.signal)];
@@ -254,20 +284,24 @@ async function buscar(completa) {
   if (id !== estado.pedido) return; // llegó una búsqueda más nueva
 
   const escrito = partes.numero;
-  estado.unidad = (partes.extra.match(RE_UNIDAD) || []).join(' ');
+  estado.unidad = [(partes.extra.match(RE_UNIDAD) || []).join(' '), !escrito && sinNumero ? 'S/N' : ''].filter(Boolean).join(' ');
+  estado.sinNumero = !escrito && sinNumero;
   const todos = respuestas.flatMap((r) => (r.status === 'fulfilled' ? r.value : []));
   const fallaron = respuestas.filter((r) => r.status === 'rejected' && r.reason?.name !== 'AbortError');
   const lista = quitarRepetidos(ordenar(todos, escrito), escrito).slice(0, 12);
 
   pintarResultados(lista, escrito);
   if (!lista.length && fallaron.length === respuestas.length) {
+    estado.sinConexion = true;
     mostrarEstado('No se pudo consultar el servicio de mapas. Revisá la conexión e intentá de nuevo.', true);
   } else if (!lista.length) {
     mostrarEstado(completa
-      ? 'Sin resultados. Revisá el nombre de la calle o agregá la ciudad (ej.: «Rivera 1234 Maldonado»).'
-      : 'Sin resultados todavía. Probá «Buscar más resultados» o agregá la ciudad.');
+      ? 'Esa dirección no aparece en el mapa: revisá el nombre de la calle o agregá la ciudad (ej.: «Rivera 1234 Maldonado»). Sin elegir una dirección de la lista no se puede confirmar el envío.'
+      : 'Sin resultados todavía. Probá «Buscar más resultados» o agregá la ciudad.', completa);
   } else {
-    mostrarEstado(escrito ? 'Elegí la dirección correcta:' : 'Elegí la dirección correcta (si sabés el número de puerta, agregalo):');
+    mostrarEstado(escrito || sinNumero
+      ? 'Elegí la dirección correcta:'
+      : 'Elegí la dirección correcta. Falta el número de puerta: agregalo (o escribí S/N si no tiene).');
   }
 }
 
@@ -295,7 +329,7 @@ function pintarResultados(lista, escrito) {
 
 /* ---------- Selección ---------- */
 function seleccionar(d, escrito) {
-  estado.elegida = { ...d, numeroFinal: numeroPara(d, escrito) };
+  estado.elegida = { ...d, numeroFinal: numeroPara(d, escrito), sinNumero: estado.sinNumero };
   estado.lat = d.lat;
   estado.lon = d.lon;
   estado.pinMovido = false;
@@ -310,6 +344,31 @@ function seleccionar(d, escrito) {
 
   $('#resultados').hidden = true;
   mostrarUbicacion();
+}
+
+// Marca el campo Domicilio como inválido (con el motivo) o lo limpia con ''.
+function marcarDomicilio(motivo) {
+  if (motivo) {
+    campos.domicilio.setAttribute('aria-invalid', 'true');
+    campos.domicilio.title = motivo;
+  } else {
+    campos.domicilio.removeAttribute('aria-invalid');
+    campos.domicilio.removeAttribute('title');
+  }
+}
+
+// Motivo por el que la dirección no se puede usar para el envío, o '' si está bien.
+function problemaDireccion() {
+  const e = estado.elegida;
+  if (!e) {
+    const problema = problemaNumero(partirDireccion(campos.domicilio.value.replace(RE_SIN_NUMERO, ' ')).numero);
+    return problema || 'Elegí la dirección de la lista de resultados. Si no aparece, está mal escrita o no existe.';
+  }
+  if (e.precision === 'zona') return 'Elegiste solo una zona (barrio o ciudad). Elegí la calle con el número de puerta.';
+  if (!e.numeroFinal && !e.sinNumero) {
+    return 'Falta el número de puerta. Agregalo al domicilio (o escribí S/N si la casa no tiene) y elegí la dirección de nuevo.';
+  }
+  return '';
 }
 
 function invalidarSeleccion() {
@@ -439,16 +498,24 @@ function aviso(texto, tipo, acciones = []) {
 }
 
 function confirmar(accion) {
-  const faltan = [];
-  if (!campos.domicilio.value.trim()) faltan.push('domicilio');
-  if (!campos.depto.value) faltan.push('departamento');
-  if (faltan.length) {
-    aviso(`Falta completar: ${faltan.join(' y ')}.`, 'error');
-    (faltan[0] === 'domicilio' ? campos.domicilio : campos.depto).focus();
+  if (!campos.domicilio.value.trim()) {
+    aviso('Falta completar: domicilio.', 'error');
+    campos.domicilio.focus();
     return;
   }
-  if (!estado.elegida && !window.confirm('La dirección no fue verificada en el mapa, así que el envío no tendrá QR.\n¿Confirmar igual?')) {
+  const problema = problemaDireccion();
+  // Solo se deja seguir sin dirección verificada si el servicio de mapas no respondió (sin conexión),
+  // y nunca con un número de puerta imposible.
+  const puedeForzar = estado.sinConexion && !estado.elegida && !problemaNumero(partirDireccion(campos.domicilio.value).numero);
+  if (problema && !(puedeForzar && window.confirm('No se pudo verificar la dirección porque el servicio de mapas no responde.\nEl envío no tendrá QR. ¿Confirmar igual?'))) {
+    aviso(problema, 'error');
+    marcarDomicilio(problema);
     campos.domicilio.focus();
+    return;
+  }
+  if (!campos.depto.value) {
+    aviso('Falta completar: departamento.', 'error');
+    campos.depto.focus();
     return;
   }
   const texto = accion === 'actualiza'
@@ -574,6 +641,8 @@ function reiniciar() {
   estado.abortar?.abort();
   estado.pedido++;
   invalidarSeleccion();
+  marcarDomicilio('');
+  estado.sinConexion = false;
   $('#resultados').hidden = true;
   $('#aviso').hidden = true;
   estado.sucio = false;
@@ -592,6 +661,7 @@ campos.fecha.valueAsDate = new Date();
 
 campos.domicilio.addEventListener('input', () => {
   invalidarSeleccion();
+  marcarDomicilio('');
   clearTimeout(estado.temporizador);
   estado.temporizador = setTimeout(() => buscar(false), ESPERA_TECLEO);
 });

@@ -35,7 +35,14 @@
 
     <div id="resultados-direccion"></div>
     <div id="qr-envio" style="margin-top:10px"></div>
+
+    <!-- Botones de confirmar del sistema, con su propio onclick: se bloquean si la dirección no es válida -->
+    <p>
+      <button type="button" id="BtnConfirmaActualiza" onclick="confirmado('Confirma y Actualiza')">Confirma y Actualiza</button>
+      <button type="button" id="BtnConfirmaNoActualiza" onclick="confirmado('Confirma y NO Actualiza')">Confirma y NO Actualiza</button>
+    </p>
   </form>
+  <p id="resultado-confirmar"></p>
   <p>Campos ocultos: <code id="ver-ocultos">—</code></p>
 
   <script src="envios-direccion.js"></script>
@@ -52,11 +59,18 @@
         document.getElementById('Longitud').value = dir.lon;
         document.getElementById('ver-ocultos').textContent = dir.urlGoogleMaps + ' · ' + dir.lat + ', ' + dir.lon + ' · ' + dir.precision;
       },
+      bloquear: '#BtnConfirmaActualiza, #BtnConfirmaNoActualiza',
       alLimpiar: function () {
         ['UrlMapa', 'Latitud', 'Longitud'].forEach(function (id) { document.getElementById(id).value = ''; });
         document.getElementById('ver-ocultos').textContent = '—';
       }
     });
+
+    // Lo que ya hacía el sistema al confirmar (acá solo muestra un texto).
+    function confirmado(boton) {
+      document.getElementById('resultado-confirmar').textContent = boton + ': envío confirmado con ' +
+        document.getElementById('Domicilio').value + ' · ' + document.getElementById('UrlMapa').value;
+    }
   </script>
 </body>
 </html>

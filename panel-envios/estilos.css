@@ -134,6 +134,7 @@ input[type="date"].grande { width: 9.2em; }
 }
 select.caja { height: 20px; padding: 0 2px; }
 .caja:focus { outline: 2px solid rgba(36, 114, 124, .35); border-color: var(--teal); }
+.caja[aria-invalid="true"] { border-color: var(--rojo); background: #fdecea; outline-color: rgba(179, 38, 30, .35); }
 .grilla-envio .ancho { grid-column: span 3; }
 
 .campo-buscar { display: flex; gap: 3px; }
