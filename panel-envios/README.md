@@ -46,3 +46,11 @@ npx serve panel-envios
 ## Publicar
 
 Proyecto de Vercel `copol-envios` (sin framework, sin build). Desde esta carpeta: `vercel deploy --prod`.
+
+## Integrar en el sistema original
+
+`integracion/envios-direccion.js` es **un solo archivo, sin dependencias** (la librería de QR va adentro) con
+la búsqueda de la dirección, el enlace a Google Maps y el QR, sin la interfaz de este panel. Se agrega con un
+`<script>` y se engancha a los campos existentes con `EnviosDireccion.conectar({...})`; las instrucciones y
+todas las funciones están explicadas al principio del archivo. `integracion/ejemplo.html` es una página mínima
+de prueba (también publicada en `/integracion/ejemplo.html`).

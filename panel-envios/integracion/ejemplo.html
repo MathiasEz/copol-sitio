@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="es-UY">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Ejemplo de integración · envios-direccion.js</title>
+  <style>
+    body { margin: 16px; font: 12px Verdana, Arial, sans-serif; background: #fff; color: #222; }
+    label { font-weight: bold; margin-right: 4px; }
+    input, select { margin-right: 14px; }
+    code { background: #f2f2f2; padding: 1px 4px; }
+  </style>
+</head>
+<body>
+  <!-- Campos como los del sistema original (los id son de ejemplo: usar los reales). -->
+  <form action="#" onsubmit="return false">
+    <label for="Domicilio">Domicilio para envío</label><input id="Domicilio" size="30">
+    <label for="Localidad">Localidad</label><input id="Localidad" size="26">
+    <label for="CodDepto">Cod. Depto.</label>
+    <select id="CodDepto">
+      <option value="">—</option>
+      <option value="1">Artigas</option><option value="2">Canelones</option><option value="3">Cerro Largo</option>
+      <option value="4">Colonia</option><option value="5">Durazno</option><option value="6">Flores</option>
+      <option value="7">Florida</option><option value="8">Lavalleja</option><option value="9">Maldonado</option>
+      <option value="10">Montevideo</option><option value="11">Paysandu</option><option value="12">Rio Negro</option>
+      <option value="13">Rivera</option><option value="14">Rocha</option><option value="15">Salto</option>
+      <option value="16">San Jose</option><option value="17">Soriano</option><option value="18">Tacuarembo</option>
+      <option value="19">Treinta y Tres</option>
+    </select>
+    <!-- Campos ocultos para mandar al servidor junto con el envío -->
+    <input type="hidden" id="UrlMapa" name="UrlMapa">
+    <input type="hidden" id="Latitud" name="Latitud">
+    <input type="hidden" id="Longitud" name="Longitud">
+
+    <div id="resultados-direccion"></div>
+    <div id="qr-envio" style="margin-top:10px"></div>
+  </form>
+  <p>Campos ocultos: <code id="ver-ocultos">—</code></p>
+
+  <script src="envios-direccion.js"></script>
+  <script>
+    EnviosDireccion.conectar({
+      domicilio: '#Domicilio',
+      localidad: '#Localidad',
+      departamento: '#CodDepto',
+      resultados: '#resultados-direccion',
+      qr: '#qr-envio',
+      alElegir: function (dir) {
+        document.getElementById('UrlMapa').value = dir.urlGoogleMaps;
+        document.getElementById('Latitud').value = dir.lat;
+        document.getElementById('Longitud').value = dir.lon;
+        document.getElementById('ver-ocultos').textContent = dir.urlGoogleMaps + ' · ' + dir.lat + ', ' + dir.lon + ' · ' + dir.precision;
+      },
+      alLimpiar: function () {
+        ['UrlMapa', 'Latitud', 'Longitud'].forEach(function (id) { document.getElementById(id).value = ''; });
+        document.getElementById('ver-ocultos').textContent = '—';
+      }
+    });
+  </script>
+</body>
+</html>
