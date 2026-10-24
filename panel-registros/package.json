@@ -1,9 +1,9 @@
 {
   "name": "copol-registros",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "Panel de registros de COPOL (formulario + asistente de IA) que carga filas en una planilla de Excel en la nube. Proyecto de Vercel aparte del sitio.",
+  "description": "Panel de registros de COPOL: formulario con asistente de IA (chat y dictado), usuarios con PIN, contraseña y código por correo, y planilla de Excel. Proyecto de Vercel aparte del sitio.",
   "engines": {
     "node": ">=22"
   },
