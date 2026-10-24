@@ -1,0 +1,163 @@
+---
+// Política de privacidad del sitio y de la app de socios (Ley 18.331 y Decreto 414/009). Describe lo que el
+// código hace hoy con los datos: formulario de contacto, estadísticas propias sin cookies (panel/src/estadisticas.ts),
+// registro de celulares para avisos (src/pages/api/app/v1/dispositivos.ts) y panel interno. Es la dirección que
+// se carga en Google Play y App Store. Vigencia y revisión legal: src/data/confirmado/privacidad.ts.
+import Base from '../layouts/Base.astro';
+import EncabezadoPagina from '../components/EncabezadoPagina.astro';
+import Alert from '../components/ui/Alert.astro';
+import { CONTACTO, SITIO } from '../data/confirmado/sitio';
+import { PRIVACIDAD } from '../data/confirmado/privacidad';
+
+const indice = [
+  { id: 'responsable', texto: 'Quién es responsable' },
+  { id: 'datos', texto: 'Qué datos usamos y para qué' },
+  { id: 'cookies', texto: 'Cookies' },
+  { id: 'terceros', texto: 'Con quién se comparten' },
+  { id: 'exterior', texto: 'Datos fuera de Uruguay' },
+  { id: 'plazos', texto: 'Cuánto tiempo se guardan' },
+  { id: 'derechos', texto: 'Tus derechos' },
+  { id: 'seguridad', texto: 'Seguridad' },
+  { id: 'menores', texto: 'Menores de edad' },
+  { id: 'cambios', texto: 'Cambios en esta política' },
+];
+---
+<Base titulo="Política de privacidad" descripcion="Cómo COPOL usa y protege los datos personales en su sitio web y en la app de socios, y cómo ejercer tus derechos según la Ley 18.331.">
+  <EncabezadoPagina
+    titulo="Política de privacidad"
+    bajada="Qué datos usamos en este sitio y en la app de socios, para qué, y cómo podés consultarlos, corregirlos o pedir que se borren."
+    migas={[{ texto: 'Política de privacidad' }]}
+  />
+
+  <div class="contenedor privacidad">
+    <aside class="privacidad__indice" aria-labelledby="indice-titulo">
+      <h2 id="indice-titulo">En esta página</h2>
+      <ol>{indice.map((s) => <li><a href={`#${s.id}`}>{s.texto}</a></li>)}</ol>
+    </aside>
+
+    <div class="privacidad__texto">
+      {!PRIVACIDAD.revisadaPorLegal && (
+        <Alert variant="pendiente" titulo="Texto preliminar">
+          Esta política está pendiente de revisión por la asesoría legal de la cooperativa y puede cambiar.
+        </Alert>
+      )}
+
+      <section id="responsable" aria-labelledby="responsable-titulo">
+        <h2 id="responsable-titulo">Quién es responsable de tus datos</h2>
+        <p>La responsable es la {SITIO.nombreCompleto} ({SITIO.nombre}), con Casa Central en {CONTACTO.casaCentral.direccion}, {CONTACTO.casaCentral.ciudad}, Uruguay.</p>
+        <p>Por cualquier tema de esta política escribinos a <a href={`mailto:${CONTACTO.email}`}>{CONTACTO.email}</a>, llamá al <a href={CONTACTO.telefono.href}>{CONTACTO.telefono.texto}</a> o acercate a Casa Central.</p>
+        <p>Esta política cubre el sitio cooperativapolicial.com.uy y la app de socios de COPOL. El Acceso web de socios y el de funcionarios (copol.com.uy) son sistemas aparte, con sus propias condiciones.</p>
+      </section>
+
+      <section id="datos" aria-labelledby="datos-titulo">
+        <h2 id="datos-titulo">Qué datos usamos y para qué</h2>
+        <p>Usamos solo los datos necesarios para cada cosa, y nunca para enviarte publicidad sin que la pidas.</p>
+
+        <h3>Formulario de contacto</h3>
+        <p>Nombre y apellido, correo electrónico, teléfono (si lo ponés), motivo y el texto de tu consulta. Los usamos únicamente para responderte.</p>
+
+        <h3>Consultas por WhatsApp y Carrito COPOL</h3>
+        <p>Los botones de WhatsApp abren una conversación con nuestro número con un mensaje ya escrito (por ejemplo, el producto y el color que te interesan). Recibimos ese mensaje solo si vos lo enviás, junto con tu número y tu nombre de WhatsApp. El carrito del Bazar se guarda solo en tu navegador: no nos llega nada hasta que mandás la lista por WhatsApp.</p>
+
+        <h3>Estadísticas de visitas</h3>
+        <p>Contamos cuántas veces se ve cada página, de qué sitio llegan las visitas, si son desde celular o computadora y los clics en WhatsApp, banners y productos. Lo hacemos sin cookies y sin guardar tu dirección IP. Para no contar dos veces a la misma persona en un día usamos un código irreversible que cambia cada día y se borra a los dos días, así que no se puede seguir a nadie de un día a otro.</p>
+
+        <h3>App de socios</h3>
+        <p>Para mostrarte novedades, ofertas y el Bazar, la app solo descarga información pública. Si activás los avisos, guardamos el identificador de avisos que el celular genera para la app, el sistema (Android o iPhone) y los temas que elegiste. Ese identificador no incluye tu nombre, cédula, número de teléfono ni correo. Lo usamos solo para mandarte los avisos que pediste.</p>
+
+        <h3>Mapas</h3>
+        <p>Los mapas de Locales y Convenios se cargan desde OpenFreeMap. Para dibujarlos, tu navegador le pide las imágenes del mapa a ese servicio, como pasa con cualquier mapa en internet. No le enviamos ningún dato tuyo.</p>
+
+        <h3>Seguridad del sitio</h3>
+        <p>Nuestro proveedor de alojamiento registra datos técnicos de cada visita (como la dirección IP y el navegador) para proteger el sitio de ataques y resolver fallas.</p>
+
+        <h3>Personal de COPOL</h3>
+        <p>Quienes administran el sitio entran a un panel interno con usuario y contraseña. De esas cuentas guardamos el usuario, el correo, los ingresos (dirección IP, lugar aproximado y equipo) y los cambios que hace cada persona, para proteger el sistema y saber quién modificó qué.</p>
+      </section>
+
+      <section id="cookies" aria-labelledby="cookies-titulo">
+        <h2 id="cookies-titulo">Cookies</h2>
+        <p>El sitio público no usa cookies de publicidad ni de seguimiento, ni herramientas de medición de terceros. Solo el panel interno del personal usa cookies, para mantener la sesión iniciada.</p>
+      </section>
+
+      <section id="terceros" aria-labelledby="terceros-titulo">
+        <h2 id="terceros-titulo">Con quién se comparten</h2>
+        <p>No vendemos ni cedemos tus datos. Para que el sitio y la app funcionen trabajamos con estos proveedores, que tratan los datos por cuenta de COPOL y solo para el servicio que nos prestan:</p>
+        <ul>
+          <li><strong>Vercel</strong>: alojamiento del sitio y de la app.</li>
+          <li><strong>Turso</strong>: base de datos.</li>
+          <li><strong>Resend</strong>: envío de correos.</li>
+          <li><strong>Expo</strong>, con los servicios de avisos de Google y Apple: entrega de los avisos de la app.</li>
+          <li><strong>OpenFreeMap</strong>: imágenes de los mapas.</li>
+          <li><strong>WhatsApp</strong> (Meta): solo cuando decidís escribirnos por ese medio.</li>
+        </ul>
+        <p>También podemos entregar datos a organismos públicos cuando una ley o una orden judicial lo exija.</p>
+      </section>
+
+      <section id="exterior" aria-labelledby="exterior-titulo">
+        <h2 id="exterior-titulo">Datos fuera de Uruguay</h2>
+        <p>Algunos de esos proveedores guardan o procesan datos en servidores fuera de Uruguay, por ejemplo en Estados Unidos. Elegimos proveedores que se comprometen por contrato a proteger los datos y a usarlos solo para prestarnos el servicio. Al enviarnos tus datos por el formulario o al activar los avisos de la app, aceptás esa transferencia, según el artículo 23 de la Ley 18.331.</p>
+      </section>
+
+      <section id="plazos" aria-labelledby="plazos-titulo">
+        <h2 id="plazos-titulo">Cuánto tiempo se guardan</h2>
+        <ul>
+          <li><strong>Consultas del formulario</strong>: el tiempo necesario para responderte y hacer el seguimiento de tu consulta.</li>
+          <li><strong>Estadísticas</strong>: los totales por día se guardan sin datos personales; el código de visitante se borra a los dos días.</li>
+          <li><strong>Avisos de la app</strong>: el identificador se borra cuando apagás los avisos en la app, cuando desinstalás la app o después de 180 días sin que la app se conecte.</li>
+          <li><strong>Carrito</strong>: queda en tu navegador hasta que lo vacíes o borres los datos del navegador.</li>
+        </ul>
+      </section>
+
+      <section id="derechos" aria-labelledby="derechos-titulo">
+        <h2 id="derechos-titulo">Tus derechos</h2>
+        <p>Según la Ley 18.331 de Protección de Datos Personales podés, sin costo:</p>
+        <ul>
+          <li>saber qué datos tuyos tenemos y cómo los usamos (acceso);</li>
+          <li>pedir que se corrijan, actualicen o completen (rectificación, actualización e inclusión);</li>
+          <li>pedir que se borren cuando ya no sean necesarios (supresión).</li>
+        </ul>
+        <p>Para hacerlo escribinos a <a href={`mailto:${CONTACTO.email}`}>{CONTACTO.email}</a> o acercate a Casa Central con tu documento de identidad. Te respondemos dentro de los 5 días hábiles que fija la ley. Para dejar de recibir avisos de la app no hace falta pedirlo: se apagan desde la misma app o desde los ajustes del celular.</p>
+        <p>Si no quedás conforme con nuestra respuesta podés presentar una denuncia ante la <a href="https://www.gub.uy/unidad-reguladora-control-datos-personales/" rel="noopener">Unidad Reguladora y de Control de Datos Personales (URCDP)</a>.</p>
+      </section>
+
+      <section id="seguridad" aria-labelledby="seguridad-titulo">
+        <h2 id="seguridad-titulo">Seguridad</h2>
+        <p>El sitio y la app se comunican siempre con conexión cifrada (HTTPS). El panel interno pide un PIN y una contraseña personal, y registra cada ingreso y cada cambio. Las copias de respaldo se guardan cifradas. Solo el personal autorizado de COPOL puede ver los datos, y únicamente los que necesita para su tarea.</p>
+      </section>
+
+      <section id="menores" aria-labelledby="menores-titulo">
+        <h2 id="menores-titulo">Menores de edad</h2>
+        <p>El sitio y la app están pensados para socios y personas mayores de edad. No pedimos datos de menores de 18 años. Si sabés que un menor nos envió sus datos, avisanos y los borramos.</p>
+      </section>
+
+      <section id="cambios" aria-labelledby="cambios-titulo">
+        <h2 id="cambios-titulo">Cambios en esta política</h2>
+        <p>Si cambiamos la forma en que usamos los datos, actualizamos esta página y su fecha. Si el cambio es importante, también lo avisamos en el sitio o en la app.</p>
+        <p class="privacidad__vigencia">Vigente desde el {PRIVACIDAD.vigenteDesde}.</p>
+      </section>
+    </div>
+  </div>
+</Base>
+
+<style>
+  .privacidad { display: grid; gap: 32px; padding-block: clamp(24px, 4vw, 48px) var(--seccion); }
+  @media (min-width: 960px) {
+    .privacidad { grid-template-columns: 260px minmax(0, 1fr); gap: 56px; align-items: start; }
+    .privacidad__indice { position: sticky; top: 120px; }
+  }
+
+  .privacidad__indice { display: grid; gap: 10px; }
+  .privacidad__indice h2 { font-size: 0.8125rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--verde-oscuro); }
+  .privacidad__indice ol { margin: 0; padding-left: 22px; display: grid; gap: 2px; font-size: 0.9375rem; }
+  .privacidad__indice a { display: inline-block; padding-block: 5px; color: var(--tinta); }
+  .privacidad__indice a:hover { color: var(--verde-oscuro); }
+
+  .privacidad__texto { display: grid; gap: 40px; max-width: 72ch; min-width: 0; }
+  .privacidad__texto section { display: grid; gap: 12px; scroll-margin-top: 120px; }
+  .privacidad__texto h2 { font-size: clamp(1.375rem, 2.4vw, 1.75rem); }
+  .privacidad__texto h3 { font-size: 1.0625rem; margin-top: 10px; }
+  .privacidad__texto ul { margin: 0; padding-left: 22px; display: grid; gap: 6px; }
+  .privacidad__texto a { color: var(--verde-oscuro); text-decoration: underline; text-underline-offset: 3px; overflow-wrap: anywhere; }
+  .privacidad__vigencia { color: var(--muted-foreground); font-size: 0.9375rem; }
+</style>

@@ -23,7 +23,7 @@ export interface EventoWeb {
 }
 
 // Secciones del sitio que se cuentan por separado; cualquier otra dirección se cuenta como "Otras".
-const RUTAS = /^\/(?:$|sobre-nosotros\/(?:locales\/|nuestra-historia\/)?$|beneficios\/(?:convenios\/|servicios-sociales\/(?:[a-z0-9-]{2,40}\/)?)?$|hipermercado\/(?:bazar\/|tienda\/|promociones\/)?$|hacete-socio\/$|contacto\/$|acceso-web\/$|portal-empleados\/$)/;
+const RUTAS = /^\/(?:$|sobre-nosotros\/(?:locales\/|nuestra-historia\/)?$|beneficios\/(?:convenios\/|servicios-sociales\/(?:[a-z0-9-]{2,40}\/)?)?$|hipermercado\/(?:bazar\/|tienda\/|promociones\/)?$|hacete-socio\/$|contacto\/$|acceso-web\/$|portal-empleados\/$|privacidad\/$)/;
 const BOTS = /bot|crawl|spider|slurp|headless|lighthouse|pingdom|preview|facebookexternalhit|whatsapp|curl|wget|python|node-fetch|axios/i;
 
 const limpiar = (v: unknown, max: number) => (typeof v === 'string' ? v.replace(/[\u0000-\u001F\u007F]/g, '').replace(/\s+/g, ' ').trim().slice(0, max) : '');
@@ -157,6 +157,6 @@ export const NOMBRES_RUTA: Record<string, string> = {
   '/': 'Inicio', '/sobre-nosotros/': 'Sobre nosotros', '/sobre-nosotros/locales/': 'Locales', '/sobre-nosotros/nuestra-historia/': 'Nuestra historia',
   '/beneficios/': 'Beneficios', '/beneficios/convenios/': 'Convenios', '/beneficios/servicios-sociales/': 'Servicios sociales',
   '/hipermercado/': 'Hipermercado', '/hipermercado/bazar/': 'Bazar', '/hipermercado/tienda/': 'Tienda', '/hipermercado/promociones/': 'Promociones',
-  '/hacete-socio/': 'Hacete socio', '/contacto/': 'Contacto', '/acceso-web/': 'Acceso web', '/portal-empleados/': 'Portal de empleados', '/otras/': 'Otras direcciones',
+  '/hacete-socio/': 'Hacete socio', '/contacto/': 'Contacto', '/acceso-web/': 'Acceso web', '/portal-empleados/': 'Portal de empleados', '/privacidad/': 'Política de privacidad', '/otras/': 'Otras direcciones',
 };
 export const nombreRuta = (r: string) => NOMBRES_RUTA[r] ?? (r.startsWith('/beneficios/servicios-sociales/') ? `Servicio: ${r.split('/')[3]}` : r);

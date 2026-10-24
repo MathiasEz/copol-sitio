@@ -60,6 +60,6 @@ Cargados en `src/data/confirmado/historia.ts` con `pendiente`; se publican cuand
 2. Logotipo e **isotipo en SVG** y sus versiones aprobadas (negativo y monocromo), además de los vectores de la ilustración y la trama.
 3. **Fotos reales**: fachada de cada local, Pinecoop (cabañas, interior), Casa Central y su interior, Cantinas Policiales (originales sin captura).
 4. Catálogo del **Hipermercado** y piezas de **promociones** vigentes, sin precios.
-5. Texto de la **política de privacidad**.
+5. Revisión legal de la **política de privacidad** (borrador en `/privacidad/`).
 6. Confirmaciones de la tabla anterior.
 7. Acceso a **dominio/DNS** y elección de **hosting** y **backend del formulario**.

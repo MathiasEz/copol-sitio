@@ -11,7 +11,7 @@ El sitio está listo para publicarse en **Vercel** (pasos en el [README](../READ
 | P3 | **Dominio y DNS** | Falta acceso y aprobación | Cooperativa / proveedor actual (mvdsimple / mvdgestiona) | Agregar el dominio en Vercel y crear los registros DNS que indique, en la ventana de cambio acordada con el proveedor de Odoo. No se tocó el DNS. |
 | P4 | **Redirecciones 301** | Listas | — | Las de `astro.config.mjs` (`/locales`, `/bazar`, `/como-hacerte-socio`, etc.) se publican en Vercel como redirecciones permanentes del servidor. |
 | P5 | **Licencia web de Articulat CF** | Falta | Cooperativa | Sin ella se mantiene la fuente provisoria Figtree. |
-| P6 | **Política de privacidad** | Falta | Cooperativa (asesoría legal) | El formulario recoge datos personales (Ley 18.331 de Protección de Datos Personales). Se necesita el texto y una página para enlazarlo desde el formulario. |
+| P6 | **Política de privacidad** | Borrador publicado en `/privacidad/`; falta revisión legal | Cooperativa (asesoría legal) | Texto preliminar según la Ley 18.331, enlazado desde el formulario y el pie, y listo para cargar en Google Play y App Store. Muestra el aviso "Texto preliminar" hasta que la asesoría lo apruebe: entonces pasar `revisadaPorLegal` a `true` en `src/data/confirmado/privacidad.ts`. |
 | P8 | **Panel de stock en producción** | Listo; se publica con el sitio en una dirección no adivinable (ver `BASE` en `panel/src/config.ts`) | Cooperativa | Cargar los datos en Turso, crear el administrador principal y programar respaldos (`npm run panel:respaldo`) guardados fuera del equipo. Ver [panel-stock.md](panel-stock.md). |
 | P7 | **Confirmar la app Android** | Pendiente | Cooperativa | Confirmar si el APK `copol.com.uy/CopolSocios/Copol.apk` (sin cambios desde 2021) es el vigente o si hay un enlace a Google Play. Se configura en `ACCESO.appAndroid` (`src/data/confirmado/sitio.ts`). |
 
@@ -40,7 +40,7 @@ Pasos: (1) elegir opción; (2) crear `.env` con `PUBLIC_FORM_ENDPOINT=…` o def
 - [ ] `npm run verificar` sin errores.
 - [ ] `node scripts/check-site.mjs --externos` sin avisos relevantes.
 - [ ] Formulario configurado y probado de punta a punta.
-- [ ] Política de privacidad publicada y enlazada.
+- [ ] Política de privacidad aprobada por la asesoría legal (borrador publicado y enlazado en `/privacidad/`).
 - [ ] Redirecciones 301 activas y probadas.
 - [ ] DNS apuntando al nuevo hosting, con HTTPS válido.
 - [ ] Sitemap enviado a Search Console.
