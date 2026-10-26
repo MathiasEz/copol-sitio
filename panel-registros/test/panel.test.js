@@ -467,6 +467,23 @@ describe('Excel en la nube', () => {
     assert.equal((await admin.json('planilla')).status, 409, 'con Excel conectado no hay planilla de prueba');
   });
 
+  test('con EXCEL_ENLACE abre el archivo por el enlace de compartir y escribe en él', async () => {
+    const admin = await configurarPanel();
+    const enlace = 'https://1drv.ms/x/c/7a79ce3301c1d537/IQDSCTxwoIO9S6lF7W_ZuCNiART_3Cl_bp9f9cwUKbvGuxA?e=vthQe9';
+    Object.assign(process.env, { MS_CLIENT_ID: 'id', MS_CLIENT_SECRET: 's', MS_USUARIO: 'registros@copol.test', MS_TENANT: 'inquilino', EXCEL_ENLACE: enlace });
+    const [patron, manejador, estado] = graphFalso({ tabla: true });
+    const esperado = `/shares/u!${Buffer.from(enlace).toString('base64url')}/driveItem`;
+    rutas.push([/login\.microsoftonline\.com/, () => responder({ access_token: 'a', expires_in: 3600 })],
+      [/graph\.microsoft\.com\/v1\.0\/shares\//, (u) => {
+        assert.equal(new URL(u).pathname.replace('/v1.0', ''), esperado);
+        return responder({ id: 'ITEM1', name: 'Registros copol.xlsx', webUrl: 'https://onedrive.test/x', parentReference: { driveId: 'DRIVE1' } });
+      }], [patron, manejador]);
+    assert.equal((await admin.json('estado')).planilla.nombre, 'Registros copol.xlsx');
+    assert.equal((await admin.post('registro', REGISTRO)).status, 200);
+    assert.equal(estado.filas.length, 1);
+    assert.ok(llamadas.some((l) => l.url.includes('/drives/DRIVE1/items/ITEM1/workbook/tables/Registros/rows/add')));
+  });
+
   test('modo cuenta: el administrador conecta solo la cuenta indicada y el permiso se renueva', async () => {
     const admin = await configurarPanel();
     Object.assign(process.env, { MS_CLIENT_ID: 'id', MS_CLIENT_SECRET: 's', MS_CUENTA: 'Planillas@outlook.com', EXCEL_RUTA: 'Registros COPOL.xlsx' });

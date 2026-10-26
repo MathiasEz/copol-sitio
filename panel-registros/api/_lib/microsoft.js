@@ -29,6 +29,7 @@ export function usarFetch(f) {
   pedir = f;
   cacheToken = null;
   cacheArchivo = null;
+  baseItem = null;
 }
 
 const env = () => process.env;
@@ -122,6 +123,7 @@ async function guardarTokens(t) {
 export async function desconectar() {
   cacheToken = null;
   cacheArchivo = null;
+  baseItem = null;
   await almacen.borrar('ms:renovacion');
   await almacen.borrar('ms:acceso');
   await almacen.borrar('ms:cuenta');
@@ -171,6 +173,7 @@ export async function completarConexion({ codigo, redireccion, verificador }) {
     throw new ErrorPlanilla(`Se inició sesión con ${correos[0] ?? 'otra cuenta'}, pero la planilla es de ${env().MS_CUENTA}. Volvé a conectar eligiendo esa cuenta.`, { status: 403 });
   }
   cacheArchivo = null;
+  baseItem = null;
   await guardarTokens(t);
   await almacen.guardar('ms:cuenta', esperada);
   return esperada;
@@ -207,7 +210,13 @@ async function graph(camino, { metodo = 'GET', cuerpo } = {}) {
 }
 
 const unidad = () => (modoMicrosoft() === 'aplicacion' ? `/users/${encodeURIComponent(env().MS_USUARIO)}/drive` : '/me/drive');
-const archivo = () => `${unidad()}/root:/${ruta().split('/').map(encodeURIComponent).join('/')}:`;
+// Con EXCEL_ENLACE (el enlace de «Compartir» del archivo en OneDrive) el archivo se busca por ese enlace y desde
+// ahí se trabaja con su identificador; sin él, por la ruta dentro del OneDrive de la cuenta (EXCEL_RUTA).
+const enlaceArchivo = () => (env().EXCEL_ENLACE || '').trim();
+const idEnlace = (u) => `u!${Buffer.from(u).toString('base64url')}`;
+let baseItem = null; // /drives/{id}/items/{id}, resuelto desde el enlace
+const origenArchivo = () => enlaceArchivo() || ruta();
+const archivo = () => (enlaceArchivo() ? baseItem : `${unidad()}/root:/${ruta().split('/').map(encodeURIComponent).join('/')}:`);
 const libro = () => `${archivo()}/workbook`;
 const comillas = (s) => s.replace(/'/g, "''");
 const letra = (n) => String.fromCharCode(64 + n);
@@ -222,17 +231,28 @@ function traducir(e) {
     return new ErrorPlanilla('Microsoft no aceptó el permiso. Si sigue pasando, volvé a conectar la cuenta.', { reconectar: modoMicrosoft() === 'cuenta' });
   }
   if (e.status === 403) return new ErrorPlanilla('La cuenta no tiene permiso para modificar la planilla de Excel.');
-  if (e.status === 404 && /itemNotFound/i.test(e.codigo)) return new ErrorPlanilla(`No se encontró la planilla «${ruta()}» en OneDrive. Revisá EXCEL_RUTA.`, { status: 503 });
+  if (e.status === 404 && /itemNotFound/i.test(e.codigo)) {
+    return new ErrorPlanilla(enlaceArchivo()
+      ? 'No se pudo abrir la planilla con el enlace (EXCEL_ENLACE). Revisá que el enlace sea de «Compartir» con permiso de edición y que la cuenta conectada tenga acceso.'
+      : `No se encontró la planilla «${ruta()}» en OneDrive. Revisá EXCEL_RUTA.`, { status: 503 });
+  }
   if (e.name === 'TimeoutError' || e.name === 'AbortError') return new ErrorPlanilla('Excel tardó demasiado en responder. Probá de nuevo; si la fila aparece duplicada, borrá una.', { status: 504 });
   return new ErrorPlanilla('Excel no respondió como se esperaba. Probá de nuevo en un momento.');
 }
 
 /** Nombre y enlace para abrir la planilla en Excel para la web. */
 export async function infoArchivo() {
-  if (cacheArchivo?.ruta === ruta()) return cacheArchivo;
+  if (cacheArchivo?.ruta === origenArchivo()) return cacheArchivo;
   try {
-    const item = await graph(`${archivo()}?$select=name,webUrl`);
-    cacheArchivo = { ruta: ruta(), nombre: item.name, enlace: item.webUrl, tablaLista: false };
+    let item;
+    if (enlaceArchivo()) {
+      item = await graph(`/shares/${idEnlace(enlaceArchivo())}/driveItem?$select=id,name,webUrl,parentReference`);
+      if (!item.parentReference?.driveId) throw Object.assign(new Error('el enlace no es de un archivo'), { status: 404, codigo: 'itemNotFound' });
+      baseItem = `/drives/${encodeURIComponent(item.parentReference.driveId)}/items/${encodeURIComponent(item.id)}`;
+    } else {
+      item = await graph(`${archivo()}?$select=name,webUrl`);
+    }
+    cacheArchivo = { ruta: origenArchivo(), nombre: item.name, enlace: item.webUrl, tablaLista: false };
     return cacheArchivo;
   } catch (e) {
     throw traducir(e);

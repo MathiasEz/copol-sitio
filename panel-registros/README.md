@@ -70,11 +70,13 @@ demás (con contraseña temporal).
 | `BLOB_READ_WRITE_TOKEN` | Almacén privado: usuarios, PIN, accesos, planilla de prueba (se crea solo). |
 | `PANEL_SESION_INACTIVIDAD_MIN`, `PANEL_SESION_MAX_HORAS` | Duración de la sesión (30 min / 8 h). |
 | `IA_MODELO`, `IA_LIMITE_DIA`, `IA_APAGADA` | Asistente: modelo de AI Gateway (`google/gemini-2.5-flash`), consultas por persona y día (150), apagarlo. |
-| `MS_CLIENT_ID`, `MS_CLIENT_SECRET`, `MS_CUENTA` o `MS_USUARIO`+`MS_TENANT`, `EXCEL_RUTA`, `EXCEL_TABLA`, `MS_REDIRECT_URI` | Excel en la nube (abajo). |
+| `MS_CLIENT_ID`, `MS_CLIENT_SECRET`, `MS_CUENTA` o `MS_USUARIO`+`MS_TENANT`, `EXCEL_ENLACE`, `EXCEL_RUTA`, `EXCEL_TABLA`, `MS_REDIRECT_URI` | Excel en la nube (abajo). |
 
 ## Conectar con Excel (Microsoft)
 
-1. En OneDrive de la cuenta dueña, crear un libro vacío (p. ej. `COPOL/Registros COPOL.xlsx` → `EXCEL_RUTA`).
+1. El archivo: o bien su enlace de **Compartir** con permiso de edición en `EXCEL_ENLACE` (recomendado: sirve aunque
+   la cuenta conectada no sea la dueña, si tiene acceso), o bien un libro en el OneDrive de la cuenta conectada con
+   su ruta en `EXCEL_RUTA` (p. ej. `COPOL/Registros COPOL.xlsx`).
 2. https://entra.microsoft.com → *App registrations* → *New registration*: cuentas «any organizational directory
    and personal Microsoft accounts»; *Redirect URI* (Web) `https://<dominio><PANEL_RUTA>/api/microsoft/vuelta`.
    *Certificates & secrets* → secreto nuevo. Variables `MS_CLIENT_ID` y `MS_CLIENT_SECRET`.
