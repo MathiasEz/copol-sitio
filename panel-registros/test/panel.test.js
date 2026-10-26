@@ -286,6 +286,29 @@ describe('acceso: PIN, contraseña y código por correo', () => {
     assert.match(r.aviso, /en pausa/);
   });
 
+  test('sin correo configurado se puede recordar el equipo: después piden solo usuario y contraseña', async () => {
+    await configurarPanel();
+    delete process.env.RESEND_API_KEY;
+    const n = new Navegador();
+    const e0 = await n.json('estado');
+    assert.equal(e0.fase, 'pin');
+    await n.post('pin', { pin: PIN });
+    assert.equal((await n.json('estado')).sinCorreo, true);
+    assert.equal((await n.post('ingresar', { usuario: 'bpereira', clave: CLAVE_ADMIN, recordar: true })).fase, 'panel');
+    await n.post('salir');
+    for (const k of [...n.cookies.keys()]) if (k.includes('pin')) n.cookies.delete(k); // el PIN ya no se pide
+    assert.equal((await n.json('estado')).fase, 'ingreso');
+    assert.equal((await n.post('ingresar', { usuario: 'bpereira', clave: 'equivocada' })).status, 401, 'la contraseña se sigue pidiendo');
+    assert.equal((await n.post('ingresar', { usuario: 'bpereira', clave: CLAVE_ADMIN })).fase, 'panel');
+    // Sin marcar «recordar» el equipo no queda recordado.
+    const otro = new Navegador();
+    await otro.post('pin', { pin: PIN });
+    await otro.post('ingresar', { usuario: 'bpereira', clave: CLAVE_ADMIN, recordar: false });
+    await otro.post('salir');
+    for (const k of [...otro.cookies.keys()]) if (k.includes('pin')) otro.cookies.delete(k);
+    assert.equal((await otro.json('estado')).fase, 'pin');
+  });
+
   test('cookies alteradas, otro origen y sesiones cerradas no sirven', async () => {
     const admin = await configurarPanel();
     const [nombre, valor] = [...admin.cookies].find(([k]) => k.includes('sesion'));

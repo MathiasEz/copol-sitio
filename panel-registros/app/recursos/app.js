@@ -155,9 +155,10 @@ const PANTALLAS = {
       <form class="form"><div data-error></div>
         ${campo('Usuario o correo', '<input class="input" name="usuario" autocomplete="username" required maxlength="120" autocapitalize="none">')}
         ${campo('Contraseña', '<input class="input" type="password" name="clave" autocomplete="current-password" required maxlength="200">')}
+        ${e.sinCorreo ? '<label class="check"><input type="checkbox" name="recordar" checked><span>Recordar este equipo por 30 días (no volver a pedir el PIN: solo usuario y contraseña)</span></label><p class="ayuda">Desmarcalo si la computadora o el celular es compartido.</p>' : ''}
         <button class="btn btn--lg btn--bloque" type="submit">Ingresar</button>
       </form>`, aviso);
-    alEnviar($('form', raiz), 'ingresar', (f) => ({ usuario: f.get('usuario'), clave: f.get('clave') }));
+    alEnviar($('form', raiz), 'ingresar', (f) => ({ usuario: f.get('usuario'), clave: f.get('clave'), recordar: f.get('recordar') === 'on' }));
   },
   correo(e, aviso) {
     simple('Verificá que sos vos', 'Escribí el correo de tu cuenta y te mandamos un código de 6 números.', `

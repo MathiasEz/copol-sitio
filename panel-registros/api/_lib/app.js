@@ -109,7 +109,7 @@ async function estado(request) {
   const v = A.leerVerificacion(leerCookie(request, A.COOKIES.verif));
   const uv = v ? await U.buscar(v.u) : null;
   if (v && uv?.activo && uv.sv === v.sv && uv.correo) return json(fasesVerificacion(v, uv));
-  return json({ fase: (await pinOk(request)) ? 'ingreso' : 'pin' });
+  return json({ fase: (await pinOk(request)) ? 'ingreso' : 'pin', sinCorreo: !A.correoConfigurado() });
 }
 
 const fasesVerificacion = (v, u) => (v.correoOk
@@ -192,7 +192,15 @@ async function ingresar(request, b, origen) {
   }
   const equipo = await equipoDe(request);
   if (equipo?.usuario === u.usuario) return iniciarSesion(request, u, origen, 'equipo recordado');
-  if (!A.correoConfigurado()) return iniciarSesion(request, u, origen, 'sin código: envío de correos sin configurar');
+  if (!A.correoConfigurado()) {
+    // Sin envío de correos no hay paso del código: el equipo se puede recordar igual (30 días) desde el ingreso.
+    const extra = [];
+    if (b.recordar === true) {
+      extra.push(cookie(request, A.COOKIES.equipo, A.paseEquipo(u), A.DURACION.equipo));
+      await A.registrar('equipo-recordado', { usuario: u.usuario, origen });
+    }
+    return iniciarSesion(request, u, origen, 'sin código: envío de correos sin configurar', extra);
+  }
   if (!u.correo) return error('Tu cuenta no tiene un correo para enviarte el código de verificación. Pedile a un administrador que lo cargue.', 403);
   await U.actualizar(u.usuario, { intentos: 0, bloqueadoHasta: null });
   return conCookies(json({ ok: true, fase: 'correo' }), [cookie(request, A.COOKIES.verif, A.sellarVerificacion(A.verificacionNueva(u)), A.DURACION.verificacion)]);
