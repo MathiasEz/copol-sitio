@@ -346,7 +346,16 @@ function vistaFormulario(main) {
           ${campo('N° de socio', '<input class="input" name="socio" inputmode="numeric" maxlength="12" required>')}
           ${campo('Cédula', '<input class="input" name="cedula" inputmode="numeric" maxlength="11" placeholder="1.234.567-2" required>')}
         </div>
-        ${campo('Dirección', '<input class="input" name="direccion" maxlength="200" required>')}
+        <div class="campo" data-direccion>
+          <label class="label" for="f-direccion">Dirección</label>
+          <div class="input-grupo">
+            <input class="input" id="f-direccion" name="direccion" maxlength="200" required autocomplete="off" aria-describedby="dir-ayuda" aria-controls="dir-resultados" enterkeyhint="search">
+            <button type="button" class="btn btn--outline" data-buscar-dir>Buscar</button>
+          </div>
+          <span id="dir-ayuda" class="ayuda">Escribí calle y número y elegí la ubicación de la lista: se guarda con un link a Google Maps.</span>
+          <div id="dir-resultados" class="dir-resultados" data-dir-resultados hidden aria-live="polite"></div>
+          <div data-dir-elegida></div>
+        </div>
         ${campo('Producto', '<input class="input" name="producto" maxlength="200" required>')}
         <div class="fila-2">
           ${campo('Código interno', '<input class="input" name="codigo" maxlength="40" required>')}
@@ -367,6 +376,7 @@ function vistaFormulario(main) {
     </section>
   </div>`;
   const form = $('[data-registro]', main);
+  dirUI = iniciarDireccion(form);
   restaurarFormulario(form);
   form.addEventListener('input', (ev) => {
     ev.target.classList?.remove('completado');
@@ -385,6 +395,122 @@ function vistaFormulario(main) {
 
 const modoPrueba = () => Boolean(estado.planilla?.prueba);
 
+// Dirección: busca mientras se escribe (o con Enter / Buscar, en más fuentes), la persona elige la ubicación de
+// la lista y se genera el link a Google Maps. Sin elegir, se guarda solo el texto.
+let dirUI = null;
+function iniciarDireccion(form) {
+  const B = window.BuscadorDireccion;
+  const campoDir = form.elements.direccion;
+  const caja = $('[data-dir-resultados]', form);
+  const elegidaCaja = $('[data-dir-elegida]', form);
+  let enlace = '';
+  let temporizador = null;
+  let control = null;
+  let numero = 0;
+
+  const mostrar = (html) => { caja.innerHTML = html; caja.hidden = !html; };
+  const pintarElegida = (dir) => {
+    elegidaCaja.innerHTML = enlace
+      ? `<p class="dir-elegida">${icono('check', 16)}<span>Ubicación elegida${dir ? ` · <span class="badge ${dir.precision === 'exacta' ? 'badge--ok' : 'badge--aviso'}">${esc(dir.precisionTexto)}</span>` : ''}</span>
+          <a href="${esc(enlace)}" target="_blank" rel="noopener noreferrer">Ver en Google Maps ${icono('externo', 14)}</a>
+          <button type="button" class="btn btn--ghost btn--sm" data-quitar-dir>Quitar</button></p>`
+      : '';
+    $('[data-quitar-dir]', elegidaCaja)?.addEventListener('click', () => {
+      enlace = '';
+      pintarElegida();
+      guardarSesionLocal(CLAVE_FORM(), valoresFormulario(form));
+    });
+  };
+
+  async function buscar(completa) {
+    const texto = campoDir.value.trim();
+    clearTimeout(temporizador);
+    control?.abort();
+    $$('.error', $('[data-direccion]', form)).forEach((e) => e.remove());
+    campoDir.removeAttribute('aria-invalid');
+    if (!B || texto.length < 3) { mostrar(''); return; }
+    const mio = ++numero;
+    control = new AbortController();
+    mostrar('<p class="dir-estado">Buscando…</p>');
+    let r;
+    try {
+      r = await B.buscar(texto, { completa, signal: control.signal });
+    } catch (e) {
+      if (e.name === 'AbortError') return;
+      mostrar('<p class="dir-estado dir-estado--error">No se pudo buscar la dirección. Podés guardar el texto igual.</p>');
+      return;
+    }
+    if (mio !== numero) return;
+    if (r.error) {
+      mostrar('');
+      marcar(form, 'direccion', r.error.mensaje);
+      return;
+    }
+    if (!r.resultados.length) {
+      mostrar(`<p class="dir-estado${r.fallaron && r.fallaron === r.consultas ? ' dir-estado--error' : ''}">${r.fallaron && r.fallaron === r.consultas
+        ? 'El servicio de mapas no respondió. Podés guardar el texto igual, sin link.'
+        : 'No encontré esa dirección. Revisá cómo está escrita (calle y número) o tocá «Buscar» para consultar más fuentes.'}</p>`);
+      return;
+    }
+    mostrar(`<ul class="dir-lista" role="listbox" aria-label="Direcciones encontradas">${r.resultados.map((d, i) => `<li role="option">
+        <button type="button" class="dir-opcion" data-i="${i}"><strong>${esc(d.titulo)}</strong><span>${esc(d.detalle)}</span>
+        <em class="dir-precision dir-precision--${d.precision}">${esc(d.precisionTexto)}</em></button></li>`).join('')}</ul>
+      ${completa ? '' : '<button type="button" class="btn btn--ghost btn--sm" data-mas-dir>Buscar en más fuentes</button>'}`);
+    $$('[data-i]', caja).forEach((b) => b.addEventListener('click', () => elegir(r.resultados[Number(b.dataset.i)])));
+    $('[data-mas-dir]', caja)?.addEventListener('click', () => buscar(true));
+  }
+
+  function elegir(d) {
+    const motivo = B.validar(d);
+    if (motivo) {
+      $$('.error', $('[data-direccion]', form)).forEach((e) => e.remove());
+      marcar(form, 'direccion', motivo);
+      return;
+    }
+    const zona = [d.barrio && d.barrio !== d.ciudad ? d.barrio : '', d.ciudad, d.departamento];
+    const texto = [...new Set([`${d.titulo}${d.unidad ? ` ${d.unidad}` : ''}`, ...zona].filter(Boolean))].join(', ');
+    campoDir.value = texto;
+    campoDir.classList.remove('completado');
+    campoDir.removeAttribute('aria-invalid');
+    enlace = B.urlGoogleMaps(d);
+    mostrar('');
+    pintarElegida(d);
+    guardarSesionLocal(CLAVE_FORM(), valoresFormulario(form));
+  }
+
+  // Si se vuelve a escribir, la ubicación elegida ya no corresponde.
+  campoDir.addEventListener('input', () => {
+    if (enlace) { enlace = ''; pintarElegida(); }
+    clearTimeout(temporizador);
+    temporizador = setTimeout(() => buscar(false), 450);
+  });
+  campoDir.addEventListener('keydown', (ev) => {
+    if (ev.key === 'Enter') { ev.preventDefault(); buscar(true); }
+    if (ev.key === 'Escape') mostrar('');
+    if (ev.key === 'ArrowDown') { ev.preventDefault(); $('.dir-opcion', caja)?.focus(); }
+  });
+  caja.addEventListener('keydown', (ev) => {
+    const botones = $$('.dir-opcion', caja);
+    const i = botones.indexOf(document.activeElement);
+    if (ev.key === 'ArrowDown') { ev.preventDefault(); botones[Math.min(i + 1, botones.length - 1)]?.focus(); }
+    if (ev.key === 'ArrowUp') { ev.preventDefault(); (i > 0 ? botones[i - 1] : campoDir).focus(); }
+    if (ev.key === 'Escape') { mostrar(''); campoDir.focus(); }
+  });
+  $('[data-buscar-dir]', form).addEventListener('click', () => buscar(true));
+
+  return {
+    url: () => enlace,
+    restaurar(url) { enlace = typeof url === 'string' ? url : ''; pintarElegida(); },
+    reiniciar() { enlace = ''; clearTimeout(temporizador); control?.abort(); mostrar(''); pintarElegida(); },
+    /** La dirección se cambió desde afuera (asistente o deshacer): la ubicación elegida ya no vale. */
+    cambioExterno(buscarAhora) {
+      enlace = '';
+      pintarElegida();
+      if (buscarAhora) buscar(false); else mostrar('');
+    },
+  };
+}
+
 function avisoPlanilla() {
   const p = estado.planilla;
   if (!p?.aviso) return '';
@@ -392,17 +518,19 @@ function avisoPlanilla() {
   return `<div class="alert ${p.listo ? 'alert--aviso' : 'alert--error'}" role="status">${icono('info')}<p>${esc(p.aviso)}</p>${conectar}</div>`;
 }
 
-const valoresFormulario = (form) => ({ ...Object.fromEntries(CAMPOS.map((c) => [c, form.elements[c].value.trim()])), flete: form.elements.flete.value || 'No' });
+const valoresFormulario = (form) => ({ ...Object.fromEntries(CAMPOS.map((c) => [c, form.elements[c].value.trim()])), flete: form.elements.flete.value || 'No', mapa: dirUI?.url() ?? '' });
 
 function restaurarFormulario(form) {
   const v = leerSesionLocal(CLAVE_FORM(), null);
   if (!v) return;
   for (const c of CAMPOS) form.elements[c].value = v[c] ?? '';
   form.elements.flete.value = v.flete || 'No';
+  dirUI?.restaurar(v.mapa);
 }
 
 function limpiarFormulario(form) {
   form.reset();
+  dirUI?.reiniciar();
   $$('.completado', form).forEach((el) => el.classList.remove('completado'));
   $$('[aria-invalid]', form).forEach((el) => el.removeAttribute('aria-invalid'));
   $$('.error', form).forEach((el) => el.remove());
@@ -418,6 +546,8 @@ function aplicarCampos(form, campos) {
       form.elements[c].value = v;
       form.elements[c].classList.add('completado');
       form.elements[c].removeAttribute('aria-invalid');
+      // El asistente escribió la dirección: se buscan las ubicaciones para que la persona elija la correcta.
+      if (c === 'direccion') dirUI?.cambioExterno(true);
     }
   }
   guardarSesionLocal(CLAVE_FORM(), valoresFormulario(form));
@@ -428,6 +558,8 @@ function validarLocal(form) {
   for (const c of CAMPOS) if (OBLIGATORIOS.has(c) && !form.elements[c].value.trim()) errores[c] = 'Falta completar.';
   const socio = form.elements.socio.value.replace(/[\s.]/g, '');
   if (socio && !/^\d+$/.test(socio)) errores.socio = 'Solo números.';
+  const dir = window.BuscadorDireccion?.problemaNumero(window.BuscadorDireccion.partirDireccion(form.elements.direccion.value).numero);
+  if (dir) errores.direccion = dir;
   const ced = form.elements.cedula.value.trim();
   if (ced && !cedulaValida(ced)) errores.cedula = 'Cédula no válida: revisá los números y el dígito después del guion.';
   return errores;
@@ -505,6 +637,7 @@ function iniciarChat(main, form) {
       if (c === 'flete') form.elements.flete.value = v || 'No';
       else if (form.elements[c]) form.elements[c].value = v;
       (c === 'flete' ? $('[data-flete]', form) : form.elements[c])?.classList.remove('completado');
+      if (c === 'direccion') dirUI?.cambioExterno(false);
     }
     guardarSesionLocal(CLAVE_FORM(), valoresFormulario(form));
     m.deshecho = true;
@@ -642,7 +775,7 @@ async function vistaPlanilla(main, resto, aviso) {
   if (!r.ok) { $('[data-total]', main).textContent = r.error || 'No se pudo leer la planilla.'; return; }
   $('[data-total]', main).textContent = r.total ? `${r.total} fila${r.total === 1 ? '' : 's'}${r.total > r.registros.length ? ` (se muestran las últimas ${r.registros.length})` : ''}. La más nueva arriba.` : 'La planilla de prueba está vacía.';
   const celda = (etiqueta, v, clase = '') => `<td data-etiqueta="${etiqueta}" class="${clase}">${esc(v || '—')}</td>`;
-  $('[data-filas]', main).innerHTML = r.registros.map((x) => `<tr>${celda('Nombre', x.nombre)}${celda('Fecha', x.fecha, 'nowrap')}${celda('Socio', x.socio)}${celda('Cédula', x.cedula, 'nowrap')}${celda('Dirección', x.direccion)}${celda('Producto', x.producto)}${celda('Código', x.codigo)}${celda('Flete', x.flete)}${celda('Service', x.service)}${celda('Cargado por', x.cargadoPor)}</tr>`).join('');
+  $('[data-filas]', main).innerHTML = r.registros.map((x) => `<tr>${celda('Nombre', x.nombre)}${celda('Fecha', x.fecha, 'nowrap')}${celda('Socio', x.socio)}${celda('Cédula', x.cedula, 'nowrap')}${x.mapa ? `<td data-etiqueta="Dirección"><a href="${esc(x.mapa)}" target="_blank" rel="noopener noreferrer">${esc(x.direccion)}</a></td>` : celda('Dirección', x.direccion)}${celda('Producto', x.producto)}${celda('Código', x.codigo)}${celda('Flete', x.flete)}${celda('Service', x.service)}${celda('Cargado por', x.cargadoPor)}</tr>`).join('');
 }
 
 // ── Usuarios (administradores) ──

@@ -286,6 +286,8 @@ async function crearTabla(info) {
   const creada = await graph(`${libro()}/worksheets/${encodeURIComponent(hoja)}/tables/add`, { metodo: 'POST', cuerpo: { address: `A1:${fin}1`, hasHeaders: true } });
   await graph(`${libro()}/tables/${encodeURIComponent(creada.id)}`, { metodo: 'PATCH', cuerpo: { name: hoja } });
   await graph(`${rango(`A1:${fin}1`)}/format/font`, { metodo: 'PATCH', cuerpo: { bold: true } }).catch(() => {});
+  // Las direcciones con enlace se ven como enlace (azul y subrayado) en toda la columna; si falla, no importa.
+  await graph(`${libro()}/tables/${encodeURIComponent(hoja)}/columns/${encodeURIComponent(COLUMNAS[4])}/dataBodyRange/format/font`, { metodo: 'PATCH', cuerpo: { color: '#0563C1', underline: 'Single' } }).catch(() => {});
   info.tablaLista = true;
   // Excel crea la tabla con una fila vacía debajo de la cabecera: la primera carga va ahí.
   const cuerpo = await graph(`${libro()}/tables/${encodeURIComponent(hoja)}/dataBodyRange?$select=address,values`).catch(() => null);

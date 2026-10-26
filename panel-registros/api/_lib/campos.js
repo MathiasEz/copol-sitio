@@ -49,6 +49,9 @@ export function siNo(v) {
   return '';
 }
 
+const RE_MAPA = /^https:\/\/www\.google\.com\/maps\/search\/\?api=1&query=[A-Za-z0-9%._~!*'()-]+$/;
+export const enlaceMapaValido = (u) => typeof u === 'string' && u.length <= 600 && RE_MAPA.test(u);
+
 /** Valida y normaliza un registro. Devuelve { datos } o { errores: { campo: mensaje } }. */
 export function validarRegistro(entrada) {
   const e = entrada && typeof entrada === 'object' ? entrada : {};
@@ -82,6 +85,10 @@ export function validarRegistro(entrada) {
     else if (v.length > regla.max) errores[campo] = `${regla.etiqueta} admite hasta ${regla.max} caracteres.`;
     datos[campo] = v;
   }
+  // Enlace de la ubicación elegida (solo se aceptan enlaces de búsqueda de Google Maps, no otros destinos).
+  const mapa = limpiarTexto(e.mapa);
+  datos.mapa = mapa;
+  if (mapa && !enlaceMapaValido(mapa)) errores.direccion = 'La ubicación elegida no es válida: elegí la dirección de la lista otra vez.';
   return Object.keys(errores).length ? { errores } : { datos };
 }
 
@@ -99,8 +106,17 @@ export function fechaMontevideo(d = new Date()) {
   return `${p.year}-${p.month}-${p.day} ${p.hour}:${p.minute}`;
 }
 
+/**
+ * Celda de dirección clicable: =HYPERLINK("enlace";"texto"). Excel no admite textos de más de 255 caracteres
+ * dentro de una fórmula: si el enlace o la dirección no entran, se guarda solo el texto.
+ */
+export function formulaEnlace(url, texto) {
+  const t = String(texto ?? '').replace(/"/g, '""');
+  return url && enlaceMapaValido(url) && url.length <= 255 && t.length <= 255 ? `=HYPERLINK("${url}","${t}")` : null;
+}
+
 /** Fila para la planilla, en el orden de COLUMNAS. Un N° de socio con ceros adelante va como texto para no perderlos. */
 export const filaPlanilla = (datos, cargadoPor, fecha = new Date()) => [
   fechaMontevideo(fecha), datos.nombre, /^0\d/.test(datos.socio) ? `'${datos.socio}` : datos.socio, datos.cedula, datos.direccion,
   datos.service, datos.flete, datos.producto, datos.codigo, cargadoPor,
-].map((v, i) => (i === 2 ? String(v) : celda(String(v ?? ''))));
+].map((v, i) => (i === 2 ? String(v) : i === 4 ? (formulaEnlace(datos.mapa, v) ?? celda(String(v ?? ''))) : celda(String(v ?? ''))));

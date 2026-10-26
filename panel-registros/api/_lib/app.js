@@ -30,7 +30,7 @@ const LIMITES = { pinIp: 10, ingresoIp: 20, configurarIp: 5, ventanaS: 900 };
 
 // ── Página y recursos ──
 
-const CSP = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'; object-src 'none'";
+const CSP = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self' https://photon.komoot.io https://nominatim.openstreetmap.org; form-action 'self'; frame-ancestors 'none'; base-uri 'none'; object-src 'none'";
 
 async function archivo(relativo) {
   const camino = normalize(join(RAIZ_APP, relativo));

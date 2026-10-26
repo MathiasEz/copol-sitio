@@ -9,6 +9,10 @@ despliegue con ellos. Se publica en Vercel como **proyecto propio** (`copol-regi
 - **Formulario**: Nombre, N° de socio, Cédula, Dirección, Producto, Código interno, Flete (Sí/No, por defecto No)
   y Service (opcional). Valida la cédula con su dígito verificador (la guarda como `1.234.567-8`) y el N° de
   socio. Lo que empieza con `=`, `+`, `-` o `@` se guarda como texto para que Excel no lo tome como fórmula.
+- **Dirección con ubicación**: al escribir calle y número aparecen las direcciones encontradas (el mismo buscador
+  del panel de envíos: OpenStreetMap, con validación del número de puerta). Al elegir una se genera el link a
+  Google Maps; en la planilla la dirección queda **clicable** (`=HYPERLINK(...)`, en azul) y abre ese link. Si el
+  asistente completa la dirección, se buscan solas las opciones para elegir. Sin elegir, se guarda solo el texto.
 - **Asistente (chat)**: se escribe, se pega o **se dicta con el micrófono** el mensaje como llegó; la IA completa
   el formulario y responde qué hizo y qué falta. Entiende correcciones («el código es 4521», «no lleva flete»).
   Cada respuesta que cambió campos tiene la flecha **Deshacer** (como en el panel de stock), que devuelve esos

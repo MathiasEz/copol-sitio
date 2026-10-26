@@ -79,3 +79,22 @@
 .usuario-fila { font-weight: 600; text-decoration: none; }
 .usuario-fila:hover { text-decoration: underline; }
 .secreto { font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace; letter-spacing: .02em; }
+
+/* Dirección con buscador */
+.dir-resultados { border: 1px solid var(--border); border-radius: var(--radius); background: var(--card); box-shadow: var(--sombra); overflow: hidden; }
+.dir-estado { margin: 0; padding: 10px 12px; color: var(--muted-foreground); font-size: .875rem; }
+.dir-estado--error { color: var(--destructive); }
+.dir-lista { list-style: none; margin: 0; padding: 0; max-height: 280px; overflow-y: auto; overscroll-behavior: contain; }
+.dir-lista li + li { border-top: 1px solid var(--border); }
+.dir-opcion { display: grid; gap: 1px; width: 100%; padding: 9px 12px; border: 0; background: none; font: inherit; color: inherit; text-align: left; cursor: pointer; }
+.dir-opcion:hover, .dir-opcion:focus-visible { background: var(--muted); outline: none; }
+.dir-opcion span { font-size: .8125rem; color: var(--muted-foreground); }
+.dir-precision { font-style: normal; font-size: .6875rem; font-weight: 700; justify-self: start; padding: 0 7px; border-radius: 999px; border: 1px solid currentColor; }
+.dir-precision--exacta { color: var(--ok); }
+.dir-precision--calle { color: var(--aviso); }
+.dir-precision--zona { color: var(--gris); }
+.dir-resultados > .btn { margin: 4px 8px 8px; }
+.dir-elegida { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; margin: 2px 0 0; padding: 8px 12px; border-radius: var(--radius-sm); background: var(--ok-bg); border: 1px solid var(--ok-borde); color: var(--ok); font-weight: 600; font-size: .875rem; }
+.dir-elegida > span { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.dir-elegida a { color: var(--marca); display: inline-flex; align-items: center; gap: 4px; }
+.tabla--registros td a { color: var(--marca); }

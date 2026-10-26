@@ -61,6 +61,7 @@ class Navegador {
   post(ruta, datos = {}) { return this.json(ruta, { metodo: 'POST', datos }); }
 }
 
+const MAPA = 'https://www.google.com/maps/search/?api=1&query=-34.870000%2C-56.100000';
 const REGISTRO = { nombre: 'Juan Pérez', socio: '12345', cedula: '1.234.567-2', direccion: 'Av. Italia 3456 apto 2', producto: 'Heladera Samsung RT38', codigo: '457939', service: '', flete: 'Sí' };
 
 /** Configuración inicial: crea bpereira (administrador) y el PIN; devuelve su navegador con sesión. */
@@ -142,6 +143,17 @@ describe('campos', () => {
     assert.equal(datos.socio, '12345');
     assert.equal(datos.cedula, '1.234.567-2');
     assert.equal(datos.service, '');
+  });
+
+  test('ubicación: solo enlaces de búsqueda de Google Maps; en la fila va como enlace clicable', () => {
+    assert.equal(campos.validarRegistro({ ...REGISTRO, mapa: MAPA }).datos.mapa, MAPA);
+    for (const malo of ['https://malo.example/x', 'http://www.google.com/maps/search/?api=1&query=a', `${MAPA}"&x`, 'javascript:alert(1)', `${MAPA}%22,"x")`]) {
+      assert.ok(campos.validarRegistro({ ...REGISTRO, mapa: malo }).errores?.direccion, malo);
+    }
+    const fila = campos.filaPlanilla({ ...REGISTRO, direccion: 'Av. "Italia" 3456', mapa: MAPA }, 'Ana');
+    assert.equal(fila[4], `=HYPERLINK("${MAPA}","Av. ""Italia"" 3456")`);
+    assert.equal(campos.filaPlanilla({ ...REGISTRO, mapa: '' }, 'Ana')[4], REGISTRO.direccion, 'sin ubicación, solo texto');
+    assert.equal(campos.filaPlanilla({ ...REGISTRO, mapa: `${MAPA}${'a'.repeat(260)}` }, 'Ana')[4], REGISTRO.direccion, 'si no entra en una fórmula, solo texto');
   });
 
   test('fila: no deja pasar fórmulas a Excel y conserva ceros del socio', () => {
@@ -342,7 +354,8 @@ describe('planilla de prueba (sin Microsoft)', () => {
     const malo = await admin.post('registro', { ...REGISTRO, cedula: '1234567-3' });
     assert.equal(malo.status, 422);
     assert.ok(malo.errores.cedula);
-    assert.equal((await admin.post('registro', { ...REGISTRO, service: 'Instalación' })).status, 200);
+    assert.equal((await admin.post('registro', { ...REGISTRO, service: 'Instalación', mapa: MAPA })).status, 200);
+    assert.equal((await admin.post('registro', { ...REGISTRO, mapa: 'https://malo.example/' })).status, 422);
     assert.equal((await admin.post('registro', { ...REGISTRO, nombre: 'María Gómez', service: '=1+1' })).status, 200);
     const lista = await admin.json('planilla');
     assert.equal(lista.total, 2);
@@ -352,7 +365,8 @@ describe('planilla de prueba (sin Microsoft)', () => {
     assert.equal(xlsx.headers.get('content-type'), 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     const hoja = delZip(Buffer.from(await xlsx.arrayBuffer()), 'xl/worksheets/sheet1.xml');
     for (const c of campos.COLUMNAS) assert.ok(hoja.includes(`<t xml:space="preserve">${c}</t>`), c);
-    assert.ok(hoja.includes('<v>12345</v>') && hoja.includes('<t xml:space="preserve">=1+1</t>') && !hoja.includes('<f>'));
+    assert.ok(hoja.includes(`<f>HYPERLINK(&quot;${MAPA.replace(/&/g, '&amp;')}&quot;,&quot;Av. Italia 3456 apto 2&quot;)</f><v>Av. Italia 3456 apto 2</v>`), 'dirección clicable');
+    assert.ok(hoja.includes('<v>12345</v>') && hoja.includes('<t xml:space="preserve">=1+1</t>') && hoja.split('<f>').length === 2, 'la única fórmula es el enlace');
     assert.equal((await new Navegador().api('planilla')).status, 401);
     assert.equal((await admin.json('planilla', { metodo: 'DELETE', datos: {} })).status, 200);
     assert.equal((await admin.json('planilla')).total, 0);
@@ -448,6 +462,8 @@ describe('Excel en la nube', () => {
     assert.deepEqual(estado.hojas, ['Hoja1', 'Registros']);
     assert.deepEqual(estado.filas.map((f) => f[1]), ['Juan Pérez', 'María Gómez']);
     assert.equal(estado.filas[0][9], 'Brandon Pereira');
+    assert.equal((await admin.post('registro', { ...REGISTRO, mapa: MAPA })).status, 200);
+    assert.match(estado.filas[2][4], /^=HYPERLINK\("https:\/\/www\.google\.com\/maps\/search\/\?api=1&query=/);
     assert.equal((await admin.json('planilla')).status, 409, 'con Excel conectado no hay planilla de prueba');
   });
 

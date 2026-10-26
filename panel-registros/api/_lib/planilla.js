@@ -1,7 +1,7 @@
 // Destino de los registros: la planilla de Excel en la nube (Microsoft) o, mientras Microsoft no esté
 // configurado, la planilla de prueba: una lista guardada en el almacén del panel (Blob privado en Vercel,
 // archivos en datos/ en la computadora), compartida entre computadoras y descargable como .xlsx.
-import { COLUMNAS, filaPlanilla } from './campos.js';
+import { COLUMNAS, filaPlanilla, formulaEnlace } from './campos.js';
 import * as almacen from './almacen.js';
 import * as ms from './microsoft.js';
 import { libroXlsx } from './xlsx.js';
@@ -60,10 +60,16 @@ export async function agregar(datos, cargadoPor, ahora = new Date()) {
 export const registrosPrueba = () => almacen.leerLista(LISTA);
 export const vaciarPrueba = () => almacen.vaciarLista(LISTA);
 
+/** La dirección como enlace clicable a Google Maps (si se eligió la ubicación) o como texto. */
+const enlazar = (r) => {
+  const formula = formulaEnlace(r.mapa, r.direccion);
+  return formula ? { formula, texto: r.direccion, estilo: 2 } : r.direccion;
+};
+
 /** La planilla de prueba como .xlsx, con las mismas columnas que la de Excel en la nube. */
 export function xlsxPrueba(registros) {
   const filas = registros.map((r) => [
-    r.fecha, r.nombre, /^[1-9]\d{0,14}$/.test(r.socio ?? '') ? Number(r.socio) : r.socio, r.cedula, r.direccion,
+    r.fecha, r.nombre, /^[1-9]\d{0,14}$/.test(r.socio ?? '') ? Number(r.socio) : r.socio, r.cedula, enlazar(r),
     r.service, r.flete ?? '', r.producto, r.codigo, r.cargadoPor,
   ]);
   return libroXlsx({ hoja: 'Registros', columnas: COLUMNAS, filas, anchos: [17, 28, 12, 13, 36, 26, 8, 34, 15, 18] });
