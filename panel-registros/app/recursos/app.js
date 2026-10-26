@@ -356,7 +356,7 @@ function vistaFormulario(main) {
         ${campo('Nombre', '<input class="input" name="nombre" maxlength="120" required>')}
         <div class="fila-2">
           ${campo('N° de socio', '<input class="input" name="socio" inputmode="numeric" maxlength="12" required>')}
-          ${campo('Cédula', '<input class="input" name="cedula" inputmode="numeric" maxlength="11" placeholder="1.234.567-2" required>')}
+          ${campo('Cédula', '<input class="input" name="cedula" inputmode="numeric" maxlength="14" placeholder="Solo números, ej.: 55605392" required>')}
         </div>
         <div class="campo" data-direccion>
           <label class="label" for="f-direccion">Dirección</label>
@@ -392,6 +392,7 @@ function vistaFormulario(main) {
   dirUI = iniciarDireccion(form);
   restaurarFormulario(form);
   form.addEventListener('input', (ev) => {
+    if (ev.target.name === 'cedula') ev.target.value = ev.target.value.replace(/\D/g, '').slice(0, 8); // solo números, sin puntos ni guion
     ev.target.classList?.remove('completado');
     if (ev.target.name === 'flete') $('[data-flete]', form).classList.remove('completado');
     guardarSesionLocal(CLAVE_FORM(), valoresFormulario(form));
@@ -574,7 +575,7 @@ function validarLocal(form) {
   const dir = window.BuscadorDireccion?.problemaNumero(window.BuscadorDireccion.partirDireccion(form.elements.direccion.value).numero);
   if (dir) errores.direccion = dir;
   const ced = form.elements.cedula.value.trim();
-  if (ced && !cedulaValida(ced)) errores.cedula = 'Cédula no válida: revisá los números y el dígito después del guion.';
+  if (ced && !cedulaValida(ced)) errores.cedula = 'Cédula no válida: tiene que tener 7 u 8 números (el último es el verificador). Revisá que estén bien.';
   return errores;
 }
 
@@ -680,7 +681,7 @@ function iniciarChat(main, form) {
 
   const vacio = `<div class="chat__vacio">
     <p><strong>Contame los datos como te llegaron</strong> y completo el formulario. Podés pegar un mensaje, escribirlo o dictarlo con el micrófono. Después revisás y guardás.</p>
-    <p class="chat__ejemplo">«María Rodríguez, socia 48213, cédula 1.234.567-2, Bv. Artigas 1520 apto 503. Lavarropas Samsung 8 kg, código 467972. Va con flete.»</p>
+    <p class="chat__ejemplo">«María Rodríguez, socia 48213, cédula 55605392, Bv. Artigas 1520 apto 503. Lavarropas Samsung 8 kg, código 467972. Va con flete.»</p>
     <p>También podés corregir: «el código es 467973» o «no lleva flete».</p>
   </div>`;
 

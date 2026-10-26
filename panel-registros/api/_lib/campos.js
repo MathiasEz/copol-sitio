@@ -31,13 +31,13 @@ export function digitoCedula(base) {
   return (10 - (suma % 10)) % 10;
 }
 
-/** Cédula con puntos y guion (1.234.567-8) o null si no es válida. Acepta 7 u 8 dígitos con el verificador. */
+/** Cédula solo con números (55605392) o null si no es válida: 7 u 8 dígitos y el último es el verificador. Se aceptan puntos y guion al escribirla, pero se guarda sin ellos. */
 export function formatoCedula(valor) {
   const digitos = limpiarTexto(valor).replace(/[\s.\-_/]/g, '');
   if (!/^\d{7,8}$/.test(digitos)) return null;
   const base = digitos.slice(0, -1);
   if (digitoCedula(base) !== Number(digitos.at(-1))) return null;
-  return `${Number(base).toLocaleString('es-UY')}-${digitos.at(-1)}`;
+  return digitos;
 }
 
 /** «Sí», «No» o '' para lo que no se entiende (acepta si/sí/no, true/false). */
@@ -75,7 +75,7 @@ export function validarRegistro(entrada) {
       if (!/^\d{1,12}$/.test(v)) { errores[campo] = 'El número de socio lleva solo números.'; continue; }
     } else if (campo === 'cedula') {
       const c = formatoCedula(v);
-      if (!c) { errores[campo] = 'La cédula no es válida: revisá los números y el dígito verificador (el que va después del guion).'; continue; }
+      if (!c) { errores[campo] = 'La cédula no es válida: tiene que tener 7 u 8 números, el último es el verificador. Revisá que estén bien.'; continue; }
       v = c;
     } else if (campo === 'codigo') {
       if (!/^[\p{L}\p{N}][\p{L}\p{N} ._/-]*$/u.test(v)) { errores[campo] = 'El código interno lleva letras, números, guiones o puntos.'; continue; }

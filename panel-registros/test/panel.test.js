@@ -64,7 +64,7 @@ class Navegador {
 }
 
 const MAPA = 'https://www.google.com/maps/search/?api=1&query=-34.870000%2C-56.100000';
-const REGISTRO = { nombre: 'Juan Pérez', socio: '12345', cedula: '1.234.567-2', direccion: 'Av. Italia 3456 apto 2', producto: 'Heladera Samsung RT38', codigo: '457939', service: '', flete: 'Sí' };
+const REGISTRO = { nombre: 'Juan Pérez', socio: '12345', cedula: '12345672', direccion: 'Av. Italia 3456 apto 2', producto: 'Heladera Samsung RT38', codigo: '457939', service: '', flete: 'Sí' };
 
 /** Configuración inicial: crea bpereira (administrador) y el PIN; devuelve su navegador con sesión. */
 async function configurarPanel() {
@@ -129,11 +129,15 @@ function delZip(buf, nombre) {
 
 describe('campos', () => {
   test('cédula: acepta con y sin puntos, rechaza el dígito verificador equivocado', () => {
-    assert.equal(campos.formatoCedula('12345672'), '1.234.567-2');
-    assert.equal(campos.formatoCedula('1.234.567-2'), '1.234.567-2');
+    assert.equal(campos.formatoCedula('12345672'), '12345672');
+    assert.equal(campos.formatoCedula('1.234.567-2'), '12345672', 'se aceptan puntos y guion al escribir, pero se guarda solo con números');
+    assert.equal(campos.formatoCedula('55605392'), '55605392');
+    assert.equal(campos.formatoCedula('55605393'), null, 'dígito verificador equivocado');
+    assert.equal(campos.formatoCedula('5560539'), null, 'una cantidad de números que no corresponde');
+    assert.equal(campos.formatoCedula('556053921'), null);
     assert.equal(campos.formatoCedula('1234567-3'), null);
     assert.equal(campos.formatoCedula('123'), null);
-    assert.equal(campos.formatoCedula(`512345${campos.digitoCedula('512345')}`), `512.345-${campos.digitoCedula('512345')}`);
+    assert.equal(campos.formatoCedula(`512345${campos.digitoCedula('512345')}`), `512345${campos.digitoCedula('512345')}`);
   });
 
   test('registro: obligatorios, socio numérico, flete Sí/No y service opcional', () => {
@@ -144,7 +148,7 @@ describe('campos', () => {
     assert.ok(campos.validarRegistro({ ...REGISTRO, socio: '12a' }).errores.socio);
     const { datos } = campos.validarRegistro({ ...REGISTRO, socio: '12.345', cedula: '12345672' });
     assert.equal(datos.socio, '12345');
-    assert.equal(datos.cedula, '1.234.567-2');
+    assert.equal(datos.cedula, '12345672');
     assert.equal(datos.service, '');
     assert.equal(datos.adicional, '', 'la información adicional es opcional');
     assert.equal(campos.validarRegistro({ ...REGISTRO, adicional: '  Tel 099 123 456,\n entregar por la tarde ' }).datos.adicional, 'Tel 099 123 456, entregar por la tarde');
@@ -485,7 +489,7 @@ describe('asistente (chat)', () => {
     });
     assert.equal(r.status, 200);
     assert.equal(r.respuesta, 'Listo, agregué el código y marqué flete.');
-    assert.deepEqual(r.campos, { cedula: '1.234.567-2', flete: 'Sí', codigo: '457939', adicional: 'Tel 099 123 456' }, 'el nombre no cambió: no se repite');
+    assert.deepEqual(r.campos, { cedula: '12345672', flete: 'Sí', codigo: '457939', adicional: 'Tel 099 123 456' }, 'el nombre no cambió: no se repite');
     assert.deepEqual(r.faltan, ['Dirección', 'Producto']);
   });
 

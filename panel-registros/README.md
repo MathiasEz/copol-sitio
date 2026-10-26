@@ -7,7 +7,7 @@ despliegue con ellos. Se publica en Vercel como **proyecto propio** (`copol-regi
 ## Qué hace
 
 - **Formulario**: Nombre, N° de socio, Cédula, Dirección, Producto, Código interno, Flete (Sí/No, por defecto No)
-  Service e Información adicional (los dos opcionales). Valida la cédula con su dígito verificador (la guarda como `1.234.567-8`) y el N° de
+  Service e Información adicional (los dos opcionales). Valida la cédula con su dígito verificador (7 u 8 números, el último es el verificador; se guarda solo con números, sin puntos ni guion, ej. `55605392`) y el N° de
   socio. Lo que empieza con `=`, `+`, `-` o `@` se guarda como texto para que Excel no lo tome como fórmula.
 - **Dirección con ubicación**: al escribir calle y número aparecen las direcciones encontradas (el mismo buscador
   del panel de envíos: OpenStreetMap, con validación del número de puerta). Al elegir una se genera el link a

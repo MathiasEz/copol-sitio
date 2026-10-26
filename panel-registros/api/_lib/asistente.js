@@ -29,8 +29,8 @@ completar_formulario. Reglas:
   vacíos. No inventes nada que el empleado no haya dicho.
 - nombre: nombre y apellido del socio, con mayúscula inicial en cada palabra.
 - socio: número de socio, solo dígitos. No lo confundas con la cédula (C.I., cédula, documento) ni con el teléfono.
-- cedula: cédula de identidad uruguaya tal como la dijeron (con o sin puntos y guion). Si la dictan en palabras,
-  pasala a números.
+- cedula: cédula de identidad uruguaya, escrita SOLO con números, sin puntos ni guion (7 u 8 dígitos, ej.: 55605392).
+  Si la dictan en palabras, pasala a números.
 - direccion: calle, número, apartamento y localidad o departamento si aparecen.
 - service: solo si pide o menciona un service (servicio técnico, reparación, garantía, instalación, visita
   técnica); resumilo en pocas palabras.
