@@ -18,6 +18,11 @@ despliegue con ellos. Se publica en Vercel como **proyecto propio** (`copol-regi
   Cada respuesta que cambió campos tiene la flecha **Deshacer** (como en el panel de stock), que devuelve esos
   campos a como estaban. La IA nunca guarda: la persona revisa y guarda. Al guardar empieza otra conversación.
   El micrófono usa el reconocimiento de voz del navegador (Chrome y Edge; en Firefox no aparece).
+- **Fotos y archivos**: en el chat, **Foto** (abre la cámara en el celular) y **Adjuntar** (clip) mandan una foto, un
+  PDF o un `.txt` a la IA, que lee los datos impresos o escritos (factura, comprobante, etiqueta, cédula, captura de
+  WhatsApp) y completa el formulario. También se puede pegar una captura (Ctrl+V) o arrastrarla. Hasta 3 archivos
+  por mensaje; las fotos se reducen en el navegador (1600 px) y los PDF pueden pesar hasta 2,5 MB. Se validan por su
+  contenido real y **no se guardan**: solo se mandan a la IA para leerlos. Un `.txt` se pega en la caja de texto.
 - **Planilla**: cada registro es una fila de una planilla de Excel en la nube (OneDrive/SharePoint). Mientras no
   se conecte Microsoft, va a una **planilla de prueba** compartida que se ve en el panel y se descarga como
   `.xlsx`.

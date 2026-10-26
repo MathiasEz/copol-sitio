@@ -98,3 +98,11 @@
 .dir-elegida > span { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .dir-elegida a { color: var(--marca); display: inline-flex; align-items: center; gap: 4px; }
 .tabla--registros td a { color: var(--marca); }
+
+/* Adjuntos del chat */
+.chat__herramientas { display: flex; flex-wrap: wrap; gap: 8px; }
+.chat__adjuntos { display: flex; flex-wrap: wrap; gap: 6px; }
+.adjunto { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; padding: 3px 4px 3px 10px; border-radius: 999px; border: 1px solid var(--border); background: var(--muted); font-size: .8125rem; font-weight: 600; }
+.adjunto > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 220px; }
+.adjunto button { width: 22px; height: 22px; border: 0; border-radius: 50%; background: transparent; color: var(--muted-foreground); font-size: 1.1rem; line-height: 1; cursor: pointer; }
+.adjunto button:hover { background: var(--suave); color: var(--destructive); }

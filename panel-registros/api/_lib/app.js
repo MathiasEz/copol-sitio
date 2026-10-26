@@ -7,7 +7,7 @@ import { dirname, extname, join, normalize } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import * as A from './acceso.js';
 import { almacenConfigurado, contador, contar, reiniciar, resumen } from './almacen.js';
-import { conversar, ErrorAsistente, limpiarFormulario, limpiarHistorial, MAX_TEXTO, tokenGateway } from './asistente.js';
+import { conversar, ErrorAsistente, limpiarAdjuntos, limpiarFormulario, limpiarHistorial, MAX_TEXTO, tokenGateway } from './asistente.js';
 import { fechaMontevideo, validarRegistro } from './campos.js';
 import { borrarCookie, conCookies, cookie, error, espera, json, leerCookie, leerJson, mismoOrigen, noEncontrado, texto } from './http.js';
 import * as MS from './microsoft.js';
@@ -424,14 +424,16 @@ async function planilla(request, metodo, s, origen) {
 async function asistente(request, b, s) {
   if (process.env.IA_APAGADA === '1') return error('El asistente está apagado. Completá el formulario a mano.', 503);
   const historial = limpiarHistorial(b.mensajes);
-  if (!historial.length || historial.at(-1).texto.length < 2) return error('Escribí o dictá los datos del socio y del producto.');
+  if (!historial.length || historial.at(-1).texto.length < 2) return error('Escribí o dictá los datos del socio y del producto, o adjuntá una foto.');
+  const { adjuntos, error: errorAdjuntos } = limpiarAdjuntos(b.adjuntos);
+  if (errorAdjuntos) return error(errorAdjuntos, 413);
   if (historial.at(-1).texto.length >= MAX_TEXTO) return error(`El mensaje es demasiado largo (máximo ${MAX_TEXTO} caracteres).`);
   const limite = Number(process.env.IA_LIMITE_DIA) || 150;
   if ((await contar(`ia-${resumen(s.u.usuario)}-${fechaMontevideo().slice(0, 10)}`, 86_400)) > limite) return error('Llegaste al límite de consultas al asistente de hoy. Completá el formulario a mano.', 429);
   const token = tokenGateway(request.headers.get('x-vercel-oidc-token'));
   if (!token) return error('El asistente no está disponible en esta computadora (falta AI_GATEWAY_API_KEY).', 503);
   try {
-    return json(await conversar({ historial, formulario: limpiarFormulario(b.formulario), token }));
+    return json(await conversar({ historial, formulario: limpiarFormulario(b.formulario), adjuntos, token }));
   } catch (e) {
     if (e instanceof ErrorAsistente) return error(e.message, e.status);
     console.error('asistente:', e);
@@ -487,8 +489,8 @@ async function api(request, metodo, partes, BASE) {
   if (cambia && !mismoOrigen(request)) return error('Pedido rechazado: tiene que hacerse desde el panel.', 403);
   if (!secreto()) return error('Falta SESION_SECRETO (32 caracteres o más) en Vercel.', 503);
   if (!almacenConfigurado()) return error('Falta conectar el almacén del panel (Vercel → Storage → Blob privado).', 503);
-  const b = cambia ? await leerJson(request) : {};
   const [seccion, ...resto] = partes;
+  const b = cambia ? await leerJson(request, seccion === 'asistente' ? 4_300_000 : undefined) : {};
   const ruta = `${metodo} ${seccion ?? ''}`;
 
   if (ruta === 'GET estado') return estado(request);

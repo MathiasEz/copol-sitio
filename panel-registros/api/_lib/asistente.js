@@ -38,6 +38,9 @@ completar_formulario. Reglas:
   que lo retira, se lo lleva él o pasa a buscarlo. Si no dice nada, vacío.
 - producto: descripción del producto (marca, modelo, color, capacidad).
 - codigo: código interno del producto (código, cód., art., artículo, SKU). No uses el número de socio ni la cédula.
+- Si el mensaje trae fotos o documentos (una factura, un comprobante, una etiqueta, una cédula, una captura de
+  WhatsApp, un PDF), leé lo que tienen impreso o escrito y completá los campos con eso. Si algo no se lee bien o
+  no estás seguro, dejalo vacío y decilo en la respuesta: nunca adivines números (cédula, socio, código).
 - adicional: información útil que no entra en los otros campos (teléfono, horario o día de entrega, indicaciones para
   llegar, observaciones). No repitas acá lo que ya está en otro campo. Si no hay nada así, vacío.
 - respuesta: una o dos frases cortas en español rioplatense, de vos, para el empleado: qué completaste o
@@ -65,6 +68,35 @@ const HERRAMIENTA = {
     required: ['respuesta'],
   },
 };
+
+// ── Archivos adjuntos (fotos y PDF): se validan por su contenido real y solo se mandan a la IA, no se guardan ──
+export const MAX_ADJUNTOS = 3;
+export const MAX_BASE64_TOTAL = 4_000_000; // el cuerpo de una función de Vercel admite 4,5 MB
+const TIPOS = [
+  { tipo: 'imagen', media: 'image/jpeg', firma: [0xff, 0xd8, 0xff] },
+  { tipo: 'imagen', media: 'image/png', firma: [0x89, 0x50, 0x4e, 0x47] },
+  { tipo: 'pdf', media: 'application/pdf', firma: [0x25, 0x50, 0x44, 0x46] }, // %PDF
+];
+
+/** Adjuntos válidos con su tipo real, o { error }. */
+export function limpiarAdjuntos(entrada) {
+  if (entrada === undefined || entrada === null || (Array.isArray(entrada) && !entrada.length)) return { adjuntos: [] };
+  if (!Array.isArray(entrada) || entrada.length > MAX_ADJUNTOS) return { error: `Se pueden adjuntar hasta ${MAX_ADJUNTOS} archivos por mensaje.` };
+  let total = 0;
+  const adjuntos = [];
+  for (const a of entrada) {
+    const datos = typeof a?.datos === 'string' ? a.datos : '';
+    total += datos.length;
+    if (!datos || !/^[A-Za-z0-9+/]+={0,2}$/.test(datos)) return { error: 'No se pudo leer uno de los archivos adjuntos.' };
+    if (total > MAX_BASE64_TOTAL) return { error: 'Los archivos pesan demasiado. Probá con fotos más chicas o menos archivos.' };
+    const inicio = Buffer.from(datos.slice(0, 16), 'base64');
+    let tipo = TIPOS.find((t) => t.firma.every((b, i) => inicio[i] === b));
+    if (!tipo && inicio.length >= 12 && inicio.subarray(0, 4).toString() === 'RIFF' && inicio.subarray(8, 12).toString() === 'WEBP') tipo = { tipo: 'imagen', media: 'image/webp' };
+    if (!tipo) return { error: 'Solo se pueden adjuntar fotos (JPG, PNG, WebP) o archivos PDF.' };
+    adjuntos.push({ tipo: tipo.tipo, media: tipo.media, datos, nombre: limpiarTexto(a.nombre).slice(0, 80) });
+  }
+  return { adjuntos };
+}
 
 /** Limpia el historial que manda el navegador: roles válidos, textos acotados, termina en un mensaje del empleado. */
 export function limpiarHistorial(entrada) {
@@ -118,11 +150,16 @@ function jsonEnTexto(texto) {
   }
 }
 
-export async function conversar({ historial, formulario, token, pedir = fetch }) {
+export async function conversar({ historial, formulario, adjuntos = [], token, pedir = fetch }) {
   const mensajes = historial.map((m, i) => ({
     role: m.rol === 'usuario' ? 'user' : 'assistant',
     content: i === historial.length - 1
-      ? `Formulario en pantalla ahora:\n${JSON.stringify(formulario)}\n\nMensaje del empleado:\n"""\n${m.texto}\n"""`
+      ? [
+        ...adjuntos.map((a) => (a.tipo === 'pdf'
+          ? { type: 'document', source: { type: 'base64', media_type: a.media, data: a.datos } }
+          : { type: 'image', source: { type: 'base64', media_type: a.media, data: a.datos } })),
+        { type: 'text', text: `Formulario en pantalla ahora:\n${JSON.stringify(formulario)}\n\nMensaje del empleado${adjuntos.length ? ` (con ${adjuntos.length} archivo${adjuntos.length === 1 ? '' : 's'} adjunto${adjuntos.length === 1 ? '' : 's'})` : ''}:\n"""\n${m.texto}\n"""` },
+      ]
       : m.texto,
   }));
   const inicio = Date.now();
@@ -150,6 +187,7 @@ export async function conversar({ historial, formulario, token, pedir = fetch })
         : res.status === 401 || res.status === 403 ? 'El asistente no tiene acceso a Vercel AI Gateway. Revisá que esté habilitado para este proyecto.'
         : res.status === 402 || detalle.includes('insufficient') ? 'Se agotó el crédito de IA de este mes. Completá el formulario a mano.'
         : res.status === 429 ? 'El servicio de IA está ocupado. Esperá un minuto y probá de nuevo.'
+        : res.status === 400 && adjuntos.length ? 'La IA no pudo leer ese archivo. Probá con una foto más nítida o escribí los datos.'
         : 'El servicio de IA no respondió. Probá de nuevo o completá el formulario a mano.',
       );
     }

@@ -23,6 +23,8 @@ const ICONOS = {
   enviar: '<path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/>',
   deshacer: '<path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/>',
   microfono: '<rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0M12 17v5M8 22h8"/>',
+  clip: '<path d="m21.4 11.1-9.2 9.2a6 6 0 0 1-8.5-8.5l9.2-9.2a4 4 0 0 1 5.7 5.7l-9.2 9.2a2 2 0 0 1-2.8-2.8l8.5-8.5"/>',
+  camara: '<path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3Z"/><circle cx="12" cy="13" r="3"/>',
   parar: '<rect x="6" y="6" width="12" height="12" rx="2"/>',
   descargar: '<path d="M12 3v12M7 10l5 5 5-5M5 21h14"/>',
   externo: '<path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/>',
@@ -335,6 +337,13 @@ function vistaFormulario(main) {
           <textarea id="chat-texto" class="input" name="texto" rows="3" maxlength="4000" placeholder="Pegá o escribí los datos como te llegaron…"></textarea>
           <button type="button" class="microfono" data-microfono aria-pressed="false" title="Dictar los datos" aria-label="Dictar los datos con el micrófono" hidden>${icono('microfono', 18)}</button>
         </div>
+        <div class="chat__adjuntos" data-adjuntos hidden aria-live="polite"></div>
+        <div class="chat__herramientas">
+          <button type="button" class="btn btn--outline btn--sm" data-camara title="Sacar una foto de un documento">${icono('camara', 16)}Foto</button>
+          <button type="button" class="btn btn--outline btn--sm" data-clip title="Adjuntar una foto, un PDF o un archivo de texto">${icono('clip', 16)}Adjuntar</button>
+          <input type="file" data-archivo-camara accept="image/*" capture="environment" hidden>
+          <input type="file" data-archivo-clip accept="image/*,application/pdf,text/plain,.txt" multiple hidden>
+        </div>
         <div class="chat__acciones">
           <span class="chat__ayuda" data-ayuda-chat>Enter envía · Shift+Enter hace un salto de línea</span>
           <button class="btn" type="submit">${icono('enviar', 16)}Completar</button>
@@ -604,6 +613,70 @@ function iniciarChat(main, form) {
   const texto = entrada.elements.texto;
   let mensajes = leerSesionLocal(CLAVE_CHAT(), []);
   let ocupado = false;
+  const adjuntos = []; // { tipo: 'imagen'|'pdf', datos (base64), nombre }
+  const cajaAdjuntos = $('[data-adjuntos]', main);
+
+  function pintarAdjuntos() {
+    cajaAdjuntos.hidden = !adjuntos.length;
+    cajaAdjuntos.innerHTML = adjuntos.map((a, i) => `<span class="adjunto">${icono('clip', 12)}<span>${esc(a.nombre)}</span><button type="button" data-quitar="${i}" aria-label="Quitar ${esc(a.nombre)}">×</button></span>`).join('');
+  }
+  cajaAdjuntos.addEventListener('click', (ev) => {
+    const b = ev.target.closest('[data-quitar]');
+    if (b) { adjuntos.splice(Number(b.dataset.quitar), 1); pintarAdjuntos(); }
+  });
+
+  /** Foto reducida (máx. 1600 px, JPEG) para que suba rápido y entre en el límite de tamaño. */
+  const reducirImagen = async (archivo) => {
+    const img = await createImageBitmap(archivo); // sin imágenes temporales (blob:), que la política de seguridad no permite
+    const k = Math.min(1, 1600 / Math.max(img.width, img.height));
+    const c = document.createElement('canvas');
+    c.width = Math.max(1, Math.round(img.width * k));
+    c.height = Math.max(1, Math.round(img.height * k));
+    const ctx = c.getContext('2d');
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0, 0, c.width, c.height);
+    ctx.drawImage(img, 0, 0, c.width, c.height);
+    img.close?.();
+    return c.toDataURL('image/jpeg', 0.82).split(',')[1];
+  };
+  const aBase64 = (archivo) => new Promise((ok, mal) => {
+    const l = new FileReader();
+    l.onload = () => ok(String(l.result).split(',')[1]);
+    l.onerror = () => mal(new Error('lectura'));
+    l.readAsDataURL(archivo);
+  });
+  const avisoChat = (t) => { mensajes.push({ rol: 'error', texto: t }); dibujar(); };
+
+  async function agregarArchivos(lista) {
+    for (const f of [...lista]) {
+      if (adjuntos.length >= 3) { avisoChat('Se pueden adjuntar hasta 3 archivos por mensaje.'); break; }
+      try {
+        if (f.type.startsWith('image/')) {
+          adjuntos.push({ tipo: 'imagen', datos: await reducirImagen(f), nombre: f.name || 'foto.jpg' });
+        } else if (f.type === 'application/pdf' || /\.pdf$/i.test(f.name)) {
+          if (f.size > 2_500_000) { avisoChat(`«${f.name}» pesa demasiado (máximo 2,5 MB por PDF). Probá con una foto de la página.`); continue; }
+          adjuntos.push({ tipo: 'pdf', datos: await aBase64(f), nombre: f.name });
+        } else if (f.type === 'text/plain' || /\.txt$/i.test(f.name)) {
+          const t = (await f.text()).trim().slice(0, 4000);
+          texto.value = `${texto.value.trim()} ${t}`.trim();
+          texto.focus();
+        } else {
+          avisoChat(`No puedo leer «${f.name}». Adjuntá una foto, un PDF o un archivo de texto (.txt).`);
+        }
+      } catch {
+        avisoChat(`No se pudo abrir «${f.name}». Probá con otro archivo.`);
+      }
+    }
+    pintarAdjuntos();
+  }
+  for (const [boton, input] of [['[data-camara]', '[data-archivo-camara]'], ['[data-clip]', '[data-archivo-clip]']]) {
+    $(boton, main).addEventListener('click', () => $(input, main).click());
+    $(input, main).addEventListener('change', async (ev) => { await agregarArchivos(ev.target.files); ev.target.value = ''; });
+  }
+  // También se puede pegar una captura (Ctrl+V) o arrastrar un archivo a la caja.
+  texto.addEventListener('paste', (ev) => { const f = [...(ev.clipboardData?.files ?? [])]; if (f.length) { ev.preventDefault(); agregarArchivos(f); } });
+  texto.addEventListener('dragover', (ev) => ev.preventDefault());
+  texto.addEventListener('drop', (ev) => { if (ev.dataTransfer?.files?.length) { ev.preventDefault(); agregarArchivos(ev.dataTransfer.files); } });
 
   const vacio = `<div class="chat__vacio">
     <p><strong>Contame los datos como te llegaron</strong> y completo el formulario. Podés pegar un mensaje, escribirlo o dictarlo con el micrófono. Después revisás y guardás.</p>
@@ -614,7 +687,7 @@ function iniciarChat(main, form) {
   const dibujar = () => {
     caja.innerHTML = mensajes.length ? mensajes.map((m, i) => {
       if (m.rol === 'nota') return `<div class="msj msj--nota"><div class="msj__texto">${icono('check', 14)} ${esc(m.texto)}</div></div>`;
-      if (m.rol === 'usuario') return `<div class="msj msj--usuario"><span class="msj__autor">Vos</span><div class="msj__texto">${esc(m.texto)}</div></div>`;
+      if (m.rol === 'usuario') return `<div class="msj msj--usuario"><span class="msj__autor">Vos</span><div class="msj__texto">${esc(m.texto)}</div>${m.archivos?.length ? `<ul class="msj__cambios">${m.archivos.map((a) => `<li>${icono('clip', 12)} ${esc(a)}</li>`).join('')}</ul>` : ''}</div>`;
       if (m.rol === 'error') return `<div class="msj msj--asistente msj--error"><span class="msj__autor">Asistente</span><div class="msj__texto">${esc(m.texto)}</div></div>`;
       const cambios = Object.entries(m.campos ?? {});
       return `<div class="msj msj--asistente ${m.deshecho ? 'msj--deshecho' : ''}"><span class="msj__autor">Asistente</span>
@@ -649,15 +722,17 @@ function iniciarChat(main, form) {
   });
 
   const enviar = async () => {
-    const t = texto.value.trim();
+    const t = texto.value.trim() || (adjuntos.length ? 'Completá el formulario con los datos de lo que adjunté.' : '');
     if (!t || ocupado) return;
     detenerMicrofono();
-    mensajes.push({ rol: 'usuario', texto: t });
+    const enviados = adjuntos.splice(0);
+    pintarAdjuntos();
+    mensajes.push({ rol: 'usuario', texto: t, archivos: enviados.map((a) => a.nombre) });
     texto.value = '';
     ocupado = true;
     dibujar();
     const historial = mensajes.filter((m) => m.rol === 'usuario' || m.rol === 'asistente').map((m) => ({ rol: m.rol, texto: m.texto }));
-    const r = await api('asistente', { metodo: 'POST', datos: { mensajes: historial, formulario: valoresFormulario(form) } });
+    const r = await api('asistente', { metodo: 'POST', datos: { mensajes: historial, formulario: valoresFormulario(form), adjuntos: enviados.map(({ tipo, datos, nombre }) => ({ tipo, datos, nombre })) } });
     ocupado = false;
     if (!r.ok) {
       if (r.status !== 401) mensajes.push({ rol: 'error', texto: r.error || 'El asistente no respondió.' });

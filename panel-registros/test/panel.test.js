@@ -443,8 +443,10 @@ describe('asistente (chat)', () => {
       assert.equal(c.tool_choice.name, 'completar_formulario');
       assert.equal(c.messages.length, 3);
       assert.equal(c.messages[1].role, 'assistant');
-      assert.match(c.messages[2].content, /"nombre":"Juan Pérez"/);
-      assert.match(c.messages[2].content, /el código es 457939/);
+      const ultimo = c.messages[2].content;
+      assert.equal(ultimo.length, 1, 'sin adjuntos, solo el texto');
+      assert.match(ultimo[0].text, /"nombre":"Juan Pérez"/);
+      assert.match(ultimo[0].text, /el código es 457939/);
       return responder({ content: [{ type: 'tool_use', name: 'completar_formulario', input: { respuesta: 'Listo, agregué el código y marqué flete.', nombre: 'Juan Pérez', codigo: '457939', flete: 'si', cedula: '12345672', adicional: 'Tel 099 123 456', extra: 'x' } }], stop_reason: 'tool_use' });
     }]);
     const r = await admin.post('asistente', {
@@ -455,6 +457,35 @@ describe('asistente (chat)', () => {
     assert.equal(r.respuesta, 'Listo, agregué el código y marqué flete.');
     assert.deepEqual(r.campos, { cedula: '1.234.567-2', flete: 'Sí', codigo: '457939', adicional: 'Tel 099 123 456' }, 'el nombre no cambió: no se repite');
     assert.deepEqual(r.faltan, ['Dirección', 'Producto']);
+  });
+
+  test('fotos y PDF: se validan por su contenido y se mandan a la IA como imagen o documento, sin guardarse', async () => {
+    const admin = await configurarPanel();
+    process.env.AI_GATEWAY_API_KEY = 'clave-ia';
+    const jpg = Buffer.concat([Buffer.from([0xff, 0xd8, 0xff, 0xe0]), Buffer.alloc(40)]).toString('base64');
+    const pdf = Buffer.from('%PDF-1.4\n1 0 obj\n').toString('base64');
+    let visto = null;
+    rutas.push([/ai-gateway/, (_u, _o, c) => {
+      visto = c.messages.at(-1).content;
+      return responder({ content: [{ type: 'tool_use', name: 'completar_formulario', input: { respuesta: 'Leí la factura.', producto: 'Heladera', codigo: '457939' } }], stop_reason: 'tool_use' });
+    }]);
+    const pedido = (adjuntos) => admin.post('asistente', { mensajes: [{ rol: 'usuario', texto: 'Completá con lo que adjunté.' }], formulario: {}, adjuntos });
+    const ok = await pedido([{ tipo: 'imagen', datos: jpg, nombre: 'factura.jpg' }, { tipo: 'pdf', datos: pdf, nombre: 'remito.pdf' }]);
+    assert.equal(ok.status, 200);
+    assert.deepEqual(ok.campos, { producto: 'Heladera', codigo: '457939' });
+    assert.equal(visto[0].type, 'image');
+    assert.equal(visto[0].source.media_type, 'image/jpeg');
+    assert.equal(visto[1].type, 'document');
+    assert.equal(visto[1].source.media_type, 'application/pdf');
+    assert.match(visto[2].text, /con 2 archivos adjuntos/);
+    // El nombre «foto.jpg» no engaña: se mira el contenido. Un ejecutable o un script no pasan.
+    assert.equal((await pedido([{ tipo: 'imagen', datos: Buffer.from('MZ\x90\x00 programa').toString('base64'), nombre: 'foto.jpg' }])).status, 413);
+    assert.equal((await pedido([{ tipo: 'imagen', datos: Buffer.from('<script>alert(1)</script>').toString('base64'), nombre: 'a.png' }])).status, 413);
+    assert.equal((await pedido(Array(4).fill({ tipo: 'imagen', datos: jpg, nombre: 'a.jpg' }))).status, 413, 'máximo 3 archivos');
+    assert.equal((await pedido([{ tipo: 'imagen', datos: 'no es base64 !!', nombre: 'a.jpg' }])).status, 413);
+    assert.equal((await pedido([{ tipo: 'imagen', datos: `/9j/${'A'.repeat(4_100_000)}`, nombre: 'enorme.jpg' }])).status, 413, 'tamaño máximo');
+    const guardado = JSON.stringify(await almacen.leerLista('actividad'));
+    assert.ok(!guardado.includes(jpg), 'las fotos no se guardan en ningún lado');
   });
 
   test('sin mensaje, sin IA o sin crédito avisa (el formulario sigue funcionando)', async () => {
