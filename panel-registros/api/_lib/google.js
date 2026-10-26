@@ -120,11 +120,23 @@ let hojaLista = null; // { id, titulo }
 const letra = (n) => String.fromCharCode(64 + n);
 const rangoPestana = (r) => `'${pestana().replace(/'/g, "''")}'!${r}`;
 
+/**
+ * Separador de argumentos de las fórmulas: Google Sheets interpreta lo que se escribe con la configuración
+ * regional de la hoja; donde el decimal es una coma (es_UY, es_AR, pt_BR…) los argumentos se separan con «;».
+ */
+export function separadorDe(locale) {
+  try {
+    return new Intl.NumberFormat(String(locale || 'en_US').replace('_', '-')).format(1.5).includes(',') ? ';' : ',';
+  } catch {
+    return ',';
+  }
+}
+
 /** Título del archivo; crea la pestaña con su cabecera la primera vez. */
 export async function asegurarHoja() {
   if (hojaLista && hojaLista.pestana === pestana()) return hojaLista;
   try {
-    const meta = await api('?fields=properties.title,sheets.properties(sheetId,title)');
+    const meta = await api('?fields=properties(title,locale),sheets.properties(sheetId,title)');
     let hoja = meta.sheets?.find((s) => s.properties.title === pestana());
     if (!hoja) {
       const r = await api(':batchUpdate', { metodo: 'POST', cuerpo: { requests: [{ addSheet: { properties: { title: pestana() } } }] } });
@@ -142,7 +154,7 @@ export async function asegurarHoja() {
     } else if (filas[0].length !== COLUMNAS.length || filas[0].some((c, i) => c !== COLUMNAS[i])) {
       throw new ErrorPlanilla(`La pestaña «${pestana()}» de la hoja tiene otras columnas en la fila 1. Tienen que ser: ${COLUMNAS.join(', ')}. Usá otra pestaña (GOOGLE_PESTANA) o dejala vacía.`, { status: 409 });
     }
-    hojaLista = { id: idHoja(), titulo: meta.properties.title, pestana: pestana() };
+    hojaLista = { id: idHoja(), titulo: meta.properties.title, pestana: pestana(), separador: separadorDe(meta.properties.locale) };
     return hojaLista;
   } catch (e) {
     throw traducir(e);

@@ -110,13 +110,13 @@ export function fechaMontevideo(d = new Date()) {
  * Celda de dirección clicable: =HYPERLINK("enlace";"texto"). Excel no admite textos de más de 255 caracteres
  * dentro de una fórmula: si el enlace o la dirección no entran, se guarda solo el texto.
  */
-export function formulaEnlace(url, texto) {
+export function formulaEnlace(url, texto, separador = ',') {
   const t = String(texto ?? '').replace(/"/g, '""');
-  return url && enlaceMapaValido(url) && url.length <= 255 && t.length <= 255 ? `=HYPERLINK("${url}","${t}")` : null;
+  return url && enlaceMapaValido(url) && url.length <= 255 && t.length <= 255 ? `=HYPERLINK("${url}"${separador}"${t}")` : null;
 }
 
 /** Fila para la planilla, en el orden de COLUMNAS. Un N° de socio con ceros adelante va como texto para no perderlos. */
-export const filaPlanilla = (datos, cargadoPor, fecha = new Date()) => [
+export const filaPlanilla = (datos, cargadoPor, fecha = new Date(), separador = ',') => [
   fechaMontevideo(fecha), datos.nombre, /^0\d/.test(datos.socio) ? `'${datos.socio}` : datos.socio, datos.cedula, datos.direccion,
   datos.service, datos.flete, datos.producto, datos.codigo, cargadoPor,
-].map((v, i) => (i === 2 ? String(v) : i === 4 ? (formulaEnlace(datos.mapa, v) ?? celda(String(v ?? ''))) : celda(String(v ?? ''))));
+].map((v, i) => (i === 2 ? String(v) : i === 4 ? (formulaEnlace(datos.mapa, v, separador) ?? celda(String(v ?? ''))) : celda(String(v ?? ''))));

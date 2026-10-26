@@ -544,7 +544,7 @@ describe('Google Sheets', () => {
       const url = new URL(u);
       const camino = decodeURIComponent(url.pathname);
       assert.ok(camino.includes(`/spreadsheets/${ID}`));
-      if (camino.endsWith(`/${ID}`) && !url.search.includes('append')) return responder({ properties: { title: 'Registros COPOL' }, sheets: [{ properties: { sheetId: 0, title: 'Hoja 1' } }] });
+      if (camino.endsWith(`/${ID}`) && !url.search.includes('append')) return responder({ properties: { title: 'Registros COPOL', locale: 'es_UY' }, sheets: [{ properties: { sheetId: 0, title: 'Hoja 1' } }] });
       if (camino.endsWith(':batchUpdate')) return responder({ replies: [{ addSheet: { properties: { sheetId: 7, title: 'Registros' } } }] });
       if (camino.endsWith("'Registros'!A1:J1") && o.method === 'PUT') { cabecera = c.values[0]; return responder({}); }
       if (camino.endsWith("'Registros'!A1:J1")) return responder(cabecera ? { values: [cabecera] } : {});
@@ -559,7 +559,11 @@ describe('Google Sheets', () => {
     assert.deepEqual(cabecera, campos.COLUMNAS);
     assert.equal((await admin.post('registro', { ...REGISTRO, socio: '0123', mapa: MAPA })).status, 200);
     assert.equal(filas.length, 1);
-    assert.match(filas[0][4], /^=HYPERLINK\("https:\/\/www\.google\.com\/maps\//);
+    assert.match(filas[0][4], /^=HYPERLINK\("https:\/\/www\.google\.com\/maps\/[^"]+";"Av\. Italia 3456 apto 2"\)$/, 'hoja en español: argumentos separados con ;');
+    assert.equal(G.separadorDe('es_UY'), ';');
+    assert.equal(G.separadorDe('es_AR'), ';');
+    assert.equal(G.separadorDe('en_US'), ',');
+    assert.equal(G.separadorDe('es_MX'), ',');
     assert.equal(filas[0][1], 'Juan Pérez');
     assert.equal(filas[0][2], "'0123");
     assert.equal(llamadas.filter((l) => l.url.includes('oauth2')).length, 1, 'el token se reutiliza');

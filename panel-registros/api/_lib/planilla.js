@@ -52,11 +52,13 @@ export async function estado() {
 export async function agregar(datos, cargadoPor, ahora = new Date()) {
   const m = modo();
   if (!m) throw new ms.ErrorPlanilla('La planilla de Excel todavía no está configurada.', { status: 503 });
-  const fila = filaPlanilla(datos, cargadoPor, ahora);
   if (m === 'google') {
+    const { separador } = await google.asegurarHoja();
+    const fila = filaPlanilla(datos, cargadoPor, ahora, separador);
     await google.agregarFila(fila);
     return fila[0];
   }
+  const fila = filaPlanilla(datos, cargadoPor, ahora);
   if (m !== 'prueba') {
     await ms.agregarFila(fila);
     return fila[0];
