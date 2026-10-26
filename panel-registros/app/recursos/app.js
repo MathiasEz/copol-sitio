@@ -11,6 +11,7 @@ const $$ = (sel, el = document) => [...el.querySelectorAll(sel)];
 
 const ICONOS = {
   formulario: '<path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/>',
+  registro: '<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>',
   planilla: '<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18"/>',
   usuarios: '<circle cx="9" cy="8" r="4"/><path d="M2 21a7 7 0 0 1 14 0M16 4a4 4 0 0 1 0 8M22 21a7 7 0 0 0-4-6.3"/>',
   escudo: '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/>',
@@ -231,6 +232,7 @@ const SECCIONES = [
   { id: 'formulario', texto: 'Formulario', icono: 'formulario', permiso: 'formulario' },
   { id: 'planilla', texto: 'Planilla', icono: 'planilla', permiso: 'planilla' },
   { id: 'usuarios', texto: 'Usuarios', icono: 'usuarios', permiso: 'usuarios' },
+  { id: 'actividad', texto: 'Actividad', icono: 'registro', permiso: 'accesos' },
   { id: 'accesos', texto: 'Accesos', icono: 'escudo', permiso: 'accesos' },
 ];
 const puede = (p) => estado?.usuario?.permisos?.includes(p);
@@ -286,7 +288,7 @@ function pintar(aviso = null) {
   }
   const main = layout();
   const { id, resto } = seccionActual();
-  ({ formulario: vistaFormulario, planilla: vistaPlanilla, usuarios: vistaUsuarios, accesos: vistaAccesos, perfil: vistaPerfil }[id])(main, resto, aviso);
+  ({ formulario: vistaFormulario, planilla: vistaPlanilla, usuarios: vistaUsuarios, actividad: vistaActividad, accesos: vistaAccesos, perfil: vistaPerfil }[id])(main, resto, aviso);
 }
 
 addEventListener('hashchange', () => {
@@ -299,9 +301,9 @@ addEventListener('hashchange', () => {
 });
 
 // ── Formulario y asistente ──
-const CAMPOS = ['nombre', 'socio', 'cedula', 'direccion', 'producto', 'codigo', 'service'];
+const CAMPOS = ['nombre', 'socio', 'cedula', 'direccion', 'producto', 'codigo', 'service', 'adicional'];
 const OBLIGATORIOS = new Set(['nombre', 'socio', 'cedula', 'direccion', 'producto', 'codigo']);
-const ETIQUETAS = { nombre: 'Nombre', socio: 'N° de socio', cedula: 'Cédula', direccion: 'Dirección', producto: 'Producto', codigo: 'Código interno', service: 'Service', flete: 'Flete' };
+const ETIQUETAS = { nombre: 'Nombre', socio: 'N° de socio', cedula: 'Cédula', direccion: 'Dirección', producto: 'Producto', codigo: 'Código interno', service: 'Service', flete: 'Flete', adicional: 'Información adicional' };
 const CLAVE_CHAT = () => `registros-chat-${estado.usuario.usuario}`;
 const CLAVE_FORM = () => `registros-form-${estado.usuario.usuario}`;
 const leerSesionLocal = (k, def) => { try { return JSON.parse(sessionStorage.getItem(k)) ?? def; } catch { return def; } };
@@ -367,6 +369,7 @@ function vistaFormulario(main) {
           </fieldset>
         </div>
         ${campo('Service <span class="opcional">(opcional)</span>', '<input class="input" name="service" maxlength="300" placeholder="Ej.: instalación, reparación en garantía">')}
+        ${campo('Información adicional <span class="opcional">(opcional)</span>', '<textarea class="input" name="adicional" rows="3" maxlength="500" placeholder="Ej.: teléfono, horario de entrega, cómo llegar"></textarea>')}
         <div data-estado-registro></div>
         <div class="registro__acciones">
           <button class="btn btn--lg" type="submit">Guardar en la planilla</button>
@@ -689,52 +692,89 @@ function iniciarChat(main, form) {
 
 // Micrófono: dictado con el reconocimiento de voz del navegador (Chrome y Edge; en otros navegadores no aparece).
 let reconocimiento = null;
+let escuchando = false;
 function detenerMicrofono() {
+  escuchando = false;
   try { reconocimiento?.stop(); } catch { /* ya estaba detenido */ }
 }
+const ERRORES_VOZ = {
+  'not-allowed': 'El navegador no dejó usar el micrófono. Tocá el candado de la barra de direcciones y permitilo.',
+  'service-not-allowed': 'El navegador no dejó usar el dictado. Tocá el candado de la barra de direcciones y permitilo.',
+  'audio-capture': 'No se encontró un micrófono. Conectá uno y probá de nuevo.',
+  network: 'El dictado necesita internet y los servicios de voz de Google. Si usás Brave u otro navegador que los bloquea, probá con Chrome o Edge.',
+  'language-not-supported': 'Este navegador no entiende el idioma español.',
+};
+
+// Dictado con el reconocimiento de voz del navegador (Chrome, Edge, Safari y Chrome del celular). Se escucha de a
+// frases y se reinicia solo mientras el botón siga rojo: así funciona igual en la computadora y en el celular.
 function prepararMicrofono(boton, texto, ayuda) {
-  const Reconocimiento = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!Reconocimiento || !boton) return;
+  if (!boton) return;
   boton.hidden = false;
+  const Reconocimiento = window.SpeechRecognition || window.webkitSpeechRecognition;
   const ayudaNormal = ayuda.textContent;
+  const decir = (t, clase = '') => { ayuda.innerHTML = `<span class="${clase}">${esc(t)}</span>`; };
+  const pintarBoton = (activo) => {
+    boton.setAttribute('aria-pressed', String(activo));
+    boton.innerHTML = icono(activo ? 'parar' : 'microfono', activo ? 16 : 18);
+    boton.title = activo ? 'Dejar de escuchar' : 'Dictar los datos';
+  };
+  if (!Reconocimiento) {
+    boton.addEventListener('click', () => decir('Este navegador no permite dictar. Usá Chrome o Edge, o el micrófono del teclado de tu celular.', 'chat__escuchando'));
+    return;
+  }
   let base = '';
-  boton.addEventListener('click', () => {
-    if (boton.getAttribute('aria-pressed') === 'true') { detenerMicrofono(); return; }
+  let acumulado = '';
+  let silencios = 0;
+  let tope = null;
+
+  const terminar = (mensaje) => {
+    escuchando = false;
+    clearTimeout(tope);
+    pintarBoton(false);
+    if (mensaje) decir(mensaje, 'chat__escuchando'); else ayuda.textContent = ayudaNormal;
+    reconocimiento = null;
+  };
+
+  function escuchar() {
     const r = new Reconocimiento();
     reconocimiento = r;
     r.lang = 'es-UY';
-    r.continuous = true;
+    r.continuous = false;
     r.interimResults = true;
-    base = texto.value ? `${texto.value.trimEnd()} ` : '';
-    r.onstart = () => {
-      boton.setAttribute('aria-pressed', 'true');
-      boton.innerHTML = icono('parar', 16);
-      boton.title = 'Dejar de escuchar';
-      ayuda.innerHTML = '<span class="chat__escuchando">Escuchando… hablá claro y tocá el botón rojo al terminar.</span>';
-    };
+    r.maxAlternatives = 1;
     r.onresult = (ev) => {
-      let final = '';
+      silencios = 0;
       let parcial = '';
-      for (let i = 0; i < ev.results.length; i++) {
-        if (ev.results[i].isFinal) final += ev.results[i][0].transcript;
-        else parcial += ev.results[i][0].transcript;
+      for (let i = ev.resultIndex; i < ev.results.length; i++) {
+        const t = ev.results[i][0].transcript;
+        if (ev.results[i].isFinal) acumulado = `${acumulado} ${t}`.trim(); else parcial += t;
       }
-      texto.value = `${base}${final}${parcial}`.replace(/\s+/g, ' ').trimStart();
+      if (escuchando) texto.value = `${base} ${acumulado} ${parcial}`.replace(/\s+/g, ' ').trim();
     };
     r.onerror = (ev) => {
-      ayuda.textContent = ev.error === 'not-allowed' || ev.error === 'service-not-allowed'
-        ? 'El navegador no dejó usar el micrófono: permitilo en el candado de la barra de direcciones.'
-        : ev.error === 'no-speech' ? 'No se escuchó nada. Probá de nuevo.' : 'No se pudo usar el micrófono.';
+      if (ev.error === 'no-speech') { silencios++; return; }
+      if (ev.error === 'aborted') return;
+      terminar(ERRORES_VOZ[ev.error] ?? `No se pudo usar el micrófono (${ev.error}).`);
     };
     r.onend = () => {
-      boton.setAttribute('aria-pressed', 'false');
-      boton.innerHTML = icono('microfono', 18);
-      boton.title = 'Dictar los datos';
-      if ($('.chat__escuchando', ayuda)) ayuda.textContent = ayudaNormal;
-      if (reconocimiento === r) reconocimiento = null;
-      texto.focus();
+      if (!escuchando) { if (reconocimiento === r) terminar(); texto.focus(); return; }
+      if (silencios >= 3) { terminar('No se escuchó nada. Acercate al micrófono y probá de nuevo.'); return; }
+      try { escuchar(); } catch { terminar('Se cortó el dictado. Tocá el micrófono para seguir.'); }
     };
-    try { r.start(); } catch { ayuda.textContent = 'No se pudo usar el micrófono.'; }
+    r.start();
+  }
+
+  boton.addEventListener('click', () => {
+    if (escuchando) { detenerMicrofono(); return; }
+    base = texto.value.trim();
+    acumulado = '';
+    silencios = 0;
+    escuchando = true;
+    pintarBoton(true);
+    decir('Escuchando… hablá claro y tocá el botón rojo al terminar.', 'chat__escuchando');
+    clearTimeout(tope);
+    tope = setTimeout(() => detenerMicrofono(), 120_000); // corte de seguridad: 2 minutos
+    try { escuchar(); } catch { terminar('No se pudo usar el micrófono. Probá de nuevo.'); }
   });
 }
 
@@ -764,7 +804,7 @@ async function vistaPlanilla(main, resto, aviso) {
     ${avisoMs}${alerta('aviso', p.aviso)}${aviso ? alerta('error', aviso) : ''}
     <p class="muted" data-total>Cargando…</p>
     <div class="tabla-caja"><table class="tabla tabla--lista tabla--registros">
-      <thead><tr><th>Nombre</th><th>Fecha</th><th>Socio</th><th>Cédula</th><th>Dirección</th><th>Producto</th><th>Código</th><th>Flete</th><th>Service</th><th>Cargado por</th></tr></thead>
+      <thead><tr><th>Nombre</th><th>Fecha</th><th>Socio</th><th>Cédula</th><th>Dirección</th><th>Producto</th><th>Código</th><th>Flete</th><th>Service</th><th>Cargado por</th><th>Información adicional</th></tr></thead>
       <tbody data-filas></tbody></table></div>`;
   $('[data-vaciar]', main)?.addEventListener('click', async () => {
     if (!confirm('¿Borrar todas las filas de la planilla de prueba? Conviene descargarla antes en Excel.')) return;
@@ -775,7 +815,7 @@ async function vistaPlanilla(main, resto, aviso) {
   if (!r.ok) { $('[data-total]', main).textContent = r.error || 'No se pudo leer la planilla.'; return; }
   $('[data-total]', main).textContent = r.total ? `${r.total} fila${r.total === 1 ? '' : 's'}${r.total > r.registros.length ? ` (se muestran las últimas ${r.registros.length})` : ''}. La más nueva arriba.` : 'La planilla de prueba está vacía.';
   const celda = (etiqueta, v, clase = '') => `<td data-etiqueta="${etiqueta}" class="${clase}">${esc(v || '—')}</td>`;
-  $('[data-filas]', main).innerHTML = r.registros.map((x) => `<tr>${celda('Nombre', x.nombre)}${celda('Fecha', x.fecha, 'nowrap')}${celda('Socio', x.socio)}${celda('Cédula', x.cedula, 'nowrap')}${x.mapa ? `<td data-etiqueta="Dirección"><a href="${esc(x.mapa)}" target="_blank" rel="noopener noreferrer">${esc(x.direccion)}</a></td>` : celda('Dirección', x.direccion)}${celda('Producto', x.producto)}${celda('Código', x.codigo)}${celda('Flete', x.flete)}${celda('Service', x.service)}${celda('Cargado por', x.cargadoPor)}</tr>`).join('');
+  $('[data-filas]', main).innerHTML = r.registros.map((x) => `<tr>${celda('Nombre', x.nombre)}${celda('Fecha', x.fecha, 'nowrap')}${celda('Socio', x.socio)}${celda('Cédula', x.cedula, 'nowrap')}${x.mapa ? `<td data-etiqueta="Dirección"><a href="${esc(x.mapa)}" target="_blank" rel="noopener noreferrer">${esc(x.direccion)}</a></td>` : celda('Dirección', x.direccion)}${celda('Producto', x.producto)}${celda('Código', x.codigo)}${celda('Flete', x.flete)}${celda('Service', x.service)}${celda('Cargado por', x.cargadoPor)}${celda('Información adicional', x.adicional)}</tr>`).join('');
 }
 
 // ── Usuarios (administradores) ──
@@ -884,6 +924,24 @@ function vistaUsuario(main, r, nombre) {
     const x = await api(`usuarios/${encodeURIComponent(u.usuario)}`, { metodo: 'DELETE', datos: {} });
     if (x.ok) location.hash = '#/usuarios'; else aviso('error', x.error);
   });
+}
+
+// ── Actividad: quién cargó qué (administradores) ──
+async function vistaActividad(main) {
+  main.innerHTML = `${cabecera('Actividad')}<p class="muted">Cargando…</p>`;
+  const r = await api('actividad');
+  if (!r.ok) { main.innerHTML = `${cabecera('Actividad')}${alerta('error', r.error)}`; return; }
+  main.innerHTML = `${cabecera('Actividad')}
+    <p class="muted">Quién cargó cada registro y qué cambios hizo cada administrador (los últimos 500, el más nuevo arriba).</p>
+    <div class="tabla-caja"><table class="tabla tabla--lista tabla--accesos">
+      <thead><tr><th>Fecha</th><th>Usuario</th><th>Qué hizo</th><th>Detalle</th><th>Dónde quedó</th></tr></thead>
+      <tbody>${r.eventos.map((e) => `<tr>
+        <td data-etiqueta="Fecha" class="nowrap">${fecha(e.fecha)}</td>
+        <td data-etiqueta="Usuario">${esc(e.nombre || e.usuario)}${e.nombre && e.nombre !== e.usuario ? ` <span class="muted">(${esc(e.usuario)})</span>` : ''}</td>
+        <td data-etiqueta="Qué hizo" class="evento">${esc(r.tipos[e.tipo] ?? e.tipo)}</td>
+        <td data-etiqueta="Detalle">${esc(e.detalle ?? '')}</td>
+        <td data-etiqueta="Dónde quedó">${esc(e.destino ?? '—')}</td>
+      </tr>`).join('') || '<tr><td colspan="5">Todavía no hay actividad.</td></tr>'}</tbody></table></div>`;
 }
 
 // ── Accesos (administradores) ──

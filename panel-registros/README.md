@@ -7,7 +7,7 @@ despliegue con ellos. Se publica en Vercel como **proyecto propio** (`copol-regi
 ## Qué hace
 
 - **Formulario**: Nombre, N° de socio, Cédula, Dirección, Producto, Código interno, Flete (Sí/No, por defecto No)
-  y Service (opcional). Valida la cédula con su dígito verificador (la guarda como `1.234.567-8`) y el N° de
+  Service e Información adicional (los dos opcionales). Valida la cédula con su dígito verificador (la guarda como `1.234.567-8`) y el N° de
   socio. Lo que empieza con `=`, `+`, `-` o `@` se guarda como texto para que Excel no lo tome como fórmula.
 - **Dirección con ubicación**: al escribir calle y número aparecen las direcciones encontradas (el mismo buscador
   del panel de envíos: OpenStreetMap, con validación del número de puerta). Al elegir una se genera el link a
@@ -23,6 +23,9 @@ despliegue con ellos. Se publica en Vercel como **proyecto propio** (`copol-regi
   `.xlsx`.
 - **Usuarios** con dos roles: **Administrador** (todo: usuarios, PIN, accesos, vaciar la planilla, conectar
   Excel) y **Carga de formularios** (formulario, asistente y ver o descargar la planilla).
+- **Actividad**: quién cargó cada registro (usuario, cuándo, socio, producto, código y en qué pestaña o planilla
+  quedó) y qué cambios hicieron los administradores (usuarios, vaciar la planilla). Los últimos 3000, solo para
+  administradores.
 - **Accesos**: registro de ingresos, intentos fallidos y cambios de usuarios (los últimos 400).
 - **Modo oscuro** (botón en la barra lateral; sin elegir, sigue al sistema).
 
@@ -100,7 +103,7 @@ demás (con contraseña temporal).
    `Files.ReadWrite.All` con consentimiento de un administrador de Microsoft 365.
 
 La primera vez el panel crea en el archivo una hoja y una tabla **Registros** con las columnas
-Fecha · Nombre · N° de socio · Cédula · Dirección · Service · Flete · Producto · Código interno · Cargado por.
+Fecha · Nombre · N° de socio · Cédula · Dirección · Service · Flete · Producto · Código interno · Cargado por · Información adicional.
 Lo cargado en la planilla de prueba no se copia: descargarla antes.
 
 ## Probar en la computadora

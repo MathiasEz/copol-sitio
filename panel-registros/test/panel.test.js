@@ -146,6 +146,9 @@ describe('campos', () => {
     assert.equal(datos.socio, '12345');
     assert.equal(datos.cedula, '1.234.567-2');
     assert.equal(datos.service, '');
+    assert.equal(datos.adicional, '', 'la información adicional es opcional');
+    assert.equal(campos.validarRegistro({ ...REGISTRO, adicional: '  Tel 099 123 456,\n entregar por la tarde ' }).datos.adicional, 'Tel 099 123 456, entregar por la tarde');
+    assert.ok(campos.validarRegistro({ ...REGISTRO, adicional: 'x'.repeat(501) }).errores.adicional);
   });
 
   test('ubicación: solo enlaces de búsqueda de Google Maps; en la fila va como enlace clicable', () => {
@@ -169,6 +172,8 @@ describe('campos', () => {
     assert.equal(fila[7], "'+54");
     assert.equal(fila[8], "'@a");
     assert.equal(fila[9], 'Ana');
+    assert.equal(fila[10], '');
+    assert.equal(campos.filaPlanilla({ ...REGISTRO, adicional: '=cmd' }, 'Ana')[10], "'=cmd", 'tampoco como fórmula');
   });
 });
 
@@ -317,6 +322,15 @@ describe('usuarios y roles', () => {
     assert.equal((await n.post('perfil/pin', { pin: '583920', repetir: '583920', clave: 'Mi-Clave-Nueva-77' })).status, 403);
     const lista = await n.json('planilla');
     assert.equal(lista.registros[0].cargadoPor, 'Juan Pérez');
+    assert.equal((await n.json('actividad')).status, 403, 'la actividad es solo para administradores');
+    const act = await admin.json('actividad');
+    const reg = act.eventos.find((e) => e.tipo === 'registro');
+    assert.equal(reg.usuario, 'jperez');
+    assert.equal(reg.nombre, 'Juan Pérez');
+    assert.equal(reg.destino, 'Planilla de prueba');
+    assert.match(reg.detalle, /Juan Pérez · socio 12345 · Heladera Samsung RT38 \(457939\) · con flete/);
+    assert.ok(act.eventos.some((e) => e.tipo === 'usuario-creado' && e.usuario === 'bpereira' && /jperez/.test(e.detalle)));
+    assert.equal(act.tipos.registro, 'Cargó un registro');
   });
 
   test('reglas: el protegido no se baja ni se borra, siempre queda un administrador, restablecer cierra sesiones', async () => {
@@ -357,7 +371,7 @@ describe('planilla de prueba (sin Microsoft)', () => {
     const malo = await admin.post('registro', { ...REGISTRO, cedula: '1234567-3' });
     assert.equal(malo.status, 422);
     assert.ok(malo.errores.cedula);
-    assert.equal((await admin.post('registro', { ...REGISTRO, service: 'Instalación', mapa: MAPA })).status, 200);
+    assert.equal((await admin.post('registro', { ...REGISTRO, service: 'Instalación', mapa: MAPA, adicional: 'Tel 099 123 456' })).status, 200);
     assert.equal((await admin.post('registro', { ...REGISTRO, mapa: 'https://malo.example/' })).status, 422);
     assert.equal((await admin.post('registro', { ...REGISTRO, nombre: 'María Gómez', service: '=1+1' })).status, 200);
     const lista = await admin.json('planilla');
@@ -369,6 +383,7 @@ describe('planilla de prueba (sin Microsoft)', () => {
     const hoja = delZip(Buffer.from(await xlsx.arrayBuffer()), 'xl/worksheets/sheet1.xml');
     for (const c of campos.COLUMNAS) assert.ok(hoja.includes(`<t xml:space="preserve">${c}</t>`), c);
     assert.ok(hoja.includes(`<f>HYPERLINK(&quot;${MAPA.replace(/&/g, '&amp;')}&quot;,&quot;Av. Italia 3456 apto 2&quot;)</f><v>Av. Italia 3456 apto 2</v>`), 'dirección clicable');
+    assert.ok(hoja.includes('<t xml:space="preserve">Información adicional</t>') && hoja.includes('<t xml:space="preserve">Tel 099 123 456</t>'), 'información adicional');
     assert.ok(hoja.includes('<v>12345</v>') && hoja.includes('<t xml:space="preserve">=1+1</t>') && hoja.split('<f>').length === 2, 'la única fórmula es el enlace');
     assert.equal((await new Navegador().api('planilla')).status, 401);
     assert.equal((await admin.json('planilla', { metodo: 'DELETE', datos: {} })).status, 200);
@@ -407,7 +422,7 @@ describe('asistente (chat)', () => {
       assert.equal(c.messages[1].role, 'assistant');
       assert.match(c.messages[2].content, /"nombre":"Juan Pérez"/);
       assert.match(c.messages[2].content, /el código es 457939/);
-      return responder({ content: [{ type: 'tool_use', name: 'completar_formulario', input: { respuesta: 'Listo, agregué el código y marqué flete.', nombre: 'Juan Pérez', codigo: '457939', flete: 'si', cedula: '12345672', extra: 'x' } }], stop_reason: 'tool_use' });
+      return responder({ content: [{ type: 'tool_use', name: 'completar_formulario', input: { respuesta: 'Listo, agregué el código y marqué flete.', nombre: 'Juan Pérez', codigo: '457939', flete: 'si', cedula: '12345672', adicional: 'Tel 099 123 456', extra: 'x' } }], stop_reason: 'tool_use' });
     }]);
     const r = await admin.post('asistente', {
       mensajes: [{ rol: 'usuario', texto: 'Juan Pérez socio 12345' }, { rol: 'asistente', texto: 'Completé nombre y socio.' }, { rol: 'usuario', texto: 'el código es 457939, va con flete, ci 12345672' }],
@@ -415,7 +430,7 @@ describe('asistente (chat)', () => {
     });
     assert.equal(r.status, 200);
     assert.equal(r.respuesta, 'Listo, agregué el código y marqué flete.');
-    assert.deepEqual(r.campos, { cedula: '1.234.567-2', flete: 'Sí', codigo: '457939' }, 'el nombre no cambió: no se repite');
+    assert.deepEqual(r.campos, { cedula: '1.234.567-2', flete: 'Sí', codigo: '457939', adicional: 'Tel 099 123 456' }, 'el nombre no cambió: no se repite');
     assert.deepEqual(r.faltan, ['Dirección', 'Producto']);
   });
 
@@ -440,12 +455,12 @@ function graphFalso({ tabla = false } = {}) {
     if (camino.endsWith('Registros COPOL.xlsx:') && metodo === 'GET') return responder({ name: 'Registros COPOL.xlsx', webUrl: 'https://onedrive.test/abrir' });
     if (camino.endsWith('/tables/Registros/headerRowRange')) return estado.tabla ? responder({ values: [campos.COLUMNAS] }) : responder({ error: { code: 'ItemNotFound' } }, 404);
     if (camino.endsWith('/worksheets/add')) { estado.hojas.push(cuerpo.name); return responder({ name: cuerpo.name }); }
-    if (camino.includes("range(address='A1:J1')") && metodo === 'PATCH') return responder({});
+    if (camino.includes("range(address='A1:K1')") && metodo === 'PATCH') return responder({});
     if (camino.endsWith('/worksheets/Registros/tables/add')) { estado.tabla = true; return responder({ id: '{T1}', name: 'Tabla1' }); }
     if (camino.endsWith('/tables/{T1}') && metodo === 'PATCH') return responder({ name: cuerpo.name });
     if (camino.endsWith('/format/font')) return responder({});
-    if (camino.endsWith('/tables/Registros/dataBodyRange')) return responder({ address: 'Registros!A2:J2', values: [Array(10).fill('')] });
-    if (camino.includes("range(address='A2:J2')") && metodo === 'PATCH') { estado.filas.push(cuerpo.values[0]); return responder({}); }
+    if (camino.endsWith('/tables/Registros/dataBodyRange')) return responder({ address: 'Registros!A2:K2', values: [Array(11).fill('')] });
+    if (camino.includes("range(address='A2:K2')") && metodo === 'PATCH') { estado.filas.push(cuerpo.values[0]); return responder({}); }
     if (camino.endsWith('/tables/Registros/rows/add') && metodo === 'POST') { estado.filas.push(cuerpo.values[0]); return responder({ index: estado.filas.length - 1 }); }
     return responder({ error: { code: 'Desconocido', message: camino } }, 400);
   }, estado];
@@ -592,6 +607,13 @@ describe('Google Sheets', () => {
     assert.deepEqual(pestanas.get('Enero 2027').cab, campos.COLUMNAS, 'cada pestaña nueva lleva su cabecera');
     assert.match(pestanas.get('Noviembre 2026').filas[0][0], /^2026-11-01 00:05$/, 'la fecha de la fila es del mismo momento');
     assert.equal((await admin.json('planilla')).status, 409, 'con Google conectado no hay planilla de prueba');
+
+    // Una pestaña creada con la versión anterior (sin «Información adicional») se completa sola, sin perder filas.
+    pestanas.set('Marzo 2027', { id: 99, cab: campos.COLUMNAS.slice(0, 10), filas: [['2027-03-01 10:00', 'Vieja']] });
+    await agregar({ ...REGISTRO, adicional: 'Tel 099' }, 'Ana', new Date('2027-03-10T15:00:00Z'));
+    assert.deepEqual(pestanas.get('Marzo 2027').cab, campos.COLUMNAS);
+    assert.equal(pestanas.get('Marzo 2027').filas.length, 2);
+    assert.equal(pestanas.get('Marzo 2027').filas[1][10], 'Tel 099');
     assert.equal(G.separadorDe('es_UY'), ';');
     assert.equal(G.separadorDe('es_MX'), ',');
   });

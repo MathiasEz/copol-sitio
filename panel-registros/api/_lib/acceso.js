@@ -166,3 +166,27 @@ export async function registrar(tipo, { usuario = null, detalle = null, origen =
   }
 }
 export const eventos = async () => (await leerLista('accesos')).reverse();
+
+// ── Actividad: quién cargó qué (registro aparte del de accesos, para que los ingresos no lo desplacen) ──
+export const ACTIVIDAD = {
+  registro: 'Cargó un registro',
+  'planilla-vaciada': 'Vació la planilla de prueba',
+  'usuario-creado': 'Creó un usuario',
+  'usuario-editado': 'Editó un usuario',
+  'usuario-clave': 'Restableció una contraseña',
+  'usuario-eliminado': 'Eliminó un usuario',
+};
+const MAX_ACTIVIDAD = 3000;
+
+/** Anota quién hizo qué (si falla, no interrumpe lo que se estaba haciendo). */
+export async function registrarActividad(tipo, { usuario, nombre = null, detalle = null, destino = null }) {
+  try {
+    await agregarALista('actividad', {
+      fecha: new Date().toISOString(), tipo, usuario, nombre, destino,
+      detalle: detalle ? String(detalle).slice(0, 300) : null,
+    }, MAX_ACTIVIDAD, { rotar: true });
+  } catch (e) {
+    console.error('registro de actividad:', e.message);
+  }
+}
+export const actividad = async () => (await leerLista('actividad')).reverse();

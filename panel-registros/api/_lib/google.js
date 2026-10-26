@@ -155,7 +155,8 @@ export async function asegurarHoja(fecha = new Date()) {
     const rangoCab = rangoPestana(pest, `A1:${letra(COLUMNAS.length)}1`);
     const cab = await api(`/values/${encodeURIComponent(rangoCab)}`);
     const filas = cab.values ?? [];
-    if (!filas.length || filas[0].every((c) => !c)) {
+    const antigua = filas.length && filas[0].length < COLUMNAS.length && filas[0].every((c, i) => c === COLUMNAS[i]);
+    if (!filas.length || filas[0].every((c) => !c) || antigua) {
       await api(`/values/${encodeURIComponent(rangoCab)}?valueInputOption=RAW`, { metodo: 'PUT', cuerpo: { values: [COLUMNAS] } });
       await api(':batchUpdate', { metodo: 'POST', cuerpo: { requests: [
         { repeatCell: { range: { sheetId: hoja.properties.sheetId, startRowIndex: 0, endRowIndex: 1 }, cell: { userEnteredFormat: { backgroundColor: { red: 0, green: 0.4, blue: 0.2 }, textFormat: { bold: true, foregroundColor: { red: 1, green: 1, blue: 1 } } } }, fields: 'userEnteredFormat(backgroundColor,textFormat)' } },

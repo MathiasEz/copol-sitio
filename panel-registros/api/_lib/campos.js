@@ -3,7 +3,7 @@
 // public/app.js solo para avisar antes de enviar; la que vale es esta.
 
 /** Columnas de la tabla de Excel, en orden. Fecha y Cargado por las completa el servidor. */
-export const COLUMNAS = ['Fecha', 'Nombre', 'N° de socio', 'Cédula', 'Dirección', 'Service', 'Flete', 'Producto', 'Código interno', 'Cargado por'];
+export const COLUMNAS = ['Fecha', 'Nombre', 'N° de socio', 'Cédula', 'Dirección', 'Service', 'Flete', 'Producto', 'Código interno', 'Cargado por', 'Información adicional'];
 
 export const CAMPOS = {
   nombre: { etiqueta: 'Nombre', min: 3, max: 120, obligatorio: true },
@@ -14,6 +14,7 @@ export const CAMPOS = {
   flete: { etiqueta: 'Flete', min: 2, max: 2, obligatorio: true }, // «Sí» o «No»
   producto: { etiqueta: 'Producto', min: 2, max: 200, obligatorio: true },
   codigo: { etiqueta: 'Código interno', min: 1, max: 40, obligatorio: true },
+  adicional: { etiqueta: 'Información adicional', min: 0, max: 500, obligatorio: false },
 };
 
 /** Espacios simples, sin caracteres de control. */
@@ -126,5 +127,5 @@ export function nombreMes(d = new Date()) {
 /** Fila para la planilla, en el orden de COLUMNAS. Un N° de socio con ceros adelante va como texto para no perderlos. */
 export const filaPlanilla = (datos, cargadoPor, fecha = new Date(), separador = ',') => [
   fechaMontevideo(fecha), datos.nombre, /^0\d/.test(datos.socio) ? `'${datos.socio}` : datos.socio, datos.cedula, datos.direccion,
-  datos.service, datos.flete, datos.producto, datos.codigo, cargadoPor,
+  datos.service, datos.flete, datos.producto, datos.codigo, cargadoPor, datos.adicional ?? '',
 ].map((v, i) => (i === 2 ? String(v) : i === 4 ? (formulaEnlace(datos.mapa, v, separador) ?? celda(String(v ?? ''))) : celda(String(v ?? ''))));

@@ -38,6 +38,8 @@ completar_formulario. Reglas:
   que lo retira, se lo lleva él o pasa a buscarlo. Si no dice nada, vacío.
 - producto: descripción del producto (marca, modelo, color, capacidad).
 - codigo: código interno del producto (código, cód., art., artículo, SKU). No uses el número de socio ni la cédula.
+- adicional: información útil que no entra en los otros campos (teléfono, horario o día de entrega, indicaciones para
+  llegar, observaciones). No repitas acá lo que ya está en otro campo. Si no hay nada así, vacío.
 - respuesta: una o dos frases cortas en español rioplatense, de vos, para el empleado: qué completaste o
   cambiaste y qué falta para poder guardar. Si trae varios socios o productos, completá solo el primero y
   avisalo. Si el mensaje no tiene datos (un saludo, una pregunta), respondé breve y no cambies campos.
@@ -58,6 +60,7 @@ const HERRAMIENTA = {
       flete: { type: 'string', description: '"Sí", "No" o vacío si no cambia.' },
       producto: { type: 'string' },
       codigo: { type: 'string' },
+      adicional: { type: 'string' },
     },
     required: ['respuesta'],
   },

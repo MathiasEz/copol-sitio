@@ -48,7 +48,7 @@ export async function estado() {
   }
 }
 
-/** Guarda el registro y devuelve la fecha con que quedó. */
+/** Guarda el registro y devuelve { fecha, destino } (dónde quedó). */
 export async function agregar(datos, cargadoPor, ahora = new Date()) {
   const m = modo();
   if (!m) throw new ms.ErrorPlanilla('La planilla de Excel todavía no está configurada.', { status: 503 });
@@ -57,12 +57,12 @@ export async function agregar(datos, cargadoPor, ahora = new Date()) {
     const { separador } = await google.asegurarHoja(ahora);
     const fila = filaPlanilla(datos, cargadoPor, ahora, separador);
     await google.agregarFila(fila, ahora);
-    return fila[0];
+    return { fecha: fila[0], destino: `Google Sheets · ${google.pestanaDe(ahora)}` };
   }
   const fila = filaPlanilla(datos, cargadoPor, ahora);
   if (m !== 'prueba') {
     await ms.agregarFila(fila);
-    return fila[0];
+    return { fecha: fila[0], destino: 'Excel en la nube' };
   }
   try {
     await almacen.agregarALista(LISTA, { fecha: fila[0], ...datos, cargadoPor }, MAX_FILAS_PRUEBA);
@@ -70,7 +70,7 @@ export async function agregar(datos, cargadoPor, ahora = new Date()) {
     if (e instanceof almacen.ErrorLista) throw new ms.ErrorPlanilla(e.message, { status: 409 });
     throw e;
   }
-  return fila[0];
+  return { fecha: fila[0], destino: 'Planilla de prueba' };
 }
 
 /** Registros de la planilla de prueba, en el orden en que se cargaron. */
@@ -87,7 +87,7 @@ const enlazar = (r) => {
 export function xlsxPrueba(registros) {
   const filas = registros.map((r) => [
     r.fecha, r.nombre, /^[1-9]\d{0,14}$/.test(r.socio ?? '') ? Number(r.socio) : r.socio, r.cedula, enlazar(r),
-    r.service, r.flete ?? '', r.producto, r.codigo, r.cargadoPor,
+    r.service, r.flete ?? '', r.producto, r.codigo, r.cargadoPor, r.adicional ?? '',
   ]);
-  return libroXlsx({ hoja: 'Registros', columnas: COLUMNAS, filas, anchos: [17, 28, 12, 13, 36, 26, 8, 34, 15, 18] });
+  return libroXlsx({ hoja: 'Registros', columnas: COLUMNAS, filas, anchos: [17, 28, 12, 13, 36, 26, 8, 34, 15, 18, 40] });
 }

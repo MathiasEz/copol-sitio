@@ -315,6 +315,7 @@ async function usuarios(request, metodo, partes, b, s, origen) {
     if (problema) return error(problema, 422, { campo: 'clave' });
     const nuevo = await U.crear({ usuario, nombre: b.nombre, rol: b.rol, correo, clave, debeCambiar: true, creadoPor: yo });
     await A.registrar('usuario-creado', { usuario: yo, detalle: `${nuevo.usuario} (${ROLES[nuevo.rol].nombre})`, origen });
+    await A.registrarActividad('usuario-creado', { usuario: yo, nombre: s.u.nombre, detalle: `${nuevo.usuario} (${ROLES[nuevo.rol].nombre})` });
     return json({ ok: true, usuario: U.publico(nuevo) }, 201);
   }
   const objetivo = U.limpiarUsuario(decodeURIComponent(partes[0] ?? ''));
@@ -364,6 +365,7 @@ async function usuarios(request, metodo, partes, b, s, origen) {
     if (u.usuario === yo) return error('No podés eliminar tu propia cuenta.', 403);
     await U.eliminar(u.usuario);
     await A.registrar('usuario-eliminado', { usuario: yo, detalle: u.usuario, origen });
+    await A.registrarActividad('usuario-eliminado', { usuario: yo, nombre: s.u.nombre, detalle: u.usuario });
     return json({ ok: true });
   }
   return error('No encontrado.', 404);
@@ -375,7 +377,11 @@ async function guardarRegistro(b, s) {
   const { datos, errores } = validarRegistro(b);
   if (errores) return error('Revisá los campos marcados.', 422, { errores });
   try {
-    const fecha = await agregar(datos, s.u.nombre || s.u.usuario);
+    const { fecha, destino } = await agregar(datos, s.u.nombre || s.u.usuario);
+    await A.registrarActividad('registro', {
+      usuario: s.u.usuario, nombre: s.u.nombre, destino,
+      detalle: `${datos.nombre} · socio ${datos.socio} · ${datos.producto} (${datos.codigo})${datos.flete === 'Sí' ? ' · con flete' : ''}${datos.adicional ? ' · con información adicional' : ''}`,
+    });
     return json({ ok: true, registro: { ...datos, cargadoPor: s.u.nombre || s.u.usuario }, fecha });
   } catch (e) {
     if (e instanceof MS.ErrorPlanilla) return error(e.message, e.status, { conectar: e.reconectar });
@@ -390,6 +396,7 @@ async function planilla(request, metodo, s, origen) {
     if (!puede(s.u.rol, 'configuracion')) return error('Solo un administrador puede vaciar la planilla.', 403);
     await vaciarPrueba();
     await A.registrar('planilla-vaciada', { usuario: s.u.usuario, origen });
+    await A.registrarActividad('planilla-vaciada', { usuario: s.u.usuario, nombre: s.u.nombre, destino: 'Planilla de prueba' });
     return json({ ok: true });
   }
   const registros = await registrosPrueba();
@@ -506,6 +513,7 @@ async function api(request, metodo, partes, BASE) {
       throw e;
     }
   }
+  if (ruta === 'GET actividad') return responder(permiso('accesos') ?? json({ eventos: (await A.actividad()).slice(0, 500), tipos: A.ACTIVIDAD }));
   if (ruta === 'GET accesos') return responder(permiso('accesos') ?? json({ eventos: (await A.eventos()).slice(0, 300), tipos: A.EVENTOS }));
   if (seccion === 'microsoft') return responder(permiso('configuracion') ?? microsoft(request, resto[0], metodo, s, origen, BASE));
   return error('No encontrado.', 404);
