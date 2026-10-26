@@ -46,7 +46,9 @@ despliegue con ellos. Se publica en Vercel como **proyecto propio** (`copol-regi
    10 min; 5 intentos; 3 envíos). Se envía con Resend (`RESEND_API_KEY`, la misma cuenta que el panel de stock).
    Sin esa clave, la verificación por correo queda en pausa y se avisa a los administradores.
 5. **Equipo recordado** 30 días (opcional al ingresar): en ese equipo no se piden el PIN ni el código.
-6. Sesión en cookie firmada (`HttpOnly`, `Secure`, `__Host-`), 30 minutos de inactividad y 8 horas como máximo.
+6. Sesión en cookie firmada (`HttpOnly`, `Secure`, `__Host-`). Si la persona marca «Recordar este equipo», la
+   sesión **no se cierra mientras la use** (30 días sin actividad, 90 como máximo); si no, 30 minutos de inactividad y 8
+   horas como máximo.
    Cambiar la contraseña, desactivar la cuenta o «Cerrar sus sesiones» la invalida en todos los equipos.
 7. Todo pedido que cambia algo tiene que venir de la propia página (origen y JSON). Cabeceras CSP,
    HSTS, `X-Frame-Options: DENY` y permisos (solo micrófono, de la propia página).

@@ -157,7 +157,7 @@ const PANTALLAS = {
       <form class="form"><div data-error></div>
         ${campo('Usuario o correo', '<input class="input" name="usuario" autocomplete="username" required maxlength="120" autocapitalize="none">')}
         ${campo('Contraseña', '<input class="input" type="password" name="clave" autocomplete="current-password" required maxlength="200">')}
-        ${e.sinCorreo ? '<label class="check"><input type="checkbox" name="recordar" checked><span>Recordar este equipo por 30 días (no volver a pedir el PIN: solo usuario y contraseña)</span></label><p class="ayuda">Desmarcalo si la computadora o el celular es compartido.</p>' : ''}
+        ${e.sinCorreo ? '<label class="check"><input type="checkbox" name="recordar" checked><span>Recordar este equipo (la sesión no se cierra mientras lo uses; si salís, solo piden usuario y contraseña)</span></label><p class="ayuda">Desmarcalo si la computadora o el celular es compartido.</p>' : ''}
         <button class="btn btn--lg btn--bloque" type="submit">Ingresar</button>
       </form>`, aviso);
     alEnviar($('form', raiz), 'ingresar', (f) => ({ usuario: f.get('usuario'), clave: f.get('clave'), recordar: f.get('recordar') === 'on' }));
@@ -176,7 +176,7 @@ const PANTALLAS = {
     simple('Revisá tu correo', `Te mandamos un código de 6 números a <strong>${esc(e.correo)}</strong>. Vence en 10 minutos; si no lo ves, revisá la carpeta de spam.`, `
       <form class="form"><div data-error></div>
         ${campo('Código', '<input class="input input--pin" name="codigo" inputmode="numeric" pattern="\\d{6}" minlength="6" maxlength="6" autocomplete="one-time-code" required>')}
-        <label class="check"><input type="checkbox" name="recordar" checked><span>Recordar este equipo por 30 días (no volver a pedir el PIN ni el código)</span></label>
+        <label class="check"><input type="checkbox" name="recordar" checked><span>Recordar este equipo (la sesión no se cierra mientras lo uses; si salís, no piden PIN ni código)</span></label>
         <p class="ayuda">Desmarcalo si la computadora o el celular es compartido.</p>
         <button class="btn btn--lg btn--bloque" type="submit">Ingresar</button>
       </form>

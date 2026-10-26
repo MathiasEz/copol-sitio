@@ -33,14 +33,19 @@ export const leerPasePin = (valor, pv) => {
 export const paseEquipo = (u) => sellar({ t: 'equipo', u: u.usuario, sv: u.sv, exp: Date.now() + DURACION.equipo });
 export const leerPaseEquipo = (valor) => abrir(valor, 'equipo');
 
-export function sesionNueva(u) {
+// Sesión «larga» (equipo recordado): sigue abierta mientras se use (30 días sin actividad) y hasta 90 días en total.
+export const SESION_LARGA = { inactividad: 30 * 86_400_000, maximo: 90 * 86_400_000 };
+
+/** Sesión nueva: { valor, ms } (el texto de la cookie y cuánto dura). */
+export function sesionNueva(u, larga = false) {
   const t = Date.now();
-  return sellar({ t: 'sesion', u: u.usuario, sv: u.sv, ini: t, act: t, exp: t + sesionMaxMs() });
+  const ms = larga ? SESION_LARGA.maximo : sesionMaxMs();
+  return { valor: sellar({ t: 'sesion', u: u.usuario, sv: u.sv, ini: t, act: t, exp: t + ms, larga: larga ? 1 : 0 }), ms };
 }
 /** Sesión vigente (por vencimiento total y por inactividad) o null. */
 export function leerSesion(valor) {
   const d = abrir(valor, 'sesion');
-  return d && d.act + sesionInactividadMs() > Date.now() ? d : null;
+  return d && d.act + (d.larga ? SESION_LARGA.inactividad : sesionInactividadMs()) > Date.now() ? d : null;
 }
 /** La misma sesión con la actividad al día (se renueva como máximo una vez por minuto). */
 export const renovarSesion = (d) => (Date.now() - d.act > 60_000 ? sellar({ ...d, act: Date.now() }) : null);

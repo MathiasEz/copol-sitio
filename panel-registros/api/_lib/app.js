@@ -57,7 +57,7 @@ async function sesionDe(request) {
   const u = await U.buscar(s.u);
   if (!u || !u.activo || u.sv !== s.sv) return null;
   const renovada = A.renovarSesion(s);
-  return { u, renovar: renovada ? cookie(request, A.COOKIES.sesion, renovada, A.sesionMaxMs()) : null };
+  return { u, larga: Boolean(s.larga), renovar: renovada ? cookie(request, A.COOKIES.sesion, renovada, s.exp - Date.now()) : null };
 }
 
 /** Pase de equipo recordado válido (de una cuenta activa cuya contraseña no cambió), o null. */
@@ -88,11 +88,13 @@ async function datosPanel(request, u) {
   };
 }
 
-async function iniciarSesion(request, u, origen, motivo, extra = []) {
+/** `larga`: equipo recordado, la sesión no se cierra mientras se use (ver acceso.js). */
+async function iniciarSesion(request, u, origen, motivo, extra = [], larga = false) {
   const actualizado = await U.actualizar(u.usuario, { ultimoAcceso: new Date().toISOString(), intentos: 0, bloqueadoHasta: null });
   await A.registrar('ingreso', { usuario: u.usuario, detalle: motivo, origen });
+  const sesion = A.sesionNueva(actualizado, larga);
   return conCookies(json({ ok: true, ...(await datosPanel(request, actualizado)) }), [
-    cookie(request, A.COOKIES.sesion, A.sesionNueva(actualizado), A.sesionMaxMs()),
+    cookie(request, A.COOKIES.sesion, sesion.valor, sesion.ms),
     borrarCookie(request, A.COOKIES.verif),
     ...extra,
   ]);
@@ -191,7 +193,7 @@ async function ingresar(request, b, origen) {
     return error('Usuario o contraseña incorrectos.', 401);
   }
   const equipo = await equipoDe(request);
-  if (equipo?.usuario === u.usuario) return iniciarSesion(request, u, origen, 'equipo recordado');
+  if (equipo?.usuario === u.usuario) return iniciarSesion(request, u, origen, 'equipo recordado', [], true);
   if (!A.correoConfigurado()) {
     // Sin envío de correos no hay paso del código: el equipo se puede recordar igual (30 días) desde el ingreso.
     const extra = [];
@@ -199,7 +201,7 @@ async function ingresar(request, b, origen) {
       extra.push(cookie(request, A.COOKIES.equipo, A.paseEquipo(u), A.DURACION.equipo));
       await A.registrar('equipo-recordado', { usuario: u.usuario, origen });
     }
-    return iniciarSesion(request, u, origen, 'sin código: envío de correos sin configurar', extra);
+    return iniciarSesion(request, u, origen, 'sin código: envío de correos sin configurar', extra, b.recordar === true);
   }
   if (!u.correo) return error('Tu cuenta no tiene un correo para enviarte el código de verificación. Pedile a un administrador que lo cargue.', 403);
   await U.actualizar(u.usuario, { intentos: 0, bloqueadoHasta: null });
@@ -262,7 +264,7 @@ async function verificar(request, paso, b, origen) {
       extra.push(cookie(request, A.COOKIES.equipo, A.paseEquipo(d.u), A.DURACION.equipo));
       await A.registrar('equipo-recordado', { usuario: d.u.usuario, origen });
     }
-    return iniciarSesion(request, d.u, origen, 'código por correo', extra);
+    return iniciarSesion(request, d.u, origen, 'código por correo', extra, b.recordar === true);
   }
   return error('No encontrado.', 404);
 }
@@ -281,8 +283,9 @@ async function perfil(request, paso, b, s, origen) {
     const act = await U.actualizar(u.usuario, { hash: await hashClave(nueva), debeCambiar: false, sv: U.nuevaVersionSesion(), intentos: 0, bloqueadoHasta: null });
     await A.registrar('clave-cambio', { usuario: u.usuario, origen });
     // Las demás sesiones y equipos recordados de la cuenta se cierran; este navegador sigue adentro.
+    const nuevaSesion = A.sesionNueva(act, s.larga);
     return conCookies(json({ ok: true, ...(await datosPanel(request, act)) }), [
-      cookie(request, A.COOKIES.sesion, A.sesionNueva(act), A.sesionMaxMs()),
+      cookie(request, A.COOKIES.sesion, nuevaSesion.valor, nuevaSesion.ms),
       tenia?.usuario === act.usuario ? cookie(request, A.COOKIES.equipo, A.paseEquipo(act), A.DURACION.equipo) : null,
     ]);
   }

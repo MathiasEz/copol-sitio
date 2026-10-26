@@ -309,6 +309,36 @@ describe('acceso: PIN, contraseña y código por correo', () => {
     assert.equal((await otro.json('estado')).fase, 'pin');
   });
 
+  test('equipo recordado: la sesión no se cierra por inactividad; sin recordar, sí', async () => {
+    await configurarPanel();
+    delete process.env.RESEND_API_KEY;
+    const entrar = async (recordar) => {
+      const n = new Navegador();
+      await n.post('pin', { pin: PIN });
+      assert.equal((await n.post('ingresar', { usuario: 'bpereira', clave: CLAVE_ADMIN, recordar })).fase, 'panel');
+      return n;
+    };
+    const larga = await entrar(true);
+    const corta = await entrar(false);
+    const real = Date.now;
+    try {
+      Date.now = () => real() + 3 * 3_600_000; // 3 horas sin usar el panel
+      assert.equal((await corta.json('estado')).fase !== 'panel', true, 'la sesión normal vence a los 30 minutos sin uso');
+      assert.equal((await larga.json('estado')).fase, 'panel', 'la sesión larga sigue abierta');
+      Date.now = () => real() + 3 * 3_600_000 + 20 * 86_400_000; // y a los 20 días
+      assert.equal((await larga.json('estado')).fase, 'panel', 'mientras se use, sigue abierta');
+      Date.now = () => real() + 3 * 3_600_000 + 20 * 86_400_000 + 40 * 86_400_000; // 40 días sin usarla
+      assert.notEqual((await larga.json('estado')).fase, 'panel', 'a los 30 días sin uso se cierra');
+    } finally {
+      Date.now = real;
+    }
+    // Cambiar la contraseña cierra las demás sesiones aunque sean largas.
+    const otra = await entrar(true);
+    await larga.post('perfil/clave', { actual: CLAVE_ADMIN, nueva: 'Otra-Clave-Larga-77', repetir: 'Otra-Clave-Larga-77' }).catch(() => {});
+    U.olvidarCache();
+    assert.notEqual((await otra.json('estado')).fase, 'panel');
+  });
+
   test('cookies alteradas, otro origen y sesiones cerradas no sirven', async () => {
     const admin = await configurarPanel();
     const [nombre, valor] = [...admin.cookies].find(([k]) => k.includes('sesion'));
