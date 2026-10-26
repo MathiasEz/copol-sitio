@@ -488,6 +488,26 @@ describe('asistente (chat)', () => {
     assert.ok(!guardado.includes(jpg), 'las fotos no se guardan en ningún lado');
   });
 
+  test('si la IA contesta vacío, reintenta sin forzar la herramienta y, si sigue vacío, avisa del archivo', async () => {
+    const admin = await configurarPanel();
+    process.env.AI_GATEWAY_API_KEY = 'clave-ia';
+    const jpg = Buffer.concat([Buffer.from([0xff, 0xd8, 0xff, 0xe0]), Buffer.alloc(40)]).toString('base64');
+    const modos = [];
+    rutas.push([/ai-gateway/, (_u, _o, c) => {
+      modos.push(c.tool_choice.type);
+      if (modos.length < 3) return responder({ content: [], stop_reason: 'max_tokens' });
+      return responder({ content: [{ type: 'tool_use', name: 'completar_formulario', input: { respuesta: 'Listo.', producto: 'Heladera' } }], stop_reason: 'tool_use' });
+    }]);
+    const pedido = () => admin.post('asistente', { mensajes: [{ rol: 'usuario', texto: 'Mirá la foto' }], formulario: {}, adjuntos: [{ tipo: 'imagen', datos: jpg, nombre: 'f.jpg' }] });
+    const falla = await pedido();
+    assert.equal(falla.status, 502);
+    assert.match(falla.error, /no pudo leer ese archivo/);
+    assert.deepEqual(modos, ['tool', 'auto']);
+    const ok = await pedido();
+    assert.equal(ok.status, 200, 'la tercera respuesta ya trae datos');
+    assert.deepEqual(modos, ['tool', 'auto', 'tool']);
+  });
+
   test('sin mensaje, sin IA o sin crédito avisa (el formulario sigue funcionando)', async () => {
     const admin = await configurarPanel();
     assert.equal((await admin.post('asistente', { mensajes: [] })).status, 400);

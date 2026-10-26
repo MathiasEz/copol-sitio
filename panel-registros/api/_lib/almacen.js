@@ -50,7 +50,7 @@ const exigir = () => {
 };
 
 const esPrecondicion = (e) => e?.name === 'BlobPreconditionFailedError' || /precondition|already exists/i.test(e?.message ?? '');
-const pausa = () => new Promise((ok) => setTimeout(ok, 120 + Math.random() * 380));
+const pausa = () => new Promise((ok) => setTimeout(ok, 150 + Math.random() * 450));
 
 async function leerCrudo(clave) {
   const r = await (await blob()).get(ruta(clave), { access: 'private', useCache: false });
@@ -103,7 +103,7 @@ export async function leerDoc(clave, inicial) {
  */
 export async function modificarDoc(clave, inicial, cambiar) {
   exigir();
-  for (let intento = 0; intento < 6; intento++) {
+  for (let intento = 0; intento < 10; intento++) {
     const c = await leerCrudo(`doc-${clave}`);
     const datos = c ? JSON.parse(c.texto) : structuredClone(inicial);
     const nuevo = (await cambiar(datos)) ?? datos;
@@ -128,7 +128,7 @@ export class ErrorLista extends Error {}
  */
 export async function agregarALista(clave, valor, maximo = Infinity, { rotar = false } = {}) {
   exigir();
-  for (let intento = 0; intento < 6; intento++) {
+  for (let intento = 0; intento < 10; intento++) {
     const c = await leerCrudo(`lista-${clave}`);
     let lista = c ? JSON.parse(c.texto) : [];
     if (lista.length >= maximo && !rotar) throw new ErrorLista(`La planilla de prueba llegó a ${maximo} filas.`);

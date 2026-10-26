@@ -163,15 +163,16 @@ export async function conversar({ historial, formulario, adjuntos = [], token, p
       : m.texto,
   }));
   const inicio = Date.now();
+  let forzar = true; // tras una respuesta vacía se reintenta sin obligar a usar la herramienta
   for (let intento = 0; ; intento++) {
     const res = await pedir(GATEWAY, {
       method: 'POST',
       headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json', 'anthropic-version': '2023-06-01' },
       body: JSON.stringify({
-        model: modelo(), max_tokens: 1000, temperature: 0, system: INSTRUCCIONES,
-        tools: [HERRAMIENTA], tool_choice: { type: 'tool', name: HERRAMIENTA.name }, messages: mensajes,
+        model: modelo(), max_tokens: 6000, temperature: 0, system: INSTRUCCIONES, // Gemini «piensa» antes de responder: con fotos necesita margen
+        tools: [HERRAMIENTA], tool_choice: forzar ? { type: 'tool', name: HERRAMIENTA.name } : { type: 'auto' }, messages: mensajes,
       }),
-      signal: AbortSignal.timeout(25_000),
+      signal: AbortSignal.timeout(adjuntos.length ? 45_000 : 25_000),
     });
     // El crédito gratuito admite pocos pedidos por minuto: ante un 429 se espera y se reintenta una vez.
     if (res.status === 429 && intento === 0 && Date.now() - inicio < 15_000) {
@@ -196,7 +197,11 @@ export async function conversar({ historial, formulario, adjuntos = [], token, p
     const uso = bloques.find((b) => b.type === 'tool_use' && b.name === HERRAMIENTA.name);
     const texto = bloques.filter((b) => b.type === 'text').map((b) => b.text).join('\n');
     const propuesta = uso?.input ?? jsonEnTexto(texto) ?? (texto.trim() ? { respuesta: texto } : null);
-    if (!propuesta) throw new ErrorAsistente('La IA no respondió. Probá escribirlo de otra forma.');
+    if (!propuesta) {
+      console.error(`asistente: respuesta vacía de la IA (stop_reason=${datos.stop_reason ?? '?'}, bloques=${bloques.map((b) => b.type).join(',') || 'ninguno'}, adjuntos=${adjuntos.length}, intento=${intento}): ${JSON.stringify(datos).slice(0, 400)}`);
+      if (forzar) { forzar = false; continue; }
+      throw new ErrorAsistente(adjuntos.length ? 'La IA no pudo leer ese archivo. Probá con una foto más nítida y de cerca, o escribí los datos.' : 'La IA no respondió. Probá escribirlo de otra forma.');
+    }
     return limpiarPropuesta(propuesta, formulario);
   }
 }
