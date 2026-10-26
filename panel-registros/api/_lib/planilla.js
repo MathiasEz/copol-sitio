@@ -4,27 +4,37 @@
 import { COLUMNAS, filaPlanilla, formulaEnlace } from './campos.js';
 import * as almacen from './almacen.js';
 import * as ms from './microsoft.js';
+import * as google from './google.js';
 import { libroXlsx } from './xlsx.js';
 
 const LISTA = 'planilla-prueba';
 export const MAX_FILAS_PRUEBA = 2000;
 
-/** 'aplicacion' | 'cuenta' | 'prueba' | null (sin configurar). */
+/** 'aplicacion' | 'cuenta' (Excel) | 'google' (Google Sheets) | 'prueba' | null (sin configurar). */
 export function modo() {
   const m = ms.modoMicrosoft();
   if (m) return m;
+  if (google.googleConfigurado()) return 'google';
   return almacen.almacenConfigurado() ? 'prueba' : null;
 }
 
 /** Estado para la pantalla: si se puede guardar, con qué cuenta y el enlace para abrir la planilla. */
 export async function estado() {
   const m = modo();
-  if (!m) return { modo: null, listo: false, aviso: 'La planilla de Excel todavía no está configurada (variables MS_… en Vercel). Ver el README del panel.' };
+  if (!m) return { modo: null, listo: false, aviso: 'La planilla de Excel todavía no está configurada (variables GOOGLE_… o MS_… en Vercel). Ver el README del panel.' };
   if (m === 'prueba') {
     return {
       modo: m, listo: true, prueba: true,
-      aviso: 'Modo de prueba: los registros se guardan en una planilla de prueba del panel (abajo), que se puede descargar como Excel. Cuando se conecte la cuenta de Microsoft, se guardarán en Excel en la nube.',
+      aviso: 'Modo de prueba: los registros se guardan en una planilla de prueba del panel (abajo), que se puede descargar como Excel. Cuando se conecte la hoja de Google (o Excel en la nube), se guardarán allí.',
     };
+  }
+  if (m === 'google') {
+    try {
+      const h = await google.asegurarHoja();
+      return { modo: m, listo: true, nombre: h.titulo, enlace: google.enlaceHoja(), cuenta: google.correoCuenta(), google: true };
+    } catch (e) {
+      return { modo: m, listo: false, aviso: e.message, google: true };
+    }
   }
   const falta = ms.faltaConfigurar();
   if (falta) return { modo: m, listo: false, aviso: falta };
@@ -43,6 +53,10 @@ export async function agregar(datos, cargadoPor, ahora = new Date()) {
   const m = modo();
   if (!m) throw new ms.ErrorPlanilla('La planilla de Excel todavía no está configurada.', { status: 503 });
   const fila = filaPlanilla(datos, cargadoPor, ahora);
+  if (m === 'google') {
+    await google.agregarFila(fila);
+    return fila[0];
+  }
   if (m !== 'prueba') {
     await ms.agregarFila(fila);
     return fila[0];

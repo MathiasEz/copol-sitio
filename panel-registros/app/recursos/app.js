@@ -369,7 +369,7 @@ function vistaFormulario(main) {
         ${campo('Service <span class="opcional">(opcional)</span>', '<input class="input" name="service" maxlength="300" placeholder="Ej.: instalación, reparación en garantía">')}
         <div data-estado-registro></div>
         <div class="registro__acciones">
-          <button class="btn btn--lg" type="submit">${modoPrueba() ? 'Guardar en la planilla' : 'Guardar en Excel'}</button>
+          <button class="btn btn--lg" type="submit">Guardar en la planilla</button>
           <button class="btn btn--outline btn--lg" type="button" data-limpiar>Limpiar</button>
         </div>
       </form>
@@ -747,9 +747,9 @@ async function vistaPlanilla(main, resto, aviso) {
   const avisoMs = ms === 'conectado' ? alerta('ok', 'Cuenta de Microsoft conectada: desde ahora se guarda en Excel en la nube.') : ms === 'error' ? alerta('error', params.get('mensaje') || 'No se pudo conectar la cuenta de Microsoft.') : '';
   if (!p.prueba) {
     main.innerHTML = `${cabecera('Planilla')}${avisoMs}${avisoPlanilla()}
-      <section class="card form"><h2 class="card__titulo">Planilla de Excel en la nube</h2>
+      <section class="card form"><h2 class="card__titulo">${p.google ? 'Hoja de Google Sheets' : 'Planilla de Excel en la nube'}</h2>
         ${p.listo ? `<dl class="datos"><dt>Archivo</dt><dd>${esc(p.nombre ?? '—')}</dd><dt>Cuenta</dt><dd>${esc(p.cuenta ?? '—')}</dd></dl>` : ''}
-        <div class="botones">${p.enlace ? `<a class="btn" href="${esc(p.enlace)}" target="_blank" rel="noopener noreferrer">${icono('externo', 16)}Abrir la planilla en Excel</a>` : ''}
+        <div class="botones">${p.enlace ? `<a class="btn" href="${esc(p.enlace)}" target="_blank" rel="noopener noreferrer">${icono('externo', 16)}Abrir la planilla${p.google ? ' en Google Sheets' : ' en Excel'}</a>` : ''}
         ${puede('configuracion') && p.modo === 'cuenta' && p.cuenta ? '<button type="button" class="btn btn--outline" data-desconectar>Desconectar la cuenta de Microsoft</button>' : ''}</div>
       </section>`;
     $('[data-desconectar]', main)?.addEventListener('click', async () => {

@@ -17,7 +17,7 @@ const PIN = '480317';
 
 function configurar(extra = {}) {
   for (const k of Object.keys(process.env)) if (!(k in BASE_ENV)) delete process.env[k];
-  for (const k of ['BLOB_READ_WRITE_TOKEN', 'VERCEL', 'MS_CLIENT_ID', 'MS_CLIENT_SECRET', 'MS_USUARIO', 'MS_CUENTA', 'MS_TENANT', 'AI_GATEWAY_API_KEY', 'VERCEL_OIDC_TOKEN', 'IA_APAGADA', 'RESEND_API_KEY', 'CORREO_CONSOLA']) delete process.env[k];
+  for (const k of ['BLOB_READ_WRITE_TOKEN', 'VERCEL', 'MS_CLIENT_ID', 'MS_CLIENT_SECRET', 'MS_USUARIO', 'MS_CUENTA', 'MS_TENANT', 'AI_GATEWAY_API_KEY', 'VERCEL_OIDC_TOKEN', 'IA_APAGADA', 'RESEND_API_KEY', 'CORREO_CONSOLA', 'EXCEL_ENLACE', 'EXCEL_RUTA', 'GOOGLE_CREDENCIALES', 'GOOGLE_HOJA', 'GOOGLE_PESTANA']) delete process.env[k];
   Object.assign(process.env, {
     ALMACEN_DIR: join(dir, `a-${Math.random()}`), PANEL_RUTA: BASE, PANEL_CODIGO_INICIAL: CODIGO_INICIAL,
     SESION_SECRETO: 'secreto-de-prueba-con-mas-de-treinta-y-dos-caracteres', RESEND_API_KEY: 're_prueba',
@@ -30,6 +30,8 @@ const ms = await import('../api/_lib/microsoft.js');
 const almacen = await import('../api/_lib/almacen.js');
 const U = await import('../api/_lib/usuarios.js');
 const A = await import('../api/_lib/acceso.js');
+const G = await import('../api/_lib/google.js');
+import { generateKeyPairSync } from 'node:crypto';
 
 // Correos enviados (el código se lee de acá)
 let correos = [];
@@ -106,6 +108,7 @@ beforeEach(() => {
   rutas = [];
   correos = [];
   ms.usarFetch((...a) => globalThis.fetch(...a));
+  G.usarFetch((...a) => globalThis.fetch(...a));
   almacen.usarBlob(null);
   U.olvidarCache();
 });
@@ -516,5 +519,61 @@ describe('Excel en la nube', () => {
     const { n } = await ingresar('ana', 'Temporal-2026!', 'ana@example.com');
     await n.post('perfil/clave', { actual: 'Temporal-2026!', nueva: 'Mi-Clave-Nueva-77', repetir: 'Mi-Clave-Nueva-77' });
     assert.equal((await n.json('microsoft/conectar', { metodo: 'DELETE', datos: {} })).status, 403);
+  });
+});
+
+describe('Google Sheets', () => {
+  test('con cuenta de servicio crea la cabecera, agrega filas y deja la dirección clicable', async () => {
+    const admin = await configurarPanel();
+    const { privateKey } = generateKeyPairSync('rsa', { modulusLength: 2048, privateKeyEncoding: { type: 'pkcs8', format: 'pem' }, publicKeyEncoding: { type: 'spki', format: 'pem' } });
+    const ID = 'AbCdEfGhIjKlMnOpQrStUvWxYz0123456789';
+    Object.assign(process.env, {
+      GOOGLE_CREDENCIALES: JSON.stringify({ client_email: 'panel@proyecto.iam.gserviceaccount.com', private_key: privateKey }),
+      GOOGLE_HOJA: `https://docs.google.com/spreadsheets/d/${ID}/edit?gid=0#gid=0`,
+    });
+    const filas = [];
+    let cabecera = null;
+    rutas.push([/oauth2\.googleapis\.com\/token/, (_u, _o, c) => {
+      assert.equal(c.grant_type, 'urn:ietf:params:oauth:grant-type:jwt-bearer');
+      const [h, p] = c.assertion.split('.');
+      assert.equal(JSON.parse(Buffer.from(p, 'base64url')).iss, 'panel@proyecto.iam.gserviceaccount.com');
+      assert.equal(JSON.parse(Buffer.from(h, 'base64url')).alg, 'RS256');
+      return responder({ access_token: 'tok-google', expires_in: 3600 });
+    }], [/sheets\.googleapis\.com/, (u, o, c) => {
+      assert.equal(o.headers.authorization, 'Bearer tok-google');
+      const url = new URL(u);
+      const camino = decodeURIComponent(url.pathname);
+      assert.ok(camino.includes(`/spreadsheets/${ID}`));
+      if (camino.endsWith(`/${ID}`) && !url.search.includes('append')) return responder({ properties: { title: 'Registros COPOL' }, sheets: [{ properties: { sheetId: 0, title: 'Hoja 1' } }] });
+      if (camino.endsWith(':batchUpdate')) return responder({ replies: [{ addSheet: { properties: { sheetId: 7, title: 'Registros' } } }] });
+      if (camino.endsWith("'Registros'!A1:J1") && o.method === 'PUT') { cabecera = c.values[0]; return responder({}); }
+      if (camino.endsWith("'Registros'!A1:J1")) return responder(cabecera ? { values: [cabecera] } : {});
+      if (camino.includes(':append')) { assert.equal(url.searchParams.get('valueInputOption'), 'USER_ENTERED'); filas.push(c.values[0]); return responder({}); }
+      return responder({ error: { message: camino } }, 400);
+    }]);
+    const panel = await admin.json('estado');
+    assert.equal(panel.planilla.google, true);
+    assert.equal(panel.planilla.listo, true);
+    assert.equal(panel.planilla.nombre, 'Registros COPOL');
+    assert.equal(panel.planilla.enlace, `https://docs.google.com/spreadsheets/d/${ID}/edit`);
+    assert.deepEqual(cabecera, campos.COLUMNAS);
+    assert.equal((await admin.post('registro', { ...REGISTRO, socio: '0123', mapa: MAPA })).status, 200);
+    assert.equal(filas.length, 1);
+    assert.match(filas[0][4], /^=HYPERLINK\("https:\/\/www\.google\.com\/maps\//);
+    assert.equal(filas[0][1], 'Juan Pérez');
+    assert.equal(filas[0][2], "'0123");
+    assert.equal(llamadas.filter((l) => l.url.includes('oauth2')).length, 1, 'el token se reutiliza');
+    assert.equal((await admin.json('planilla')).status, 409, 'con Google conectado no hay planilla de prueba');
+  });
+
+  test('si la hoja no está compartida avisa con qué correo hay que compartirla', async () => {
+    const admin = await configurarPanel();
+    const { privateKey } = generateKeyPairSync('rsa', { modulusLength: 2048, privateKeyEncoding: { type: 'pkcs8', format: 'pem' }, publicKeyEncoding: { type: 'spki', format: 'pem' } });
+    Object.assign(process.env, { GOOGLE_CLIENT_EMAIL: 'panel@proyecto.iam.gserviceaccount.com', GOOGLE_PRIVATE_KEY: privateKey.replace(/\n/g, '\\n'), GOOGLE_HOJA: 'AbCdEfGhIjKlMnOpQrStUvWxYz0123456789' });
+    rutas.push([/oauth2/, () => responder({ access_token: 't', expires_in: 3600 })], [/sheets\.googleapis/, () => responder({ error: { status: 'PERMISSION_DENIED', message: 'no' } }, 403)]);
+    const panel = await admin.json('estado');
+    assert.equal(panel.planilla.listo, false);
+    assert.match(panel.planilla.aviso, /Compartila con panel@proyecto\.iam\.gserviceaccount\.com/);
+    assert.equal((await admin.post('registro', REGISTRO)).status, 503);
   });
 });
