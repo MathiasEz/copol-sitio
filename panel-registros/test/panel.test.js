@@ -630,6 +630,7 @@ describe('Google Sheets', () => {
       GOOGLE_HOJA: `https://docs.google.com/spreadsheets/d/${ID}/edit?gid=0#gid=0`,
     });
     const pestanas = new Map([['Hoja 1', { id: 0, cab: null, filas: [] }]]);
+    const formatosFecha = [];
     let ids = 0;
     rutas.push([/oauth2\.googleapis\.com\/token/, (_u, _o, c) => {
       assert.equal(c.grant_type, 'urn:ietf:params:oauth:grant-type:jwt-bearer');
@@ -642,6 +643,7 @@ describe('Google Sheets', () => {
       assert.ok(camino.includes(`/spreadsheets/${ID}`));
       if (camino.endsWith(`/${ID}`)) return responder({ properties: { title: 'Registros COPOL', locale: 'es_UY' }, sheets: [...pestanas].map(([title, p]) => ({ properties: { sheetId: p.id, title } })) });
       if (camino.endsWith(':batchUpdate')) {
+        if (c.requests[0].repeatCell?.cell.userEnteredFormat.numberFormat) formatosFecha.push(c.requests[0].repeatCell.range);
         const nueva = c.requests[0].addSheet?.properties.title;
         if (nueva) { pestanas.set(nueva, { id: ++ids, cab: null, filas: [] }); return responder({ replies: [{ addSheet: { properties: { sheetId: ids, title: nueva } } }] }); }
         return responder({ replies: [] });
@@ -661,6 +663,7 @@ describe('Google Sheets', () => {
     assert.equal(panel.planilla.pestana, mesActual);
     assert.equal(panel.planilla.enlace, `https://docs.google.com/spreadsheets/d/${ID}/edit`);
     assert.deepEqual(pestanas.get(mesActual).cab, campos.COLUMNAS);
+    assert.ok(formatosFecha.some((r) => r.startColumnIndex === 0 && r.endColumnIndex === 1 && r.startRowIndex === 1), 'la columna Fecha se muestra como fecha y hora');
 
     // Registro por el panel: va a la pestaña del mes actual, con la dirección clicable y «;» (hoja es_UY).
     assert.equal((await admin.post('registro', { ...REGISTRO, socio: '0123', mapa: MAPA })).status, 200);

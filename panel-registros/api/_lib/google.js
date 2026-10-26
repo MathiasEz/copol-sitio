@@ -166,6 +166,11 @@ export async function asegurarHoja(fecha = new Date()) {
     } else if (filas[0].length !== COLUMNAS.length || filas[0].some((c, i) => c !== COLUMNAS[i])) {
       throw new ErrorPlanilla(`La pestaña «${pest}» de la hoja tiene otras columnas en la fila 1. Tienen que ser: ${COLUMNAS.join(', ')}. Renombrala o vaciala y el panel la vuelve a preparar.`, { status: 409 });
     }
+    // La fecha se guarda como fecha y hora de verdad (se puede ordenar y filtrar): la columna A se muestra con ese
+    // formato, también en las filas que ya estaban. Si falla, no importa: el dato queda igual.
+    await api(':batchUpdate', { metodo: 'POST', cuerpo: { requests: [
+      { repeatCell: { range: { sheetId: hoja.properties.sheetId, startRowIndex: 1, startColumnIndex: 0, endColumnIndex: 1 }, cell: { userEnteredFormat: { numberFormat: { type: 'DATE_TIME', pattern: 'dd/mm/yyyy hh:mm' } } }, fields: 'userEnteredFormat.numberFormat' } },
+    ] } }).catch(() => {});
     const info = { id: idHoja(), titulo: meta.properties.title, pestana: pest, separador: separadorDe(meta.properties.locale) };
     hojas.set(pest, info);
     return info;
