@@ -523,51 +523,77 @@ describe('Excel en la nube', () => {
 });
 
 describe('Google Sheets', () => {
-  test('con cuenta de servicio crea la cabecera, agrega filas y deja la dirección clicable', async () => {
+  const ID = 'AbCdEfGhIjKlMnOpQrStUvWxYz0123456789';
+  const clave = () => generateKeyPairSync('rsa', { modulusLength: 2048, privateKeyEncoding: { type: 'pkcs8', format: 'pem' }, publicKeyEncoding: { type: 'spki', format: 'pem' } }).privateKey;
+
+  test('nombre de la pestaña: mes y año en hora de Montevideo', () => {
+    assert.equal(campos.nombreMes(new Date('2026-10-26T15:00:00Z')), 'Octubre 2026');
+    assert.equal(campos.nombreMes(new Date('2026-11-01T02:59:00Z')), 'Octubre 2026', '31/10 23:59 en Montevideo todavía es octubre');
+    assert.equal(campos.nombreMes(new Date('2026-11-01T03:00:00Z')), 'Noviembre 2026');
+    assert.equal(campos.nombreMes(new Date('2027-01-01T03:00:00Z')), 'Enero 2027');
+    assert.equal(campos.nombreMes(new Date('2026-09-15T12:00:00Z')), 'Setiembre 2026');
+  });
+
+  test('una pestaña por mes: crea la del mes con su cabecera y al cambiar de mes pasa sola a la siguiente', async () => {
     const admin = await configurarPanel();
-    const { privateKey } = generateKeyPairSync('rsa', { modulusLength: 2048, privateKeyEncoding: { type: 'pkcs8', format: 'pem' }, publicKeyEncoding: { type: 'spki', format: 'pem' } });
-    const ID = 'AbCdEfGhIjKlMnOpQrStUvWxYz0123456789';
     Object.assign(process.env, {
-      GOOGLE_CREDENCIALES: JSON.stringify({ client_email: 'panel@proyecto.iam.gserviceaccount.com', private_key: privateKey }),
+      GOOGLE_CREDENCIALES: JSON.stringify({ client_email: 'panel@proyecto.iam.gserviceaccount.com', private_key: clave() }),
       GOOGLE_HOJA: `https://docs.google.com/spreadsheets/d/${ID}/edit?gid=0#gid=0`,
     });
-    const filas = [];
-    let cabecera = null;
+    const pestanas = new Map([['Hoja 1', { id: 0, cab: null, filas: [] }]]);
+    let ids = 0;
     rutas.push([/oauth2\.googleapis\.com\/token/, (_u, _o, c) => {
       assert.equal(c.grant_type, 'urn:ietf:params:oauth:grant-type:jwt-bearer');
-      const [h, p] = c.assertion.split('.');
-      assert.equal(JSON.parse(Buffer.from(p, 'base64url')).iss, 'panel@proyecto.iam.gserviceaccount.com');
-      assert.equal(JSON.parse(Buffer.from(h, 'base64url')).alg, 'RS256');
+      assert.equal(JSON.parse(Buffer.from(c.assertion.split('.')[1], 'base64url')).iss, 'panel@proyecto.iam.gserviceaccount.com');
       return responder({ access_token: 'tok-google', expires_in: 3600 });
     }], [/sheets\.googleapis\.com/, (u, o, c) => {
       assert.equal(o.headers.authorization, 'Bearer tok-google');
       const url = new URL(u);
       const camino = decodeURIComponent(url.pathname);
       assert.ok(camino.includes(`/spreadsheets/${ID}`));
-      if (camino.endsWith(`/${ID}`) && !url.search.includes('append')) return responder({ properties: { title: 'Registros COPOL', locale: 'es_UY' }, sheets: [{ properties: { sheetId: 0, title: 'Hoja 1' } }] });
-      if (camino.endsWith(':batchUpdate')) return responder({ replies: [{ addSheet: { properties: { sheetId: 7, title: 'Registros' } } }] });
-      if (camino.endsWith("'Registros'!A1:J1") && o.method === 'PUT') { cabecera = c.values[0]; return responder({}); }
-      if (camino.endsWith("'Registros'!A1:J1")) return responder(cabecera ? { values: [cabecera] } : {});
-      if (camino.includes(':append')) { assert.equal(url.searchParams.get('valueInputOption'), 'USER_ENTERED'); filas.push(c.values[0]); return responder({}); }
-      return responder({ error: { message: camino } }, 400);
+      if (camino.endsWith(`/${ID}`)) return responder({ properties: { title: 'Registros COPOL', locale: 'es_UY' }, sheets: [...pestanas].map(([title, p]) => ({ properties: { sheetId: p.id, title } })) });
+      if (camino.endsWith(':batchUpdate')) {
+        const nueva = c.requests[0].addSheet?.properties.title;
+        if (nueva) { pestanas.set(nueva, { id: ++ids, cab: null, filas: [] }); return responder({ replies: [{ addSheet: { properties: { sheetId: ids, title: nueva } } }] }); }
+        return responder({ replies: [] });
+      }
+      const m = camino.match(/\/values\/'([^']+)'!(.+?)(?::append)?$/);
+      const p = m && pestanas.get(m[1]);
+      if (!p) return responder({ error: { message: camino } }, 400);
+      if (camino.includes(':append')) { assert.equal(url.searchParams.get('valueInputOption'), 'USER_ENTERED'); p.filas.push(c.values[0]); return responder({}); }
+      if (o.method === 'PUT') { p.cab = c.values[0]; return responder({}); }
+      return responder(p.cab ? { values: [p.cab] } : {});
     }]);
+    const mesActual = campos.nombreMes();
     const panel = await admin.json('estado');
     assert.equal(panel.planilla.google, true);
     assert.equal(panel.planilla.listo, true);
     assert.equal(panel.planilla.nombre, 'Registros COPOL');
+    assert.equal(panel.planilla.pestana, mesActual);
     assert.equal(panel.planilla.enlace, `https://docs.google.com/spreadsheets/d/${ID}/edit`);
-    assert.deepEqual(cabecera, campos.COLUMNAS);
+    assert.deepEqual(pestanas.get(mesActual).cab, campos.COLUMNAS);
+
+    // Registro por el panel: va a la pestaña del mes actual, con la dirección clicable y «;» (hoja es_UY).
     assert.equal((await admin.post('registro', { ...REGISTRO, socio: '0123', mapa: MAPA })).status, 200);
-    assert.equal(filas.length, 1);
-    assert.match(filas[0][4], /^=HYPERLINK\("https:\/\/www\.google\.com\/maps\/[^"]+";"Av\. Italia 3456 apto 2"\)$/, 'hoja en español: argumentos separados con ;');
-    assert.equal(G.separadorDe('es_UY'), ';');
-    assert.equal(G.separadorDe('es_AR'), ';');
-    assert.equal(G.separadorDe('en_US'), ',');
-    assert.equal(G.separadorDe('es_MX'), ',');
-    assert.equal(filas[0][1], 'Juan Pérez');
-    assert.equal(filas[0][2], "'0123");
+    const fila = pestanas.get(mesActual).filas[0];
+    assert.match(fila[4], /^=HYPERLINK\("https:\/\/www\.google\.com\/maps\/[^"]+";"Av\. Italia 3456 apto 2"\)$/);
+    assert.equal(fila[2], "'0123");
     assert.equal(llamadas.filter((l) => l.url.includes('oauth2')).length, 1, 'el token se reutiliza');
+
+    // Cambio de mes: con la misma hora de Montevideo, 31/10 23:30 → octubre; 1/11 00:05 → noviembre; 1/1 → enero del año siguiente.
+    const { agregar } = await import('../api/_lib/planilla.js');
+    await agregar(REGISTRO, 'Ana', new Date('2026-11-01T02:30:00Z'));
+    await agregar(REGISTRO, 'Ana', new Date('2026-11-01T03:05:00Z'));
+    await agregar(REGISTRO, 'Ana', new Date('2026-12-15T15:00:00Z'));
+    await agregar(REGISTRO, 'Ana', new Date('2027-01-01T03:05:00Z'));
+    assert.deepEqual([...pestanas.keys()], ['Hoja 1', mesActual, 'Octubre 2026', 'Noviembre 2026', 'Diciembre 2026', 'Enero 2027'].filter((x, i, a) => a.indexOf(x) === i));
+    assert.equal(pestanas.get('Octubre 2026').filas.length, mesActual === 'Octubre 2026' ? 2 : 1);
+    assert.equal(pestanas.get('Noviembre 2026').filas.length, 1);
+    assert.deepEqual(pestanas.get('Enero 2027').cab, campos.COLUMNAS, 'cada pestaña nueva lleva su cabecera');
+    assert.match(pestanas.get('Noviembre 2026').filas[0][0], /^2026-11-01 00:05$/, 'la fecha de la fila es del mismo momento');
     assert.equal((await admin.json('planilla')).status, 409, 'con Google conectado no hay planilla de prueba');
+    assert.equal(G.separadorDe('es_UY'), ';');
+    assert.equal(G.separadorDe('es_MX'), ',');
   });
 
   test('si la hoja no está compartida avisa con qué correo hay que compartirla', async () => {

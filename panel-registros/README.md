@@ -70,7 +70,7 @@ demás (con contraseña temporal).
 | `BLOB_READ_WRITE_TOKEN` | Almacén privado: usuarios, PIN, accesos, planilla de prueba (se crea solo). |
 | `PANEL_SESION_INACTIVIDAD_MIN`, `PANEL_SESION_MAX_HORAS` | Duración de la sesión (30 min / 8 h). |
 | `IA_MODELO`, `IA_LIMITE_DIA`, `IA_APAGADA` | Asistente: modelo de AI Gateway (`google/gemini-2.5-flash`), consultas por persona y día (150), apagarlo. |
-| `GOOGLE_CREDENCIALES`, `GOOGLE_HOJA`, `GOOGLE_PESTANA` | Google Sheets (arriba). |
+| `GOOGLE_CREDENCIALES`, `GOOGLE_HOJA` | Google Sheets (arriba). |
 | `MS_CLIENT_ID`, `MS_CLIENT_SECRET`, `MS_CUENTA` o `MS_USUARIO`+`MS_TENANT`, `EXCEL_ENLACE`, `EXCEL_RUTA`, `EXCEL_TABLA`, `MS_REDIRECT_URI` | Excel en la nube (abajo). |
 
 ## Conectar con Google Sheets (gratis, sin tarjeta)
@@ -80,7 +80,9 @@ demás (con contraseña temporal).
    clave → JSON*: baja un archivo. Su contenido completo va en `GOOGLE_CREDENCIALES`.
 3. En Google Sheets, crear la hoja y **compartirla con el correo de la cuenta de servicio** (`…@…iam.gserviceaccount.com`)
    como *Editor*. El enlace de la hoja va en `GOOGLE_HOJA`.
-4. Listo: el panel crea la pestaña `Registros` (o `GOOGLE_PESTANA`) con la cabecera y agrega cada registro. La
+4. Listo: el panel usa **una pestaña por mes** («Octubre 2026», «Noviembre 2026»…), con la hora de Montevideo del
+   momento de guardar. La crea sola, con su cabecera, cuando llega el primer registro del mes; al cambiar el mes
+   los registros pasan solos a la siguiente. Las pestañas anteriores no se tocan. La
    dirección queda clicable (`=HYPERLINK`). La cuenta de servicio solo ve esa hoja. Si además hay variables de
    Microsoft, estas tienen prioridad.
 

@@ -31,7 +31,7 @@ export async function estado() {
   if (m === 'google') {
     try {
       const h = await google.asegurarHoja();
-      return { modo: m, listo: true, nombre: h.titulo, enlace: google.enlaceHoja(), cuenta: google.correoCuenta(), google: true };
+      return { modo: m, listo: true, nombre: h.titulo, pestana: h.pestana, enlace: google.enlaceHoja(), cuenta: google.correoCuenta(), google: true };
     } catch (e) {
       return { modo: m, listo: false, aviso: e.message, google: true };
     }
@@ -53,9 +53,10 @@ export async function agregar(datos, cargadoPor, ahora = new Date()) {
   const m = modo();
   if (!m) throw new ms.ErrorPlanilla('La planilla de Excel todavía no está configurada.', { status: 503 });
   if (m === 'google') {
-    const { separador } = await google.asegurarHoja();
+    // La pestaña es la del mes de este momento (hora de Montevideo): al cambiar el mes, se pasa sola a la siguiente.
+    const { separador } = await google.asegurarHoja(ahora);
     const fila = filaPlanilla(datos, cargadoPor, ahora, separador);
-    await google.agregarFila(fila);
+    await google.agregarFila(fila, ahora);
     return fila[0];
   }
   const fila = filaPlanilla(datos, cargadoPor, ahora);

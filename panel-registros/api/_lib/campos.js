@@ -115,6 +115,14 @@ export function formulaEnlace(url, texto, separador = ',') {
   return url && enlaceMapaValido(url) && url.length <= 255 && t.length <= 255 ? `=HYPERLINK("${url}"${separador}"${t}")` : null;
 }
 
+const MESES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Setiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+
+/** Nombre de la pestaña del mes de esa fecha, en hora de Montevideo: «Octubre 2026». Cambia solo al cambiar el mes. */
+export function nombreMes(d = new Date()) {
+  const [anio, mes] = fechaMontevideo(d).split('-');
+  return `${MESES[Number(mes) - 1]} ${anio}`;
+}
+
 /** Fila para la planilla, en el orden de COLUMNAS. Un N° de socio con ceros adelante va como texto para no perderlos. */
 export const filaPlanilla = (datos, cargadoPor, fecha = new Date(), separador = ',') => [
   fechaMontevideo(fecha), datos.nombre, /^0\d/.test(datos.socio) ? `'${datos.socio}` : datos.socio, datos.cedula, datos.direccion,

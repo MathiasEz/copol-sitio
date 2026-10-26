@@ -2,9 +2,9 @@
 // la clave de la cuenta de servicio, lo cambia por un token y agrega filas con la API de Sheets. La cuenta de
 // servicio solo ve las hojas que se le compartieron (solo esta), y no hay inicio de sesión de ninguna persona.
 // Gratis y sin tarjeta. Variables: GOOGLE_CREDENCIALES (el JSON de la clave) o GOOGLE_CLIENT_EMAIL +
-// GOOGLE_PRIVATE_KEY, y GOOGLE_HOJA (el enlace o el ID de la hoja). Pestaña: GOOGLE_PESTANA (Registros).
+// GOOGLE_PRIVATE_KEY, y GOOGLE_HOJA (el enlace o el ID de la hoja). Una pestaña por mes.
 import { createSign } from 'node:crypto';
-import { COLUMNAS } from './campos.js';
+import { COLUMNAS, nombreMes } from './campos.js';
 import { ErrorPlanilla } from './microsoft.js';
 
 const SHEETS = 'https://sheets.googleapis.com/v4/spreadsheets';
@@ -15,7 +15,7 @@ let pedir = (...a) => fetch(...a);
 export function usarFetch(f) {
   pedir = f;
   token = null;
-  hojaLista = null;
+  hojas.clear();
 }
 
 const env = () => process.env;
@@ -42,7 +42,8 @@ export function idHoja() {
 }
 
 export const googleConfigurado = () => Boolean(credenciales() && idHoja());
-export const pestana = () => (env().GOOGLE_PESTANA || 'Registros').slice(0, 90);
+/** Una pestaña por mes («Octubre 2026»): el panel pasa a la siguiente solo al cambiar el mes (hora de Montevideo). */
+export const pestanaDe = (fecha = new Date()) => nombreMes(fecha);
 export const enlaceHoja = () => `https://docs.google.com/spreadsheets/d/${idHoja()}/edit`;
 export const correoCuenta = () => credenciales()?.email ?? null;
 
@@ -116,9 +117,9 @@ function traducir(e) {
 }
 
 // ── Hoja y pestaña ──
-let hojaLista = null; // { id, titulo }
+const hojas = new Map(); // pestaña → { id, titulo, pestana, separador }
 const letra = (n) => String.fromCharCode(64 + n);
-const rangoPestana = (r) => `'${pestana().replace(/'/g, "''")}'!${r}`;
+const rangoPestana = (pest, r) => `'${pest.replace(/'/g, "''")}'!${r}`;
 
 /**
  * Separador de argumentos de las fórmulas: Google Sheets interpreta lo que se escribe con la configuración
@@ -132,30 +133,41 @@ export function separadorDe(locale) {
   }
 }
 
-/** Título del archivo; crea la pestaña con su cabecera la primera vez. */
-export async function asegurarHoja() {
-  if (hojaLista && hojaLista.pestana === pestana()) return hojaLista;
+/** Título del archivo y pestaña del mes de `fecha`; crea la pestaña con su cabecera la primera vez que se usa. */
+export async function asegurarHoja(fecha = new Date()) {
+  const pest = pestanaDe(fecha);
+  if (hojas.has(pest)) return hojas.get(pest);
   try {
-    const meta = await api('?fields=properties(title,locale),sheets.properties(sheetId,title)');
-    let hoja = meta.sheets?.find((s) => s.properties.title === pestana());
+    const leerMeta = () => api('?fields=properties(title,locale),sheets.properties(sheetId,title)');
+    let meta = await leerMeta();
+    let hoja = meta.sheets?.find((s) => s.properties.title === pest);
     if (!hoja) {
-      const r = await api(':batchUpdate', { metodo: 'POST', cuerpo: { requests: [{ addSheet: { properties: { title: pestana() } } }] } });
-      hoja = { properties: r.replies[0].addSheet.properties };
+      try {
+        const r = await api(':batchUpdate', { metodo: 'POST', cuerpo: { requests: [{ addSheet: { properties: { title: pest } } }] } });
+        hoja = { properties: r.replies[0].addSheet.properties };
+      } catch (e) {
+        // Otra computadora la acaba de crear (el primer registro del mes llegó al mismo tiempo): se usa esa.
+        meta = await leerMeta();
+        hoja = meta.sheets?.find((s) => s.properties.title === pest);
+        if (!hoja) throw e;
+      }
     }
-    const cab = await api(`/values/${encodeURIComponent(rangoPestana(`A1:${letra(COLUMNAS.length)}1`))}`);
+    const rangoCab = rangoPestana(pest, `A1:${letra(COLUMNAS.length)}1`);
+    const cab = await api(`/values/${encodeURIComponent(rangoCab)}`);
     const filas = cab.values ?? [];
     if (!filas.length || filas[0].every((c) => !c)) {
-      await api(`/values/${encodeURIComponent(rangoPestana(`A1:${letra(COLUMNAS.length)}1`))}?valueInputOption=RAW`, { metodo: 'PUT', cuerpo: { values: [COLUMNAS] } });
+      await api(`/values/${encodeURIComponent(rangoCab)}?valueInputOption=RAW`, { metodo: 'PUT', cuerpo: { values: [COLUMNAS] } });
       await api(':batchUpdate', { metodo: 'POST', cuerpo: { requests: [
         { repeatCell: { range: { sheetId: hoja.properties.sheetId, startRowIndex: 0, endRowIndex: 1 }, cell: { userEnteredFormat: { backgroundColor: { red: 0, green: 0.4, blue: 0.2 }, textFormat: { bold: true, foregroundColor: { red: 1, green: 1, blue: 1 } } } }, fields: 'userEnteredFormat(backgroundColor,textFormat)' } },
         { updateSheetProperties: { properties: { sheetId: hoja.properties.sheetId, gridProperties: { frozenRowCount: 1 } }, fields: 'gridProperties.frozenRowCount' } },
         { setBasicFilter: { filter: { range: { sheetId: hoja.properties.sheetId, startRowIndex: 0 } } } },
       ] } }).catch(() => {}); // el formato es un detalle: si falla, se guarda igual
     } else if (filas[0].length !== COLUMNAS.length || filas[0].some((c, i) => c !== COLUMNAS[i])) {
-      throw new ErrorPlanilla(`La pestaña «${pestana()}» de la hoja tiene otras columnas en la fila 1. Tienen que ser: ${COLUMNAS.join(', ')}. Usá otra pestaña (GOOGLE_PESTANA) o dejala vacía.`, { status: 409 });
+      throw new ErrorPlanilla(`La pestaña «${pest}» de la hoja tiene otras columnas en la fila 1. Tienen que ser: ${COLUMNAS.join(', ')}. Renombrala o vaciala y el panel la vuelve a preparar.`, { status: 409 });
     }
-    hojaLista = { id: idHoja(), titulo: meta.properties.title, pestana: pestana(), separador: separadorDe(meta.properties.locale) };
-    return hojaLista;
+    const info = { id: idHoja(), titulo: meta.properties.title, pestana: pest, separador: separadorDe(meta.properties.locale) };
+    hojas.set(pest, info);
+    return info;
   } catch (e) {
     throw traducir(e);
   }
@@ -164,11 +176,11 @@ export async function asegurarHoja() {
 /** Texto para USER_ENTERED: lo numérico con ceros adelante (cédulas, códigos) se guarda como texto. */
 const comoTexto = (v, i) => (i > 0 && typeof v === 'string' && /^0\d+$/.test(v) ? `'${v}` : v);
 
-/** Agrega la fila al final de la pestaña. */
-export async function agregarFila(fila) {
-  await asegurarHoja();
+/** Agrega la fila al final de la pestaña del mes de `fecha`. */
+export async function agregarFila(fila, fecha = new Date()) {
+  const { pestana: pest } = await asegurarHoja(fecha);
   try {
-    await api(`/values/${encodeURIComponent(rangoPestana(`A:${letra(COLUMNAS.length)}`))}:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`, {
+    await api(`/values/${encodeURIComponent(rangoPestana(pest, `A:${letra(COLUMNAS.length)}`))}:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`, {
       metodo: 'POST', cuerpo: { values: [fila.map(comoTexto)] },
     });
   } catch (e) {

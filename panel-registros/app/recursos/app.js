@@ -748,7 +748,7 @@ async function vistaPlanilla(main, resto, aviso) {
   if (!p.prueba) {
     main.innerHTML = `${cabecera('Planilla')}${avisoMs}${avisoPlanilla()}
       <section class="card form"><h2 class="card__titulo">${p.google ? 'Hoja de Google Sheets' : 'Planilla de Excel en la nube'}</h2>
-        ${p.listo ? `<dl class="datos"><dt>Archivo</dt><dd>${esc(p.nombre ?? '—')}</dd><dt>Cuenta</dt><dd>${esc(p.cuenta ?? '—')}</dd></dl>` : ''}
+        ${p.listo ? `<dl class="datos"><dt>Archivo</dt><dd>${esc(p.nombre ?? '—')}</dd>${p.pestana ? `<dt>Pestaña de este mes</dt><dd>${esc(p.pestana)} <span class="muted">(al cambiar el mes, los registros pasan solos a la pestaña nueva)</span></dd>` : ''}<dt>Cuenta</dt><dd>${esc(p.cuenta ?? '—')}</dd></dl>` : ''}
         <div class="botones">${p.enlace ? `<a class="btn" href="${esc(p.enlace)}" target="_blank" rel="noopener noreferrer">${icono('externo', 16)}Abrir la planilla${p.google ? ' en Google Sheets' : ' en Excel'}</a>` : ''}
         ${puede('configuracion') && p.modo === 'cuenta' && p.cuenta ? '<button type="button" class="btn btn--outline" data-desconectar>Desconectar la cuenta de Microsoft</button>' : ''}</div>
       </section>`;
