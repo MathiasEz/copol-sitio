@@ -255,7 +255,7 @@ export function vistaPerfil(c: Contexto, errores: ErroresPerfil, d: { conector: 
       <fieldset class="paleta"><legend class="sr">Color</legend>
         ${PALETA.map((x) => html`<label class="paleta__opcion"><input type="radio" name="color" value="${x.clave}" ${u.color === x.clave ? 'checked' : ''} required><span class="pers pers--${x.clave}">${x.nombre}</span></label>`)}
       </fieldset>
-      <p class="muted">Así se ve: ${u.color ? html`<span class="pers pers--${u.color}">${u.nombre || u.usuario}</span>` : 'todavía no elegiste un color.'}</p>
+      <p class="muted">Así se ve: ${u.color ? html`<span class="pers pers--${u.color}">${u.usuario}</span>` : 'todavía no elegiste un color.'}</p>
       <button class="btn btn--outline" type="submit">Guardar color</button>
     </form>
   </section>` : ''}

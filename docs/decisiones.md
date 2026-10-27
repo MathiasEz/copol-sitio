@@ -132,3 +132,4 @@ Movimiento: transiciones cortas, aparición progresiva al hacer scroll (solo con
 | Hacete socio sin numeración | Sin círculos 1 y 2 en la pregunta y la respuesta; los pasos llevan un punto, no número. |
 | Planilla y Google | Con la hoja conectada, «Planilla» lee la hoja en vivo (la constancia de la base ya no se muestra, por eso reaparecían filas borradas). |
 | Mi perfil para todos los roles | Mi perfil (contraseña, correo, color) pide el permiso «empleados», que tienen todos los roles; antes un usuario solo con «Carga de registros» no podía abrirlo ni cambiar su contraseña temporal. |
+| «Cargado por» | Lleva el usuario con el que se ingresó (por ejemplo `B. Pereira`), no el nombre de la cuenta: en el administrador principal ese nombre es genérico. Los registros ya cargados no se reescriben. |

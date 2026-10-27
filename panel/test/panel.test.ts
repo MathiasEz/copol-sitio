@@ -1655,6 +1655,17 @@ describe('registros: formulario, asistente y planilla', () => {
     assert.match(await (await n.pedir(`${RUTA}/registros/planilla`)).text(), /pers pers--azul">cargador</);
   });
 
+  it('«Cargado por» lleva el usuario con el que ingresó, no el nombre de la cuenta', async () => {
+    await crearUsuario(db, { usuario: 'b.pereira', nombre: 'Administrador principal', roles: ['registros'], clave: CLAVE, debeCambiar: false, creadoPor: null });
+    const n = await entrar('b.pereira');
+    assert.equal((await n.postJson(`${RUTA}/registros/guardar`, VALIDO_COLOR)).status, 200);
+    const r = (await fila<{ cargado_por: string }>('SELECT cargado_por FROM registros ORDER BY id DESC'))!;
+    assert.equal(r.cargado_por, 'b.pereira');
+    const lista = await (await n.pedir(`${RUTA}/registros/planilla`)).text();
+    assert.match(lista, />b\.pereira</);
+    assert.doesNotMatch(lista, /Administrador principal/);
+  });
+
   it('con la hoja conectada la planilla muestra lo que hay en la hoja (no lo borrado) y colorea la celda «Cargado por»', async () => {
     const { privateKey } = crypto.generateKeyPairSync('rsa', { modulusLength: 2048 });
     process.env.GOOGLE_CREDENCIALES = JSON.stringify({ client_email: 'registros@prueba.iam.gserviceaccount.com', private_key: privateKey.export({ type: 'pkcs8', format: 'pem' }) });

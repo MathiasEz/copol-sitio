@@ -1180,7 +1180,8 @@ export function crearApp({ db: fuenteDb, config, almacen, asistente, correo, pus
     if (errores) return c.json({ ok: false, error: 'Revisá los campos marcados.', errores }, 422);
     const u = c.get('usuario')!;
     try {
-      const guardado = await RG.agregar(c.get('db'), datos, { id: u.id, nombre: u.nombre || u.usuario, color: u.color });
+      // «Cargado por» es el usuario con el que ingresó (no el nombre de la cuenta, que en el administrador principal es genérico).
+      const guardado = await RG.agregar(c.get('db'), datos, { id: u.id, nombre: u.usuario, color: u.color });
       await registrar(c.get('db'), actor(c), 'registro.alta', 'registro', String(guardado.id), { socio: datos.socio, producto: datos.producto, codigo: datos.codigo, flete: datos.flete, destino: guardado.destino });
       return c.json({ ok: true, registro: { nombre: datos.nombre, producto: datos.producto }, fecha: guardado.fecha, destino: guardado.destino });
     } catch (e) {
@@ -1216,7 +1217,8 @@ export function crearApp({ db: fuenteDb, config, almacen, asistente, correo, pus
   app.get('/registros/planilla', requiere('registros'), async (c) => {
     const db = c.get('db');
     const colores: Record<string, string> = {};
-    for (const x of await U.listarUsuarios(db)) if (x.color) colores[x.nombre || x.usuario] = x.color;
+    // «Cargado por» lleva el usuario (B. Pereira); los registros viejos pueden llevar el nombre que tenía la cuenta.
+    for (const x of await U.listarUsuarios(db)) if (x.color) { colores[x.usuario] = x.color; colores[x.nombre] ??= x.color; }
     const planilla = await RG.estado();
     if (planilla.modo === 'google' && planilla.listo) {
       // Con la hoja conectada se muestra lo que hay en la hoja ahora, no la constancia guardada en la base.
