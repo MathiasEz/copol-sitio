@@ -1655,6 +1655,39 @@ describe('registros: formulario, asistente y planilla', () => {
     assert.match(await (await n.pedir(`${RUTA}/registros/planilla`)).text(), /pers pers--azul">cargador</);
   });
 
+  it('la fecha que la hoja devuelve como número de serie se muestra como fecha y se repara el formato', async () => {
+    const { privateKey } = crypto.generateKeyPairSync('rsa', { modulusLength: 2048 });
+    process.env.GOOGLE_CREDENCIALES = JSON.stringify({ client_email: 'registros@prueba.iam.gserviceaccount.com', private_key: privateKey.export({ type: 'pkcs8', format: 'pem' }) });
+    process.env.GOOGLE_HOJA = 'https://docs.google.com/spreadsheets/d/1AbCdEfGhIjKlMnOpQrStUvWxYz0123456789/edit';
+    const google = await import('../src/registros-google.ts');
+    const { nombreMes } = await import('../src/registros-campos.ts');
+    assert.equal(google.fechaDeSerie('46322,6423611111'), '27/10/2026 15:25');
+    assert.equal(google.fechaDeSerie('46322.6423611111'), '27/10/2026 15:25');
+    assert.equal(google.fechaDeSerie('27/10/2026 15:25'), '27/10/2026 15:25');
+    assert.equal(google.fechaDeSerie('12345678'), '12345678');
+    const llamadas: any[] = [];
+    google.usarFetch(async (entrada, init) => {
+      const url = String(entrada);
+      const json = (o: unknown) => new Response(JSON.stringify(o), { status: 200, headers: { 'content-type': 'application/json' } });
+      if (init?.body && typeof init.body === 'string' && init.body.startsWith('{')) llamadas.push(JSON.parse(init.body));
+      if (url.startsWith('https://oauth2.googleapis.com/token')) return json({ access_token: 'tk', expires_in: 3600 });
+      if (url.includes('fields=properties')) return json({ properties: { title: 'Registros COPOL', locale: 'es_UY' }, sheets: [{ properties: { sheetId: 7, title: nombreMes() } }] });
+      if (url.includes('A2%3AK') || url.includes('A2:K')) return json({ values: [['46322,6423611111', 'Ana Gómez', '77', '', '', '', 'Sí', 'Cocina', 'C-9', 'b.pereira', '']] });
+      return json({});
+    });
+    try {
+      const n = await entrar('cargador');
+      const pagina = await (await n.pedir(`${RUTA}/registros/planilla`)).text();
+      assert.match(pagina, /27\/10\/2026 15:25/);
+      assert.doesNotMatch(pagina, /46322/);
+      assert.ok(llamadas.some((c) => c.requests?.[0]?.repeatCell?.cell?.userEnteredFormat?.numberFormat?.type === 'DATE_TIME'), 'repara el formato de la columna');
+    } finally {
+      delete process.env.GOOGLE_CREDENCIALES;
+      delete process.env.GOOGLE_HOJA;
+      google.usarFetch(fetch);
+    }
+  });
+
   it('«Cargado por» lleva el usuario con el que ingresó, no el nombre de la cuenta', async () => {
     await crearUsuario(db, { usuario: 'b.pereira', nombre: 'Administrador principal', roles: ['registros'], clave: CLAVE, debeCambiar: false, creadoPor: null });
     const n = await entrar('b.pereira');
@@ -1696,9 +1729,11 @@ describe('registros: formulario, asistente y planilla', () => {
       assert.doesNotMatch(pagina, /Lucía Pérez/, 'lo que ya no está en la hoja no se muestra');
       const ok = await n.postJson(`${RUTA}/registros/guardar`, VALIDO_COLOR);
       assert.equal(ok.status, 200, await ok.clone().text());
-      const pintar = llamadas.find((x) => x.cuerpo?.requests?.[0]?.repeatCell?.range?.startRowIndex === 8);
+      const pedidos = llamadas.flatMap((x) => (x.cuerpo?.requests ?? []) as any[]);
+      assert.ok(pedidos.some((q) => q.repeatCell?.cell?.userEnteredFormat?.numberFormat?.type === 'DATE_TIME'), 'vuelve a fijar el formato de la fecha en cada alta');
+      const pintar = pedidos.find((q) => q.repeatCell?.range?.startRowIndex === 8);
       assert.ok(pintar, 'pinta la fila 9 (índice 8)');
-      const rc = pintar!.cuerpo.requests[0].repeatCell;
+      const rc = pintar.repeatCell;
       assert.equal(rc.range.startColumnIndex, COLUMNAS.indexOf('Cargado por'));
       assert.ok(rc.cell.userEnteredFormat.backgroundColor.blue > 0.8);
     } finally {

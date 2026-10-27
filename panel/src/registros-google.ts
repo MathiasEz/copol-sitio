@@ -170,9 +170,7 @@ export async function asegurarHoja(fecha = new Date()): Promise<InfoHoja> {
     }
     // La fecha se guarda como fecha y hora de verdad (se puede ordenar y filtrar): la columna A se muestra con ese
     // formato, también en las filas que ya estaban. Si falla, no importa: el dato queda igual.
-    await api(':batchUpdate', { metodo: 'POST', cuerpo: { requests: [
-      { repeatCell: { range: { sheetId: hoja.properties.sheetId, startRowIndex: 1, startColumnIndex: 0, endColumnIndex: 1 }, cell: { userEnteredFormat: { numberFormat: { type: 'DATE_TIME', pattern: 'dd/mm/yyyy hh:mm' } } }, fields: 'userEnteredFormat.numberFormat' } },
-    ] } }).catch(() => {});
+    await api(':batchUpdate', { metodo: 'POST', cuerpo: { requests: [formatoFecha(hoja.properties.sheetId)] } }).catch(() => {});
     const info = { id: idHoja(), titulo: meta.properties.title, pestana: pest, separador: separadorDe(meta.properties.locale), sheetId: hoja.properties.sheetId };
     hojas.set(pest, info);
     return info;
@@ -180,6 +178,9 @@ export async function asegurarHoja(fecha = new Date()): Promise<InfoHoja> {
     throw traducir(e as Error);
   }
 }
+
+/** Pedido que fija el formato fecha y hora de la columna A (desde la fila 2, hasta el final de la hoja). */
+const formatoFecha = (sheetId: number) => ({ repeatCell: { range: { sheetId, startRowIndex: 1, startColumnIndex: 0, endColumnIndex: 1 }, cell: { userEnteredFormat: { numberFormat: { type: 'DATE_TIME', pattern: 'dd/mm/yyyy hh:mm' } } }, fields: 'userEnteredFormat.numberFormat' } });
 
 /** Texto para USER_ENTERED: lo numérico con ceros adelante (cédulas, códigos) se guarda como texto. */
 const comoTexto = (v: string, i: number) => (i > 0 && typeof v === 'string' && /^0\d+$/.test(v) ? `'${v}` : v);
@@ -195,16 +196,27 @@ export async function agregarFila(fila: string[], fecha = new Date(), color?: Co
       metodo: 'POST', cuerpo: { values: [fila.map(comoTexto)] },
     });
     const numero = Number(String(r?.updates?.updatedRange ?? '').match(/!?[A-Z]+(\d+)(?::[A-Z]+\d+)?$/)?.[1]);
+    // Las filas nuevas pueden no heredar el formato de la fecha (se vería el número de serie, 46322,64…): se vuelve a
+    // fijar en toda la columna en cada alta, y de paso se pinta la celda de «Cargado por». Es un detalle: si falla, la fila ya quedó guardada.
+    const col = COLUMNAS.indexOf('Cargado por');
+    const pedidos: unknown[] = [formatoFecha(sheetId)];
     if (color && numero > 1) {
-      // El color es un detalle: si falla, la fila ya quedó guardada.
-      const col = COLUMNAS.indexOf('Cargado por');
-      await api(':batchUpdate', { metodo: 'POST', cuerpo: { requests: [
-        { repeatCell: { range: { sheetId, startRowIndex: numero - 1, endRowIndex: numero, startColumnIndex: col, endColumnIndex: col + 1 }, cell: { userEnteredFormat: { backgroundColor: color.fondo, textFormat: { bold: true, foregroundColor: color.texto } } }, fields: 'userEnteredFormat(backgroundColor,textFormat)' } },
-      ] } }).catch(() => {});
+      pedidos.push({ repeatCell: { range: { sheetId, startRowIndex: numero - 1, endRowIndex: numero, startColumnIndex: col, endColumnIndex: col + 1 }, cell: { userEnteredFormat: { backgroundColor: color.fondo, textFormat: { bold: true, foregroundColor: color.texto } } }, fields: 'userEnteredFormat(backgroundColor,textFormat)' } });
     }
+    await api(':batchUpdate', { metodo: 'POST', cuerpo: { requests: pedidos } }).catch(() => {});
   } catch (e) {
     throw traducir(e as Error);
   }
+}
+
+/** Número de serie de Google Sheets (46322,6423611111 o 46322.64) → «27/10/2026 15:25». Otro texto queda como está. */
+export function fechaDeSerie(v: string): string {
+  if (!/^\d{5}([.,]\d+)?$/.test(v.trim())) return v;
+  const n = Number(v.trim().replace(',', '.'));
+  if (!(n > 20000 && n < 80000)) return v;
+  const d = new Date(Math.round(((n - 25569) * 86400000) / 60000) * 60000); // la hoja guarda la hora de pared: se lee en UTC
+  const dos = (x: number) => String(x).padStart(2, '0');
+  return `${dos(d.getUTCDate())}/${dos(d.getUTCMonth() + 1)}/${d.getUTCFullYear()} ${dos(d.getUTCHours())}:${dos(d.getUTCMinutes())}`;
 }
 
 export interface FilaLeida { fila: number; celdas: string[] }
@@ -224,6 +236,12 @@ export async function leerPestana(pedida?: string, limite = 300): Promise<Lectur
     const filas: FilaLeida[] = ((datos.values ?? []) as unknown[][])
       .map((v, i) => ({ fila: i + 2, celdas: COLUMNAS.map((_, k) => String(v[k] ?? '')) }))
       .filter((f) => f.celdas.some((c) => c.trim()));
+    // Si alguna fecha viene como número de serie, la celda perdió su formato: se muestra bien acá y se repara en la hoja.
+    if (filas.some((f) => fechaDeSerie(f.celdas[0]) !== f.celdas[0])) {
+      const id = (meta.sheets ?? []).find((x: Json) => x.properties.title === pestana)?.properties.sheetId;
+      if (typeof id === 'number') await api(':batchUpdate', { metodo: 'POST', cuerpo: { requests: [formatoFecha(id)] } }).catch(() => {});
+      for (const f of filas) f.celdas[0] = fechaDeSerie(f.celdas[0]);
+    }
     return { pestana, pestanas, filas: filas.slice(-limite).reverse(), total: filas.length };
   } catch (e) {
     throw traducir(e as Error);
