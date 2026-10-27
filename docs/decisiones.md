@@ -116,13 +116,15 @@ Movimiento: transiciones cortas, aparición progresiva al hacer scroll (solo con
 
 | Tema | Decisión |
 |---|---|
-| Inicio a todo el ancho | `Base` acepta `anchoCompleto`: el contenido llega de borde a borde (margen interno de 16 a 44 px) y no hay textura lateral. Solo Inicio lo usa. |
+| Ancho completo | Todo el sitio llega de borde a borde (margen interno de 16 a 44 px, `--gutter`) y no hay textura lateral. Los bloques de Inicio usan `.bloque` con la misma separación (`--seccion`) arriba de cada banner y entre banner y contenido. |
 | Orden de Inicio | Banner principal, beneficios, accesos, créditos, **Servicios sociales** (arriba, para que se vean con poco scroll), Bazar, Pinecoop y Hacete socio. Cada banner reemplaza al título de su sección. |
 | Bazar en Inicio | Sin botones de categorías: solo los productos, pegados al banner. |
-| Novedades | Se quitó la sección del final de Inicio. Ahora están en la **campana del encabezado** (todas las páginas): el número (1 a 5) sale de la hora de Uruguay y el desplegable muestra las novedades del panel (`NovedadesCampana.astro`). |
-| Locales y Convenios | Al elegir un punto: scroll propio, lento y con arranque y frenado suaves hasta el mapa; luego el mapa vuela (flyTo) hasta el lugar. |
+| Novedades | Se quitó la sección del final de Inicio. Ahora están en la **campana del encabezado** (todas las páginas): el desplegable muestra las novedades del panel. La campana se configura en **Administración Página → Campana** (`/campana`): activarla o apagarla, el título y el número (por hora de Uruguay de 1 a 5, cantidad de novedades o fijo). Es el island `Campana.astro`; guarda en `ajustes` (clave `campana`) y se refresca con la etiqueta de novedades. |
+| Locales y Convenios | Al elegir un punto: scroll propio, lento y con arranque y frenado suaves hasta el mapa; luego el mapa se aleja y hace un zoom suave (flyTo) con desenfoque que se va aclarando hasta el lugar. |
 | Historia | Sin el hito «Nueva identidad de marca». «Presencia en todo el país» lista los departamentos y muestra un local por departamento (sale de los locales). Estatutos en un bloque destacado. |
 | Promociones | Sin «Campañas vigentes» (motos Zanella y garantía de alquiler). |
-| Bazar | Al tocar «Consultar» en un color, un modal ofrece consultar solo ese producto o agregar más al carrito para hacer una sola consulta. |
+| Bazar | Al tocar «Consultar» en un color, un modal ofrece consultar solo ese producto o agregar más al carrito para hacer una sola consulta. En «Mi carrito», «Enviar por WhatsApp» abre el mismo tipo de modal con hasta 4 recomendaciones con stock de las categorías ya elegidas. |
 | Acceso web | Primero Mi cuenta de socio (degradé de marca, aro, llamado amarillo) y debajo el Portal de empleados; se quitó la tarjeta «App para Android – pendiente». |
 | Hacete socio | «Dos caminos» pasó a ser un asistente interactivo de una pregunta con tres respuestas y sus pasos (con los textos existentes). |
+| Tienda y Contacto | Paleta sobria: tarjetas blancas, icono amarillo y hover verde; en Contacto solo WhatsApp va en verde. |
+| Hacete socio | En «No sé si tiene» queda solo la consulta por WhatsApp (sin botón «Ver convenios»). |
