@@ -4,7 +4,7 @@
 //      "Con stock" en verde. Se verifica el valor en la base y en la página.
 //   2. Escaneo: cámara simulada que muestra un código EAN-13 → el campo "Código interno COPOL" se completa.
 //      Con el permiso de cámara denegado, el ingreso manual sigue funcionando.
-//   3. Usuarios: alta con usuario/correo, rol y contraseña temporal; cambio de contraseña en el perfil.
+//   3. Usuarios: alta con usuario/correo, uno o varios roles y contraseña temporal; cambio de contraseña en el perfil.
 //   4. Novedades: crear con imagen, publicar → aparece en Inicio; despublicar → desaparece.
 // Crea un usuario administrador temporal con contraseña aleatoria y lo elimina al terminar; restaura
 // el stock del producto usado y elimina la novedad y el usuario de prueba.
@@ -61,7 +61,7 @@ await sharp({ create: { width: 1200, height: 600, channels: 3, background: '#008
 const db = await conectar();
 const usuario = `qa-${crypto.randomBytes(3).toString('hex')}`;
 const clave = `Qa-${crypto.randomBytes(12).toString('base64url')}-9`;
-const idQa = await crearUsuario(db, { usuario, rol: 'administrador', clave, debeCambiar: false, creadoPor: 'qa' });
+const idQa = await crearUsuario(db, { usuario, roles: ['administrador'], clave, debeCambiar: false, creadoPor: 'qa' });
 const limpiar = { productoId: null, estadoOriginal: null, novedad: null, usuarioNuevo: null, codigoNuevo: null };
 // El administrador de prueba necesita un PIN creado: si la base local no tiene, se crea uno temporal y se borra al final.
 const pinTemporal = !(await pinConfigurado(db));
@@ -160,9 +160,10 @@ try {
   const temporal = `Temp-${crypto.randomBytes(8).toString('base64url')}-1`;
   limpiar.usuarioNuevo = correo;
   await panel.goto(`${BASE}${RUTA}/usuarios`);
-  verificar((await panel.$$(`form[action="${RUTA}/usuarios"] input:not([type=hidden]), form[action="${RUTA}/usuarios"] select`)).length === 4, 'Usuarios · el alta tiene 4 campos (usuario o correo, correo, rol, contraseña temporal)');
+  verificar((await panel.$$(`form[action="${RUTA}/usuarios"] input:not([type=hidden])`)).length === 2 + 4 + 1, 'Usuarios · el alta tiene usuario o correo, correo, 4 casillas de roles y contraseña temporal');
   await panel.fill(`form[action="${RUTA}/usuarios"] input[name="usuario"]`, correo);
-  await panel.selectOption(`form[action="${RUTA}/usuarios"] select[name="rol"]`, 'editor');
+  await panel.check(`form[action="${RUTA}/usuarios"] input[name="roles"][value="editor"]`);
+  await panel.check(`form[action="${RUTA}/usuarios"] input[name="roles"][value="registros"]`); // varios roles a la vez
   await panel.fill(`form[action="${RUTA}/usuarios"] input[name="clave"]`, temporal);
   await Promise.all([panel.waitForURL(/aviso=usuario-creado/), panel.click(`form[action="${RUTA}/usuarios"] button[type="submit"]`)]);
   verificar(await panel.isVisible(`td:has-text("${correo}")`), 'Usuarios · el nuevo usuario aparece en la lista');
