@@ -1643,6 +1643,59 @@ describe('registros: formulario, asistente y planilla', () => {
       google.usarFetch(fetch);
     }
   });
+
+  const VALIDO_COLOR = { nombre: 'Lucía Pérez', socio: '1001', cedula: '55605392', direccion: 'Calle 1', producto: 'Heladera', codigo: '111', flete: 'No', service: '', adicional: '', mapa: '' };
+  it('cada persona elige su color: se guarda, se ve en la planilla y pinta su celda en la hoja de Google', async () => {
+    const n = await entrar('cargador');
+    assert.match(await (await n.pedir(`${RUTA}/perfil`)).text(), /Tu color en la planilla/);
+    assert.equal((await n.post(`${RUTA}/perfil/color`, { color: 'rojo-que-no-existe' })).status, 400);
+    assert.equal((await n.post(`${RUTA}/perfil/color`, { color: 'azul' })).status, 302);
+    assert.equal((await fila<{ color: string }>("SELECT color FROM usuarios WHERE usuario = 'cargador'"))!.color, 'azul');
+    await n.postJson(`${RUTA}/registros/guardar`, VALIDO_COLOR);
+    assert.match(await (await n.pedir(`${RUTA}/registros/planilla`)).text(), /pers pers--azul">cargador</);
+  });
+
+  it('con la hoja conectada la planilla muestra lo que hay en la hoja (no lo borrado) y colorea la celda «Cargado por»', async () => {
+    const { privateKey } = crypto.generateKeyPairSync('rsa', { modulusLength: 2048 });
+    process.env.GOOGLE_CREDENCIALES = JSON.stringify({ client_email: 'registros@prueba.iam.gserviceaccount.com', private_key: privateKey.export({ type: 'pkcs8', format: 'pem' }) });
+    process.env.GOOGLE_HOJA = 'https://docs.google.com/spreadsheets/d/1AbCdEfGhIjKlMnOpQrStUvWxYz0123456789/edit';
+    const google = await import('../src/registros-google.ts');
+    const { nombreMes, COLUMNAS } = await import('../src/registros-campos.ts');
+    const n = await entrar('cargador');
+    await n.post(`${RUTA}/perfil/color`, { color: 'azul' });
+    const lleva = await fila<{ n: number }>("SELECT COUNT(*) n FROM registros WHERE nombre = 'Lucía Pérez'");
+    assert.ok(Number(lleva!.n) >= 1, 'hay una constancia vieja en la base');
+    const llamadas: { url: string; cuerpo: any }[] = [];
+    google.usarFetch(async (entrada, init) => {
+      const url = String(entrada);
+      const cuerpo = init?.body && typeof init.body === 'string' && init.body.startsWith('{') ? JSON.parse(init.body) : null;
+      llamadas.push({ url, cuerpo });
+      const json = (o: unknown) => new Response(JSON.stringify(o), { status: 200, headers: { 'content-type': 'application/json' } });
+      if (url.startsWith('https://oauth2.googleapis.com/token')) return json({ access_token: 'tk', expires_in: 3600 });
+      if (url.includes('fields=properties')) return json({ properties: { title: 'Registros COPOL', locale: 'es_UY' }, sheets: [{ properties: { sheetId: 7, title: nombreMes() } }] });
+      if (url.includes(':append')) return json({ updates: { updatedRange: `'${nombreMes()}'!A9:K9` } });
+      if (url.includes('A2%3AK') || url.includes('A2:K')) return json({ values: [['27/10/2026 16:30', 'Ana Gómez', '77', '', '', '', 'Sí', 'Cocina', 'C-9', 'cargador', '']] });
+      if (url.includes('/values/')) return json({ values: [COLUMNAS] });
+      return json({});
+    });
+    try {
+      const pagina = await (await n.pedir(`${RUTA}/registros/planilla`)).text();
+      assert.match(pagina, /Ana Gómez/);
+      assert.match(pagina, /pers pers--azul">cargador</);
+      assert.doesNotMatch(pagina, /Lucía Pérez/, 'lo que ya no está en la hoja no se muestra');
+      const ok = await n.postJson(`${RUTA}/registros/guardar`, VALIDO_COLOR);
+      assert.equal(ok.status, 200, await ok.clone().text());
+      const pintar = llamadas.find((x) => x.cuerpo?.requests?.[0]?.repeatCell?.range?.startRowIndex === 8);
+      assert.ok(pintar, 'pinta la fila 9 (índice 8)');
+      const rc = pintar!.cuerpo.requests[0].repeatCell;
+      assert.equal(rc.range.startColumnIndex, COLUMNAS.indexOf('Cargado por'));
+      assert.ok(rc.cell.userEnteredFormat.backgroundColor.blue > 0.8);
+    } finally {
+      delete process.env.GOOGLE_CREDENCIALES;
+      delete process.env.GOOGLE_HOJA;
+      google.usarFetch(fetch);
+    }
+  });
 });
 
 describe('mantener la sesión iniciada', () => {

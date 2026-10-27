@@ -63,6 +63,7 @@ export const ACCIONES: Record<string, string> = {
   'acceso.equipo-olvidado': 'Un administrador olvidó un equipo recordado',
   'acceso.sesion-cerrada': 'Un administrador cerró una sesión',
   'usuario.correo': 'Cambió su correo de verificación',
+  'usuario.color': 'Eligió su color para la planilla de registros',
   'clave.cambio': 'Cambió su contraseña',
   'stock.cambio': 'Cambió el stock',
   'producto.alta': 'Agregó un producto',

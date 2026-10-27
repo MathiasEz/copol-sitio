@@ -118,7 +118,7 @@ function traducir(e: Error & { status?: number }): ErrorPlanilla {
 }
 
 // ── Hoja y pestaña ──
-interface InfoHoja { id: string | null; titulo: string; pestana: string; separador: string }
+interface InfoHoja { id: string | null; titulo: string; pestana: string; separador: string; sheetId: number }
 const hojas = new Map<string, InfoHoja>();
 const letra = (n: number) => String.fromCharCode(64 + n);
 const rangoPestana = (pest: string, r: string) => `'${pest.replace(/'/g, "''")}'!${r}`;
@@ -173,7 +173,7 @@ export async function asegurarHoja(fecha = new Date()): Promise<InfoHoja> {
     await api(':batchUpdate', { metodo: 'POST', cuerpo: { requests: [
       { repeatCell: { range: { sheetId: hoja.properties.sheetId, startRowIndex: 1, startColumnIndex: 0, endColumnIndex: 1 }, cell: { userEnteredFormat: { numberFormat: { type: 'DATE_TIME', pattern: 'dd/mm/yyyy hh:mm' } } }, fields: 'userEnteredFormat.numberFormat' } },
     ] } }).catch(() => {});
-    const info = { id: idHoja(), titulo: meta.properties.title, pestana: pest, separador: separadorDe(meta.properties.locale) };
+    const info = { id: idHoja(), titulo: meta.properties.title, pestana: pest, separador: separadorDe(meta.properties.locale), sheetId: hoja.properties.sheetId };
     hojas.set(pest, info);
     return info;
   } catch (e) {
@@ -184,13 +184,47 @@ export async function asegurarHoja(fecha = new Date()): Promise<InfoHoja> {
 /** Texto para USER_ENTERED: lo numérico con ceros adelante (cédulas, códigos) se guarda como texto. */
 const comoTexto = (v: string, i: number) => (i > 0 && typeof v === 'string' && /^0\d+$/.test(v) ? `'${v}` : v);
 
-/** Agrega la fila al final de la pestaña del mes de `fecha`. */
-export async function agregarFila(fila: string[], fecha = new Date()) {
-  const { pestana: pest } = await asegurarHoja(fecha);
+/** Color de la celda «Cargado por» de una fila nueva (componentes 0 a 1 de la API de Sheets). */
+export interface ColorCelda { fondo: { red: number; green: number; blue: number }; texto: { red: number; green: number; blue: number } }
+
+/** Agrega la fila al final de la pestaña del mes de `fecha`. Si se pasa `color`, pinta la celda de «Cargado por». */
+export async function agregarFila(fila: string[], fecha = new Date(), color?: ColorCelda | null) {
+  const { pestana: pest, sheetId } = await asegurarHoja(fecha);
   try {
-    await api(`/values/${encodeURIComponent(rangoPestana(pest, `A:${letra(COLUMNAS.length)}`))}:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`, {
+    const r = await api(`/values/${encodeURIComponent(rangoPestana(pest, `A:${letra(COLUMNAS.length)}`))}:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`, {
       metodo: 'POST', cuerpo: { values: [fila.map(comoTexto)] },
     });
+    const numero = Number(String(r?.updates?.updatedRange ?? '').match(/!?[A-Z]+(\d+)(?::[A-Z]+\d+)?$/)?.[1]);
+    if (color && numero > 1) {
+      // El color es un detalle: si falla, la fila ya quedó guardada.
+      const col = COLUMNAS.indexOf('Cargado por');
+      await api(':batchUpdate', { metodo: 'POST', cuerpo: { requests: [
+        { repeatCell: { range: { sheetId, startRowIndex: numero - 1, endRowIndex: numero, startColumnIndex: col, endColumnIndex: col + 1 }, cell: { userEnteredFormat: { backgroundColor: color.fondo, textFormat: { bold: true, foregroundColor: color.texto } } }, fields: 'userEnteredFormat(backgroundColor,textFormat)' } },
+      ] } }).catch(() => {});
+    }
+  } catch (e) {
+    throw traducir(e as Error);
+  }
+}
+
+export interface FilaLeida { fila: number; celdas: string[] }
+export interface LecturaHoja { pestana: string; pestanas: string[]; filas: FilaLeida[]; total: number }
+
+/**
+ * Lee lo que hay HOY en la hoja (lo que se borre o cambie en Google se refleja acá): los últimos `limite`
+ * registros de la pestaña pedida (por defecto la del mes), el más nuevo primero. No crea pestañas.
+ */
+export async function leerPestana(pedida?: string, limite = 300): Promise<LecturaHoja> {
+  try {
+    const meta = await api('?fields=properties(title,locale),sheets.properties(sheetId,title)');
+    const pestanas: string[] = (meta.sheets ?? []).map((s: Json) => String(s.properties.title));
+    const pestana = pedida && pestanas.includes(pedida) ? pedida : pestanaDe();
+    if (!pestanas.includes(pestana)) return { pestana, pestanas, filas: [], total: 0 };
+    const datos = await api(`/values/${encodeURIComponent(rangoPestana(pestana, `A2:${letra(COLUMNAS.length)}`))}?valueRenderOption=FORMATTED_VALUE`);
+    const filas: FilaLeida[] = ((datos.values ?? []) as unknown[][])
+      .map((v, i) => ({ fila: i + 2, celdas: COLUMNAS.map((_, k) => String(v[k] ?? '')) }))
+      .filter((f) => f.celdas.some((c) => c.trim()));
+    return { pestana, pestanas, filas: filas.slice(-limite).reverse(), total: filas.length };
   } catch (e) {
     throw traducir(e as Error);
   }

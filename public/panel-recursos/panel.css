@@ -666,3 +666,24 @@ details.card > summary { cursor: pointer; }
 .check--rol input { margin-top: 3px; }
 .check--rol span { display: grid; gap: 1px; }
 .check--rol small { color: var(--muted-foreground); font-weight: 400; font-size: .8125rem; }
+
+/* Color de cada persona en la planilla de registros (colores.ts) */
+.pers { display: inline-block; padding: 2px 10px; border-radius: 999px; font-weight: 700; font-size: .875rem; line-height: 1.5; }
+.pers--verde { background: #bbf7d0; color: #14532d; }
+.pers--amarillo { background: #fef08a; color: #713f12; }
+.pers--naranja { background: #fed7aa; color: #7c2d12; }
+.pers--rojo { background: #fecaca; color: #7f1d1d; }
+.pers--rosa { background: #fbcfe8; color: #831843; }
+.pers--violeta { background: #ddd6fe; color: #4c1d95; }
+.pers--azul { background: #bfdbfe; color: #1e3a8a; }
+.pers--celeste { background: #a5f3fc; color: #164e63; }
+.pers--turquesa { background: #99f6e4; color: #134e4a; }
+.pers--lima { background: #d9f99d; color: #365314; }
+.pers--marron { background: #e7d3c0; color: #451a03; }
+.pers--gris { background: #e2e8f0; color: #1e293b; }
+.paleta { display: flex; flex-wrap: wrap; gap: 8px; border: 0; margin: 0; padding: 0; }
+.paleta__opcion { position: relative; cursor: pointer; }
+.paleta__opcion input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+.paleta__opcion .pers { padding: 6px 14px; border: 2px solid transparent; }
+.paleta__opcion input:checked + .pers { border-color: var(--foreground); box-shadow: 0 0 0 2px var(--card), 0 0 0 4px var(--foreground); }
+.paleta__opcion input:focus-visible + .pers { outline: 2px solid var(--marca); outline-offset: 3px; }

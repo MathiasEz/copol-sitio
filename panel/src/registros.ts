@@ -7,6 +7,7 @@ import { ejecutar, todas, una, type Db } from './db.ts';
 import { COLUMNAS, fechaMontevideo, filaPlanilla, formulaEnlace, type DatosRegistro } from './registros-campos.ts';
 import * as google from './registros-google.ts';
 import { ErrorPlanilla } from './registros-planilla-error.ts';
+import { colorDe, rgbSheets } from './colores.ts';
 import { libroXlsx, type Valor } from './registros-xlsx.ts';
 
 export { ErrorPlanilla };
@@ -39,7 +40,7 @@ export interface Registro {
 }
 
 /** Guarda el registro: primero en la hoja (si está conectada) y, si salió bien, la constancia en la base. */
-export async function agregar(db: Db, datos: DatosRegistro, quien: { id: number | null; nombre: string }, cuando = new Date()) {
+export async function agregar(db: Db, datos: DatosRegistro, quien: { id: number | null; nombre: string; color?: string | null }, cuando = new Date()) {
   const m = modo();
   let destino = 'Planilla de prueba';
   let fecha = fechaMontevideo(cuando);
@@ -47,7 +48,8 @@ export async function agregar(db: Db, datos: DatosRegistro, quien: { id: number 
     // La pestaña es la del mes de este momento (hora de Montevideo): al cambiar el mes se pasa sola a la siguiente.
     const { separador } = await google.asegurarHoja(cuando);
     const fila = filaPlanilla(datos, quien.nombre, cuando, separador);
-    await google.agregarFila(fila, cuando);
+    const c = colorDe(quien.color);
+    await google.agregarFila(fila, cuando, c && { fondo: rgbSheets(c.fondo), texto: rgbSheets(c.texto) });
     fecha = fila[0];
     destino = `Google Sheets · ${google.pestanaDe(cuando)}`;
   } else if (Number((await una<{ n: number }>(db, 'SELECT COUNT(*) n FROM registros'))?.n ?? 0) >= MAX_FILAS_PRUEBA) {
@@ -65,6 +67,19 @@ export async function agregar(db: Db, datos: DatosRegistro, quien: { id: number 
 /** Últimos registros (más nuevos primero). */
 export const listar = (db: Db, limite = MAX_LISTA) => todas<Registro>(db, 'SELECT * FROM registros ORDER BY id DESC LIMIT ?', [limite]);
 export const contar = async (db: Db) => Number((await una<{ n: number }>(db, 'SELECT COUNT(*) n FROM registros'))?.n ?? 0);
+/**
+ * Con la hoja conectada, la planilla del panel es la hoja misma: se lee en el momento (lo que se borre en Google
+ * deja de verse acá). Solo se muestran las columnas del resumen; los datos personales quedan en la hoja.
+ */
+export async function listarHoja(pestana?: string) {
+  const l = await google.leerPestana(pestana, MAX_LISTA);
+  const registros: Registro[] = l.filas.map(({ fila, celdas: c }) => ({
+    id: fila, fecha: c[0], nombre: c[1], socio: c[2], producto: c[7], codigo: c[8], flete: c[6],
+    cedula: null, direccion: null, mapa: null, service: null, adicional: null,
+    usuario_id: null, cargado_por: c[9], destino: `Fila ${fila} de la hoja`,
+  }));
+  return { registros, total: l.total, pestana: l.pestana, pestanas: l.pestanas };
+}
 export const vaciar = (db: Db) => ejecutar(db, 'DELETE FROM registros');
 
 /** La dirección como enlace clicable a Google Maps (si se eligió la ubicación) o como texto. */

@@ -59,7 +59,7 @@ const faqLd = {
         <h2 id="caminos-titulo">Descubrí tu camino para asociarte</h2>
         <p class="lead">Sea cual sea tu situación, hay un camino para que formes parte de COPOL. Respondé una pregunta y te mostramos cómo seguir.</p>
         <div class="guia__pregunta" role="group" aria-labelledby="guia-pregunta">
-          <p id="guia-pregunta" class="guia__enunciado"><span class="guia__paso" aria-hidden="true">1</span> ¿Tu empresa o institución tiene convenio con COPOL?</p>
+          <p id="guia-pregunta" class="guia__enunciado">¿Tu empresa o institución tiene convenio con COPOL?</p>
           <div class="guia__opciones">
             <button type="button" class="guia__opcion" data-opcion="si" aria-pressed="false"><Icono nombre="check" tamano={22} /><strong>Sí, tiene convenio</strong><span>Me asocio directamente</span></button>
             <button type="button" class="guia__opcion" data-opcion="no" aria-pressed="false"><Icono nombre="usuarios" tamano={22} /><strong>No tiene convenio</strong><span>Quiero crearlo</span></button>
@@ -72,7 +72,6 @@ const faqLd = {
         <p class="guia__vacio" data-guia-vacio hidden><Icono nombre="flecha" tamano={22} /> Elegí una opción para ver tus pasos.</p>
 
         <article class="resultado resultado--si" data-resultado="si">
-          <span class="guia__paso" aria-hidden="true">2</span>
           <Badge variant="default">¿Tenés convenio? Sí</Badge>
           <h3>Te asociás directamente</h3>
           <ol class="resultado__pasos">
@@ -84,7 +83,6 @@ const faqLd = {
         </article>
 
         <article class="resultado resultado--no" data-resultado="no">
-          <span class="guia__paso" aria-hidden="true">2</span>
           <Badge variant="accent">¿Tenés convenio? No</Badge>
           <h3>Creá el convenio</h3>
           <ol class="resultado__pasos">
@@ -96,7 +94,6 @@ const faqLd = {
         </article>
 
         <article class="resultado resultado--nose" data-resultado="nose">
-          <span class="guia__paso" aria-hidden="true">2</span>
           <Badge variant="outline">¿Tenés convenio? Averiguá</Badge>
           <h3>Consultá si tu empresa tiene convenio</h3>
           <ol class="resultado__pasos">
@@ -178,7 +175,6 @@ const faqLd = {
   .guia__intro { display: grid; gap: 14px; }
   .guia__pregunta { display: grid; gap: 14px; margin-top: 8px; padding: clamp(18px, 2.4vw, 26px); border-radius: var(--radio-xl); background: var(--card); box-shadow: var(--anillo), var(--sombra-suave); }
   .guia__enunciado { display: flex; gap: 12px; align-items: center; margin: 0; font-weight: 800; font-size: 1.1875rem; color: var(--verde-oscuro); }
-  .guia__paso { flex: none; width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; background: var(--verde-oscuro); color: var(--amarillo-copol); font-weight: 800; }
   .guia__opciones { display: grid; gap: 10px; }
   .guia__opcion {
     display: grid; grid-template-columns: auto 1fr; column-gap: 14px; align-items: center; text-align: left; font: inherit; cursor: pointer;
@@ -198,11 +194,10 @@ const faqLd = {
     position: relative; display: grid; gap: 14px; justify-items: start; padding: clamp(24px, 3.4vw, 40px); border-radius: var(--radio-xl); overflow: hidden;
     background: var(--card); box-shadow: var(--anillo-fuerte), var(--sombra);
   }
-  .resultado > .guia__paso { position: absolute; top: clamp(20px, 3vw, 32px); right: clamp(20px, 3vw, 32px); }
-  .resultado h3 { font-size: clamp(1.5rem, 2.8vw, 2rem); color: var(--verde-oscuro); padding-right: 48px; }
-  .resultado__pasos { margin: 0; padding: 0; list-style: none; counter-reset: paso; display: grid; gap: 12px; }
-  .resultado__pasos li { counter-increment: paso; display: flex; gap: 12px; align-items: flex-start; font-size: 1.0625rem; }
-  .resultado__pasos li::before { content: counter(paso); flex: none; width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: var(--accent); color: var(--tinta); font-weight: 800; font-size: 0.875rem; margin-top: 1px; }
+  .resultado h3 { font-size: clamp(1.5rem, 2.8vw, 2rem); color: var(--verde-oscuro); }
+  .resultado__pasos { margin: 0; padding: 0; list-style: none; display: grid; gap: 12px; }
+  .resultado__pasos li { display: flex; gap: 12px; align-items: flex-start; font-size: 1.0625rem; }
+  .resultado__pasos li::before { content: ''; flex: none; width: 10px; height: 10px; border-radius: 50%; background: var(--amarillo-copol); box-shadow: 0 0 0 4px var(--accent); margin: 9px 6px 0 6px; }
   .resultado__acciones { display: flex; flex-wrap: wrap; gap: 10px; }
   .resultado--si { border-top: 6px solid var(--verde-copol); }
   .resultado--no { border-top: 6px solid var(--amarillo-copol); }

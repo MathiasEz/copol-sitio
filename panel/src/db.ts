@@ -173,6 +173,9 @@ const MIGRACIONES: string[] = [
      pasados no cambia más) para consultarlo mes a mes desde Estadísticas → Mes a mes */ `
   CREATE TABLE estadisticas_mes (mes TEXT PRIMARY KEY, resumen TEXT NOT NULL, archivado_en TEXT NOT NULL)
   `,
+  /* 13 · color de cada persona en la planilla de registros (clave de la paleta de colores.ts) */ `
+  ALTER TABLE usuarios ADD COLUMN color TEXT
+  `,
 ];
 
 /** Versión del esquema en una tabla propia (PRAGMA user_version no se conserva igual en todos los destinos). */

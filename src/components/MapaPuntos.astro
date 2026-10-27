@@ -3,7 +3,7 @@
 // - MapLibre + mapa base de OpenFreeMap (gratis, sin clave). La librería (~250 kB) se descarga recién
 //   cuando el mapa se acerca a la pantalla o cuando alguien pide ver un punto.
 // - Las tarjetas de la página piden enfocar un punto con el evento `copol:mapa-enfocar` ({ id }):
-//   la página se desplaza hasta el mapa y este hace un acercamiento suave (flyTo) hasta el punto.
+//   la página se desplaza hasta el mapa y este se aleja si hace falta y hace un acercamiento lento y suave hasta el punto.
 // - Los filtros de la página avisan qué puntos quedan con `copol:mapa-filtrar` ({ ids }).
 // - `agrupar`: junta los puntos cercanos en burbujas con el número (para los ~160 convenios).
 // - Con "reducir movimiento" activado en el sistema, el acercamiento es directo y más corto (sin arco), pero suave.
@@ -207,29 +207,61 @@ const datos = puntos.map((p) => [p.id, +p.lat.toFixed(5), +p.lng.toFixed(5), p.t
       document.dispatchEvent(new CustomEvent('copol:mapa-elegido', { detail: { id: p.id } }));
     }
 
-    // Acercamiento al local: si el mapa ya estaba muy acercado, primero se aleja; después vuela (flyTo) hasta el
-    // punto con un zoom lento y un desenfoque que sube a mitad de camino y se va al llegar. Esta animación
-    // se hace siempre (es la respuesta al toque); con "reducir movimiento" es un acercamiento directo y sin desenfoque.
+    // Llegada al local en dos tiempos, para que el zoom se vea siempre:
+    //  1) si el mapa está lejos o muy acercado, se aleja y se traslada hasta el punto con el zoom abierto;
+    //  2) espera a que el mapa dibuje esa zona y recién ahí se acerca despacio, con desenfoque que se va aclarando.
+    // Con "reducir movimiento" es un solo acercamiento directo y sin desenfoque.
+    let turno = 0;
     async function enfocarEnMapa(p: Punto, desdeTarjeta: boolean) {
       const m = mapa!;
+      const miTurno = ++turno;
+      const destino = new ml!.LngLat(p.lng, p.lat);
       const zoomFinal = desdeTarjeta ? (agrupar ? 16 : 15.5) : Math.max(m.getZoom(), agrupar ? 16 : 15.5);
       botonTodo.hidden = false;
       ventana?.remove();
       m.stop();
-      if (desdeTarjeta && !reducir.matches && m.getZoom() > 9) {
-        m.easeTo({ zoom: 7, duration: 1100, easing: suave, essential: true });
-        await new Promise<void>((ok) => m.once('moveend', () => ok()));
+      lienzo.style.setProperty('--desenfoque', '0px');
+      const cancelado = () => miTurno !== turno;
+      const terminar = () => { lienzo.style.setProperty('--desenfoque', '0px'); marcar(p); };
+      const alTerminar = () => new Promise<void>((ok) => m.once('moveend', () => ok()));
+
+      if (reducir.matches) {
+        m.easeTo({ center: destino, zoom: zoomFinal, duration: 1200, easing: suave, essential: true });
+        await alTerminar();
+        if (!cancelado()) terminar();
+        return;
       }
+
+      // 1) Alejar y trasladar (solo si hace falta)
+      const lejos = m.getCenter().distanceTo(destino) > 4000;
+      const zoomAbierto = lejos ? 7 : 11.5;
+      if (m.getZoom() > zoomAbierto + 0.5 || lejos) {
+        const zoomPaso = Math.min(m.getZoom(), zoomAbierto);
+        if (lejos) m.flyTo({ center: destino, zoom: zoomPaso, speed: 0.9, curve: 1.5, maxDuration: 3200, essential: true });
+        else m.easeTo({ center: destino, zoom: zoomPaso, duration: 1000, easing: suave, essential: true });
+        await alTerminar();
+        if (cancelado()) return;
+      }
+
+      // 2) Esperar a que dibuje la zona y acercar despacio
+      await new Promise<void>((ok) => { if (m.loaded()) return ok(); m.once('idle', () => ok()); setTimeout(ok, 1200); });
+      if (cancelado()) return;
       const inicio = m.getZoom();
-      const quitarDesenfoque = () => lienzo.style.setProperty('--desenfoque', '0px');
       const alAcercar = () => {
         const avance = Math.min(1, Math.max(0, (m.getZoom() - inicio) / (zoomFinal - inicio || 1)));
         lienzo.style.setProperty('--desenfoque', `${(Math.sin(Math.PI * avance) * 5).toFixed(2)}px`);
       };
-      if (!reducir.matches) m.on('zoom', alAcercar);
-      m.once('moveend', () => { m.off('zoom', alAcercar); quitarDesenfoque(); marcar(p); });
-      if (reducir.matches) m.easeTo({ center: [p.lng, p.lat], zoom: zoomFinal, duration: 1200, easing: suave, essential: true });
-      else m.flyTo({ center: [p.lng, p.lat], zoom: zoomFinal, speed: desdeTarjeta ? 0.55 : 1.2, curve: desdeTarjeta ? 1.6 : 1.42, maxDuration: desdeTarjeta ? 4800 : 2800, essential: true });
+      m.on('zoom', alAcercar);
+      m.easeTo({
+        center: destino,
+        zoom: zoomFinal,
+        duration: desdeTarjeta ? 3600 : 2400,
+        easing: (t: number) => 0.5 - Math.cos(Math.PI * t) / 2,
+        essential: true,
+      });
+      await alTerminar();
+      m.off('zoom', alAcercar);
+      if (!cancelado()) terminar();
     }
 
     const enVista = () => {

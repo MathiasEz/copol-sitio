@@ -21,6 +21,7 @@ import type { MensajeGuardado, ResumenConversacion, TarjetaGuardada } from './co
 import { describirEquipo } from './acceso.ts';
 import type { Conexion } from './oauth.ts';
 import { ESTADOS, miniatura, type Categoria, type EstadoStock, type Producto } from './productos.ts';
+import { colorDe, PALETA } from './colores.ts';
 import { GRUPOS_ROL, nombresRoles, puede, ROLES, type Rol } from './seguridad.ts';
 import type { UsuarioPublico } from './usuarios.ts';
 import type { EstadoPlanilla, Registro } from './registros.ts';
@@ -222,7 +223,7 @@ export function vistaCambioObligatorio(c: Contexto, error: string | null) {
   ${formClave(c, r('/perfil/clave'))}`);
 }
 
-export interface ErroresPerfil { clave?: string; correo?: string; pin?: string }
+export interface ErroresPerfil { clave?: string; correo?: string; pin?: string; color?: string }
 export function vistaPerfil(c: Contexto, errores: ErroresPerfil, d: { conector: { url: string; conexiones: Conexion[] } | null; correoActivo: boolean }) {
   const u = c.usuario!;
   const err = (k: keyof ErroresPerfil) => (errores[k] ? html`<div class="alert alert--error" role="alert">${icono('info')}<p>${errores[k]}</p></div>` : '');
@@ -246,6 +247,18 @@ export function vistaPerfil(c: Contexto, errores: ErroresPerfil, d: { conector: 
       <button class="btn btn--outline" type="submit">Guardar correo</button>
     </form>
   </section>
+  ${puede(u, 'registros') ? html`<section class="card form" aria-labelledby="color-titulo"><h2 class="card__titulo" id="color-titulo">Tu color en la planilla</h2>
+    <p class="muted">Los registros que cargues van a aparecer con tu nombre de este color (en la planilla del panel y en la hoja de Google). Los ya cargados no cambian.</p>
+    ${err('color')}
+    <form method="post" action="${r('/perfil/color')}" class="form">
+      ${csrfCampo(c)}
+      <fieldset class="paleta"><legend class="sr">Color</legend>
+        ${PALETA.map((x) => html`<label class="paleta__opcion"><input type="radio" name="color" value="${x.clave}" ${u.color === x.clave ? 'checked' : ''} required><span class="pers pers--${x.clave}">${x.nombre}</span></label>`)}
+      </fieldset>
+      <p class="muted">Así se ve: ${u.color ? html`<span class="pers pers--${u.color}">${u.nombre || u.usuario}</span>` : 'todavía no elegiste un color.'}</p>
+      <button class="btn btn--outline" type="submit">Guardar color</button>
+    </form>
+  </section>` : ''}
   ${puede(u, 'usuarios') ? html`<section class="card form" aria-labelledby="pin-titulo"><h2 class="card__titulo" id="pin-titulo">PIN de acceso al panel</h2>
     <p class="muted">Se pide antes del usuario y la contraseña en los equipos que no están recordados. Es uno solo para todo el equipo: al cambiarlo, compartilo de nuevo con quienes usan el panel.</p>
     ${err('pin')}
@@ -260,7 +273,7 @@ export function vistaPerfil(c: Contexto, errores: ErroresPerfil, d: { conector: 
     </form>
   </section>` : ''}
 </div>
-${d.conector ? html`<section class="card form" aria-labelledby="claude-titulo">
+${d.conector && puede(u, 'ver') ? html`<section class="card form" aria-labelledby="claude-titulo">
   <h2 class="card__titulo" id="claude-titulo">Conexión con Claude</h2>
   <p class="muted">Desde la app de Claude podés consultar el stock y cambiarlo (si tu rol lo permite). Para conectarla, en Claude: Configuración → Conectores → Agregar conector personalizado, con esta dirección:</p>
   <p><code class="url-conector">${d.conector.url}</code></p>
@@ -1537,10 +1550,11 @@ ${avisoPlanilla(d.planilla)}
 <noscript><div class="alert alert--error" role="alert">${icono('info')}<p>El formulario de registros necesita JavaScript.</p></div></noscript>`, '', RECURSOS_REGISTROS);
 }
 
-export function vistaPlanilla(c: Contexto, d: { planilla: EstadoPlanilla; registros: Registro[]; total: number }) {
+export function vistaPlanilla(c: Contexto, d: { planilla: EstadoPlanilla; registros: Registro[]; total: number; colores?: Record<string, string>; pestana?: string; pestanas?: string[] }) {
   const prueba = d.planilla.modo === 'prueba';
   const esAdmin = Boolean(c.usuario && puede(c.usuario, 'usuarios'));
   const td = (etiqueta: string, v: string | null, clase = '') => html`<td data-etiqueta="${etiqueta}" class="${clase}">${v || '—'}</td>`;
+  const quien = (v: string) => { const col = colorDe(d.colores?.[v]); return html`<td data-etiqueta="Cargado por">${col ? html`<span class="pers pers--${col.clave}">${v}</span>` : v || '—'}</td>`; };
   const acciones = prueba
     ? html`<a class="btn" href="${r('/registros/planilla.xlsx')}" download>${icono('descargar', 16)}Descargar Excel (.xlsx)</a>
       ${esAdmin && d.total ? html`<form method="post" action="${r('/registros/planilla/vaciar')}" data-confirmar="¿Borrar todas las filas de la planilla de prueba? Conviene descargarla antes en Excel.">${csrfCampo(c)}<button class="btn btn--outline" type="submit">${icono('basura', 16)}Vaciar</button></form>` : ''}`
@@ -1549,10 +1563,11 @@ export function vistaPlanilla(c: Contexto, d: { planilla: EstadoPlanilla; regist
 ${avisoPlanilla(d.planilla)}
 ${!prueba && d.planilla.listo ? html`<section class="card form"><h2 class="card__titulo">Hoja de Google Sheets</h2>
   <dl class="datos"><dt>Archivo</dt><dd>${d.planilla.nombre ?? '—'}</dd><dt>Pestaña de este mes</dt><dd>${d.planilla.pestana ?? '—'} <span class="muted">(al cambiar el mes, los registros pasan solos a la pestaña nueva)</span></dd><dt>Cuenta</dt><dd>${d.planilla.cuenta ?? '—'}</dd></dl>
-  <p class="muted">Los datos completos de cada registro (cédula, dirección, service e información adicional) están solo en la hoja. Acá se ve un resumen de lo que se cargó desde el panel.</p>
+  <p class="muted">Los datos completos de cada registro (cédula, dirección, service e información adicional) están solo en la hoja. Acá se ve un resumen de lo que hay en la hoja <strong>ahora</strong>: si borrás o cambiás una fila en Google, se actualiza al abrir esta página.</p>
+  ${d.pestanas && d.pestanas.length > 1 ? html`<nav class="tabs" aria-label="Pestañas de la hoja">${d.pestanas.map((p) => html`<a class="tabs__item" aria-current="${p === d.pestana}" href="${r('/registros/planilla')}?pestana=${encodeURIComponent(p)}">${p}</a>`)}</nav>` : ''}
 </section>` : ''}
-<p class="muted">${d.total ? `${d.total.toLocaleString('es-UY')} registro${d.total === 1 ? '' : 's'}${d.total > d.registros.length ? ` (se muestran los últimos ${d.registros.length})` : ''}. El más nuevo arriba.` : prueba ? 'La planilla de prueba está vacía.' : 'Todavía no se cargó ningún registro desde el panel.'}</p>
+<p class="muted">${d.total ? `${d.total.toLocaleString('es-UY')} registro${d.total === 1 ? '' : 's'}${d.total > d.registros.length ? ` (se muestran los últimos ${d.registros.length})` : ''}. El más nuevo arriba.` : prueba ? 'La planilla de prueba está vacía.' : 'Esta pestaña todavía no tiene registros.'}</p>
 ${d.registros.length ? html`<div class="tabla-caja"><table class="tabla tabla--lista tabla--registros">
   <thead><tr><th scope="col">Nombre</th><th scope="col">Fecha</th><th scope="col">Socio</th>${prueba ? html`<th scope="col">Cédula</th><th scope="col">Dirección</th>` : ''}<th scope="col">Producto</th><th scope="col">Código</th><th scope="col">Flete</th>${prueba ? html`<th scope="col">Service</th>` : ''}<th scope="col">Cargado por</th>${prueba ? html`<th scope="col">Información adicional</th>` : html`<th scope="col">Dónde quedó</th>`}</tr></thead>
-  <tbody>${d.registros.map((x) => html`<tr>${td('Nombre', x.nombre)}${td('Fecha', x.fecha, 'nowrap')}${td('Socio', x.socio)}${prueba ? html`${td('Cédula', x.cedula, 'nowrap')}${x.mapa ? html`<td data-etiqueta="Dirección"><a href="${x.mapa}" target="_blank" rel="noopener noreferrer">${x.direccion}</a></td>` : td('Dirección', x.direccion)}` : ''}${td('Producto', x.producto)}${td('Código', x.codigo)}${td('Flete', x.flete)}${prueba ? td('Service', x.service) : ''}${td('Cargado por', x.cargado_por)}${prueba ? td('Información adicional', x.adicional) : td('Dónde quedó', x.destino)}</tr>`)}</tbody></table></div>` : ''}`, acciones);
+  <tbody>${d.registros.map((x) => html`<tr>${td('Nombre', x.nombre)}${td('Fecha', x.fecha, 'nowrap')}${td('Socio', x.socio)}${prueba ? html`${td('Cédula', x.cedula, 'nowrap')}${x.mapa ? html`<td data-etiqueta="Dirección"><a href="${x.mapa}" target="_blank" rel="noopener noreferrer">${x.direccion}</a></td>` : td('Dirección', x.direccion)}` : ''}${td('Producto', x.producto)}${td('Código', x.codigo)}${td('Flete', x.flete)}${prueba ? td('Service', x.service) : ''}${quien(x.cargado_por)}${prueba ? td('Información adicional', x.adicional) : td('Dónde quedó', x.destino)}</tr>`)}</tbody></table></div>` : ''}`, acciones);
 }

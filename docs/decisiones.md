@@ -128,3 +128,7 @@ Movimiento: transiciones cortas, aparición progresiva al hacer scroll (solo con
 | Hacete socio | «Dos caminos» pasó a ser un asistente interactivo de una pregunta con tres respuestas y sus pasos (con los textos existentes). |
 | Tienda y Contacto | Paleta sobria: tarjetas blancas, icono amarillo y hover verde; en Contacto solo WhatsApp va en verde. |
 | Hacete socio | En «No sé si tiene» queda solo la consulta por WhatsApp (sin botón «Ver convenios»). |
+| Mapa en dos tiempos | Al elegir un local: si el mapa está lejos o muy acercado se aleja y se traslada con zoom abierto; espera a que dibuje esa zona y recién ahí hace un acercamiento lento (2,4 a 3,6 s) con desenfoque que se aclara. Un solo flyTo hacía el último tramo casi instantáneo. |
+| Hacete socio sin numeración | Sin círculos 1 y 2 en la pregunta y la respuesta; los pasos llevan un punto, no número. |
+| Planilla y Google | Con la hoja conectada, «Planilla» lee la hoja en vivo (la constancia de la base ya no se muestra, por eso reaparecían filas borradas). |
+| Mi perfil para todos los roles | Mi perfil (contraseña, correo, color) pide el permiso «empleados», que tienen todos los roles; antes un usuario solo con «Carga de registros» no podía abrirlo ni cambiar su contraseña temporal. |

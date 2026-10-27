@@ -19,10 +19,12 @@ export interface Usuario {
   ultimo_acceso: string | null;
   /** Correo al que llega el código de verificación del ingreso. */
   correo: string | null;
+  /** Clave del color que la persona eligió para la planilla de registros (ver colores.ts). */
+  color: string | null;
 }
 export type UsuarioPublico = Omit<Usuario, 'hash'>;
 
-const COLUMNAS_PUBLICAS = 'id, usuario, nombre, rol, roles, debe_cambiar_clave, activo, protegido, intentos_fallidos, bloqueado_hasta, creado_en, creado_por, ultimo_acceso, correo';
+const COLUMNAS_PUBLICAS = 'id, usuario, nombre, rol, roles, debe_cambiar_clave, activo, protegido, intentos_fallidos, bloqueado_hasta, creado_en, creado_por, ultimo_acceso, correo, color';
 
 /** La base guarda los roles como texto ("editor,registros"); acá pasan a lista (las filas viejas usan `rol`). */
 const conRoles = <T extends { rol?: unknown; roles?: unknown }>(fila: T | undefined) => fila && ({ ...fila, roles: leerRoles(fila.roles, fila.rol) });
@@ -48,6 +50,7 @@ export async function crearUsuario(db: Db, datos: { usuario: string; nombre?: st
 export const cambiarRoles = (db: Db, id: number, roles: Rol[]) =>
   ejecutar(db, 'UPDATE usuarios SET rol = ?, roles = ? WHERE id = ?', [rolHeredado(roles), guardarRoles(roles), id]);
 
+export const cambiarColor = (db: Db, id: number, color: string | null) => ejecutar(db, 'UPDATE usuarios SET color = ? WHERE id = ?', [color, id]);
 export const cambiarCorreo = (db: Db, id: number, correo: string | null) => ejecutar(db, 'UPDATE usuarios SET correo = ? WHERE id = ?', [correo, id]);
 
 export async function cambiarClave(db: Db, id: number, clave: string, debeCambiar: boolean) {

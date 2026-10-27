@@ -30,6 +30,7 @@ import { validarRegistro } from './registros-campos.ts';
 import * as P from './productos.ts';
 import * as PR from './propuestas.ts';
 import { esAdministrador, hashFicticio, Limitador, problemaClave, puede, tokenAleatorio, verificarClave, type Permiso } from './seguridad.ts';
+import { colorValido } from './colores.ts';
 import * as U from './usuarios.ts';
 import { correoValido, leerCantidad, leerRolesForm, rutaInterna, texto, validarDiapositiva, validarNovedad, validarProducto, validarUsuarioNuevo, type Campos } from './validacion.ts';
 import * as V from './vistas.ts';
@@ -80,6 +81,7 @@ const AVISOS: Record<string, V.Contexto['aviso']> = {
   'notificacion-enviada': { tipo: 'ok', texto: 'Notificación enviada. Le llega a cada celular la próxima vez que la app se actualiza (en general, en menos de una hora).' },
   'notificacion-cancelada': { tipo: 'ok', texto: 'Notificación cancelada: no va a salir.' },
   'notificacion-eliminada': { tipo: 'ok', texto: 'Notificación eliminada del historial.' },
+  'color-guardado': { tipo: 'ok', texto: 'Listo: tu color quedó guardado. Se usa en los registros nuevos.' },
   'planilla-vaciada': { tipo: 'ok', texto: 'Planilla de prueba vaciada.' },
   'planilla-en-google': { tipo: 'error', texto: 'Los registros se guardan en la hoja de Google: abrila con el botón «Abrir hoja de Google». La descarga solo existe para la planilla de prueba.' },
   'notificaciones-ajustes': { tipo: 'ok', texto: 'Ajustes de notificaciones guardados.' },
@@ -421,9 +423,9 @@ export function crearApp({ db: fuenteDb, config, almacen, asistente, correo, pus
     conector: config.conectorClaude ? { url: `${new URL(c.req.url).origin}${r('/mcp')}`, conexiones: await O.conexionesDe(c.get('db'), c.get('usuario')!.id) } : null,
     correoActivo: Boolean(enviarCorreo),
   }), estado);
-  app.get('/perfil', requiere('ver'), (c) => perfil(c));
-  app.get('/perfil/clave', requiere('ver'), (c) => (c.get('usuario')!.debe_cambiar_clave ? c.html(V.vistaCambioObligatorio(ctx(c), null)) : c.redirect(r('/perfil'))));
-  app.post('/perfil/clave', requiere('ver'), async (c) => {
+  app.get('/perfil', requiere('empleados'), (c) => perfil(c));
+  app.get('/perfil/clave', requiere('empleados'), (c) => (c.get('usuario')!.debe_cambiar_clave ? c.html(V.vistaCambioObligatorio(ctx(c), null)) : c.redirect(r('/perfil'))));
+  app.post('/perfil/clave', requiere('empleados'), async (c) => {
     const db = c.get('db');
     const u = c.get('usuario')!;
     const b = await cuerpo(c);
@@ -444,7 +446,7 @@ export function crearApp({ db: fuenteDb, config, almacen, asistente, correo, pus
   });
 
   // Correo de verificación propio (pide la contraseña actual).
-  app.post('/perfil/correo', requiere('ver'), async (c) => {
+  app.post('/perfil/correo', requiere('empleados'), async (c) => {
     const db = c.get('db');
     const u = c.get('usuario')!;
     const b = await cuerpo(c);
@@ -455,6 +457,17 @@ export function crearApp({ db: fuenteDb, config, almacen, asistente, correo, pus
     await U.cambiarCorreo(db, u.id, correo);
     await registrar(db, actor(c), 'usuario.correo', 'usuario', String(u.id), { usuario: u.usuario, correo: AC.ocultarCorreo(correo) });
     return c.redirect(`${r('/perfil')}?aviso=correo-guardado`);
+  });
+
+  // Color propio en la planilla de registros.
+  app.post('/perfil/color', requiere('empleados'), async (c) => {
+    const db = c.get('db');
+    const u = c.get('usuario')!;
+    const b = await cuerpo(c);
+    if (!colorValido(b.color)) return perfil(c, { color: 'Elegí uno de los colores de la lista.' }, 400);
+    await U.cambiarColor(db, u.id, b.color);
+    await registrar(db, actor(c), 'usuario.color', 'usuario', String(u.id), { usuario: u.usuario, color: b.color });
+    return c.redirect(`${r('/perfil')}?aviso=color-guardado`);
   });
 
   // ── PIN de entrada (solo administradores; se confirma con la contraseña) ──
@@ -1167,7 +1180,7 @@ export function crearApp({ db: fuenteDb, config, almacen, asistente, correo, pus
     if (errores) return c.json({ ok: false, error: 'Revisá los campos marcados.', errores }, 422);
     const u = c.get('usuario')!;
     try {
-      const guardado = await RG.agregar(c.get('db'), datos, { id: u.id, nombre: u.nombre || u.usuario });
+      const guardado = await RG.agregar(c.get('db'), datos, { id: u.id, nombre: u.nombre || u.usuario, color: u.color });
       await registrar(c.get('db'), actor(c), 'registro.alta', 'registro', String(guardado.id), { socio: datos.socio, producto: datos.producto, codigo: datos.codigo, flete: datos.flete, destino: guardado.destino });
       return c.json({ ok: true, registro: { nombre: datos.nombre, producto: datos.producto }, fecha: guardado.fecha, destino: guardado.destino });
     } catch (e) {
@@ -1200,7 +1213,23 @@ export function crearApp({ db: fuenteDb, config, almacen, asistente, correo, pus
       return c.json({ ok: false, error: 'El asistente no respondió. Completá el formulario a mano.' }, 502);
     }
   });
-  app.get('/registros/planilla', requiere('registros'), async (c) => c.html(V.vistaPlanilla(ctx(c), { planilla: await RG.estado(), registros: await RG.listar(c.get('db')), total: await RG.contar(c.get('db')) })));
+  app.get('/registros/planilla', requiere('registros'), async (c) => {
+    const db = c.get('db');
+    const colores: Record<string, string> = {};
+    for (const x of await U.listarUsuarios(db)) if (x.color) colores[x.nombre || x.usuario] = x.color;
+    const planilla = await RG.estado();
+    if (planilla.modo === 'google' && planilla.listo) {
+      // Con la hoja conectada se muestra lo que hay en la hoja ahora, no la constancia guardada en la base.
+      try {
+        const h = await RG.listarHoja(c.req.query('pestana'));
+        return c.html(V.vistaPlanilla(ctx(c), { planilla, registros: h.registros, total: h.total, colores, pestana: h.pestana, pestanas: h.pestanas }));
+      } catch (e) {
+        if (!(e instanceof RG.ErrorPlanilla)) throw e;
+        return c.html(V.vistaPlanilla(ctx(c), { planilla: { ...planilla, listo: false, aviso: e.message }, registros: [], total: 0, colores }));
+      }
+    }
+    return c.html(V.vistaPlanilla(ctx(c), { planilla, registros: await RG.listar(db), total: await RG.contar(db), colores }));
+  });
   app.get('/registros/planilla.xlsx', requiere('registros'), async (c) => {
     if (RG.modo() !== 'prueba') return c.redirect(`${r('/registros/planilla')}?aviso=planilla-en-google`);
     const nombre = `Registros COPOL (prueba) ${hoyUruguay()}.xlsx`;
