@@ -56,6 +56,7 @@ export async function cambiarClave(db: Db, id: number, clave: string, debeCambia
 
 // ── Sesiones: el navegador guarda un token aleatorio; la base guarda solo su SHA-256. ──
 export interface Sesion {
+  larga: number;
   id_hash: string;
   usuario_id: number;
   csrf: string;
@@ -64,20 +65,21 @@ export interface Sesion {
   ultima_actividad: string;
 }
 
-export async function crearSesion(db: Db, usuarioId: number, horas: number, ip: string | null, agente: string | null, lugar: string | null = null) {
+export async function crearSesion(db: Db, usuarioId: number, horas: number, ip: string | null, agente: string | null, lugar: string | null = null, larga = false) {
   const token = tokenAleatorio();
   const t = ahora();
-  await ejecutar(db, 'INSERT INTO sesiones (id_hash, usuario_id, csrf, creada_en, expira_en, ultima_actividad, ip, agente, lugar) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)', [
-    sha256(token), usuarioId, tokenAleatorio(24), t, new Date(Date.now() + horas * 3600_000).toISOString(), t, ip, agente?.slice(0, 200) ?? null, lugar,
+  await ejecutar(db, 'INSERT INTO sesiones (id_hash, usuario_id, csrf, creada_en, expira_en, ultima_actividad, ip, agente, lugar, larga) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [
+    sha256(token), usuarioId, tokenAleatorio(24), t, new Date(Date.now() + horas * 3600_000).toISOString(), t, ip, agente?.slice(0, 200) ?? null, lugar, larga ? 1 : 0,
   ]);
   return token;
 }
 
-export async function leerSesion(db: Db, token: string, inactividadMin: number): Promise<{ sesion: Sesion; usuario: UsuarioPublico } | null> {
+/** `inactividadMin`: límite de las sesiones comunes; las «mantener iniciada» usan `inactividadLargaMin`. */
+export async function leerSesion(db: Db, token: string, inactividadMin: number, inactividadLargaMin = inactividadMin): Promise<{ sesion: Sesion; usuario: UsuarioPublico } | null> {
   const sesion = await una<Sesion>(db, 'SELECT * FROM sesiones WHERE id_hash = ?', [sha256(token)]);
   if (!sesion) return null;
   const t = Date.now();
-  if (Date.parse(sesion.expira_en) < t || Date.parse(sesion.ultima_actividad) + inactividadMin * 60_000 < t) {
+  if (Date.parse(sesion.expira_en) < t || Date.parse(sesion.ultima_actividad) + (sesion.larga ? inactividadLargaMin : inactividadMin) * 60_000 < t) {
     await ejecutar(db, 'DELETE FROM sesiones WHERE id_hash = ?', [sesion.id_hash]);
     return null;
   }

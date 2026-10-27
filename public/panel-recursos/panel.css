@@ -58,7 +58,7 @@ a { color: inherit; }
 .sidebar { background: var(--card); border-right: 1px solid var(--border); display: flex; flex-direction: column; }
 .sidebar__marca { display: flex; align-items: center; gap: 10px; padding: 16px 18px; border-bottom: 1px solid var(--border); }
 .sidebar__marca img { height: 30px; width: auto; }
-.sidebar__marca span { font-weight: 700; font-size: .9375rem; color: var(--marca); }
+.sidebar__marca span { font-weight: 700; font-size: .9375rem; line-height: 1.2; color: var(--marca); }
 .sidebar__menu { display: flex; flex-direction: column; flex: 1; }
 .sidebar__menu > summary { display: none; list-style: none; }
 .sidebar__menu > summary::-webkit-details-marker { display: none; }

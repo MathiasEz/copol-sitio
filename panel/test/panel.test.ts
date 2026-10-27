@@ -36,6 +36,7 @@ const fila = <T>(sql: string, args: (string | number)[] = []) => una<T>(db, sql,
 
 /** Cliente mínimo que conserva cookies y extrae el token CSRF de los formularios. */
 class Navegador {
+  usuario = '';
   cookies = new Map<string, string>();
   csrf = '';
   /** `pinAutomatico`: si el panel pide el PIN, lo ingresa y repite el pedido (como haría la persona). */
@@ -1641,5 +1642,35 @@ describe('registros: formulario, asistente y planilla', () => {
       delete process.env.GOOGLE_HOJA;
       google.usarFetch(fetch);
     }
+  });
+});
+
+describe('mantener la sesión iniciada', () => {
+  const sesion = async (n: Navegador) => (await fila<{ larga: number; expira_en: string; creada_en: string; ultima_actividad: string; id_hash: string }>('SELECT s.* FROM sesiones s JOIN usuarios u ON u.id = s.usuario_id WHERE u.usuario = ? ORDER BY s.creada_en DESC', [n.usuario]))!;
+  it('el ingreso ofrece la casilla y, marcada, la sesión dura semanas; sin marcar, queda la sesión corta', async () => {
+    const a = new Navegador();
+    const pagina = await (await a.pedir(`${RUTA}/ingresar`)).text();
+    assert.match(pagina, /name="mantener"/);
+    a.usuario = 'editor';
+    assert.equal((await a.post(`${RUTA}/ingresar`, { usuario: 'editor', clave: CLAVE, mantener: '1' })).status, 302);
+    const larga = await sesion(a);
+    assert.equal(larga.larga, 1);
+    const dias = (Date.parse(larga.expira_en) - Date.parse(larga.creada_en)) / 86_400_000;
+    assert.ok(dias > 89 && dias <= 90, `tope de 90 días (${dias})`);
+    // Pasadas 2 horas sin usarla sigue abierta (la común se cierra a los 30 minutos).
+    await db.execute('UPDATE sesiones SET ultima_actividad = ? WHERE id_hash = ?', [new Date(Date.now() - 2 * 3600_000).toISOString(), larga.id_hash]);
+    assert.equal((await a.pedir(`${RUTA}/productos`)).status, 200);
+    // Y se cierra tras 30 días sin usarla.
+    await db.execute('UPDATE sesiones SET ultima_actividad = ? WHERE id_hash = ?', [new Date(Date.now() - 31 * 86_400_000).toISOString(), larga.id_hash]);
+    assert.equal((await a.pedir(`${RUTA}/productos`)).status, 302);
+
+    const b = new Navegador();
+    b.usuario = 'editor';
+    await b.pedir(`${RUTA}/ingresar`);
+    assert.equal((await b.post(`${RUTA}/ingresar`, { usuario: 'editor', clave: CLAVE })).status, 302);
+    const corta = await sesion(b);
+    assert.equal(corta.larga, 0);
+    await db.execute('UPDATE sesiones SET ultima_actividad = ? WHERE id_hash = ?', [new Date(Date.now() - 2 * 3600_000).toISOString(), corta.id_hash]);
+    assert.equal((await b.pedir(`${RUTA}/productos`)).status, 302, 'la común vence por inactividad');
   });
 });

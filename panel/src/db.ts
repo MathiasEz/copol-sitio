@@ -166,6 +166,9 @@ const MIGRACIONES: string[] = [
   );
   CREATE INDEX registros_fecha ON registros(id)
   `,
+  /* 11 · sesión «mantener iniciada»: no se cierra mientras se use (el límite por inactividad es en días) */ `
+  ALTER TABLE sesiones ADD COLUMN larga INTEGER NOT NULL DEFAULT 0
+  `,
 ];
 
 /** Versión del esquema en una tabla propia (PRAGMA user_version no se conserva igual en todos los destinos). */

@@ -75,6 +75,8 @@ Cada sección aparece solo si la persona tiene algo para hacer en ella; quien so
 
 ## Acceso al panel
 
+**Mantener la sesión iniciada:** el ingreso trae una casilla (marcada por defecto) para no tener que ingresar a cada rato: la sesión no se cierra mientras se use, vence tras 30 días sin entrar y, como tope, a los 90 días (`PANEL_SESION_LARGA_INACTIVIDAD_DIAS`, `PANEL_SESION_LARGA_MAX_DIAS`). Sin marcarla, la sesión es la común (30 minutos sin actividad, 8 horas como máximo). Cambiar la contraseña, desactivar la cuenta o «cerrar sesión» en Accesos la invalida. Aparte, «Recordar este equipo» (en el código por correo) evita pedir el PIN y el código durante 30 días.
+
 | Paso | Qué se pide | Detalle |
 |---|---|---|
 | Dirección | Una dirección no adivinable | Ya no es `/panel` (da 404). Está en `BASE` de `panel/src/config.ts` y en el nombre de la carpeta `src/pages/<dirección>/`; no se enlaza desde el sitio, no está en el mapa del sitio y pide no indexarse. Compartila solo con el equipo. |

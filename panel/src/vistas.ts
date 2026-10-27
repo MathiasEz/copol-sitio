@@ -105,7 +105,7 @@ function cabeza(titulo: string, extra: Recursos = {}) {
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
 <meta name="color-scheme" content="light dark">
-<title>${titulo} · Panel COPOL</title>
+<title>${titulo} · Panel de Administración COPOL</title>
 <link rel="stylesheet" href="/panel-recursos/panel.css">
 <link rel="icon" href="/favicon.png">
 <script src="/panel-recursos/tema.js"></script>
@@ -135,7 +135,7 @@ export function layout(c: Contexto, titulo: string, cuerpo: H, acciones: H | '' 
 <body class="app">
 <a class="saltar" href="#contenido">Saltar al contenido</a>
 <aside class="sidebar" aria-label="Panel">
-  <div class="sidebar__marca"><img src="/panel-recursos/logo-copol.svg" alt="COPOL" width="78" height="32"><span>Panel COPOL</span></div>
+  <div class="sidebar__marca"><img src="/panel-recursos/logo-copol.svg" alt="COPOL" width="78" height="32"><span>Panel de Administración</span></div>
   <details class="sidebar__menu" data-menu open>
     <summary class="btn btn--ghost btn--icono" aria-label="Menú">${icono('menu', 20)}</summary>
     <nav class="nav">
@@ -193,12 +193,14 @@ export const badgeEstado = (e: EstadoStock, cantidad: number | null = null) =>
 // ── Ingreso y contraseña ──
 export function vistaIngreso(c: Contexto, error: string | null, usuario = '') {
   return pantallaSimple(c, 'Ingresar', html`
-  <div><h1 class="titulo">Panel COPOL</h1><p class="muted">Ingresá con tu usuario o correo.</p></div>
+  <div><h1 class="titulo">Panel de Administración</h1><p class="muted">Ingresá con tu usuario o correo.</p></div>
   ${error ? html`<div class="alert alert--error" role="alert">${icono('info')}<p>${error}</p></div>` : ''}
   <form method="post" action="${r('/ingresar')}" class="form">
     ${csrfCampo(c)}
     <label class="campo"><span class="label">Usuario o correo</span><input class="input" name="usuario" autocomplete="username" required maxlength="120" value="${usuario}" autofocus></label>
     <label class="campo"><span class="label">Contraseña</span><input class="input" type="password" name="clave" autocomplete="current-password" required maxlength="200"></label>
+    <label class="check"><input type="checkbox" name="mantener" value="1" checked><span>Mantener la sesión iniciada</span></label>
+    <p class="ayuda">No se cierra mientras uses el panel (hasta 30 días sin entrar). Desmarcalo si la computadora o el celular es compartido.</p>
     <button class="btn btn--lg btn--bloque" type="submit">Ingresar</button>
   </form>`);
 }

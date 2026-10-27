@@ -1,4 +1,4 @@
-// Panel de COPOL (Stock Bazar, Registros y Administración): rutas, autenticación, autorización, productos, novedades, registros y usuarios.
+// Panel de Administración de COPOL (Stock Bazar, Registros y Administración): rutas, autenticación, autorización, productos, novedades, registros y usuarios.
 // Se monta en BASE (config.ts) del sitio (src/pages/<BASE>/[...ruta].ts) y funciona igual en desarrollo y en Vercel.
 import fs from 'node:fs/promises';
 import path from 'node:path';
@@ -33,7 +33,7 @@ import * as U from './usuarios.ts';
 import { correoValido, leerCantidad, leerRolesForm, rutaInterna, texto, validarDiapositiva, validarNovedad, validarProducto, validarUsuarioNuevo, type Campos } from './validacion.ts';
 import * as V from './vistas.ts';
 
-type Vars = { usuario: U.UsuarioPublico | null; sesion: U.Sesion | null; csrf: string; ip: string | null; origen: AC.Origen; db: Db };
+type Vars = { usuario: U.UsuarioPublico | null; sesion: U.Sesion | null; csrf: string; ip: string | null; origen: AC.Origen; db: Db; mantener?: boolean };
 type Env = { Bindings: { ip?: string | null }; Variables: Vars };
 type C = Context<Env>;
 const r = V.r;
@@ -174,7 +174,7 @@ export function crearApp({ db: fuenteDb, config, almacen, asistente, correo, pus
     c.set('sesion', null);
     const token = getCookie(c, nombreCookie(c, 'copol_panel'));
     if (token) {
-      const s = await U.leerSesion(c.get('db'), token, config.sesionInactividadMin);
+      const s = await U.leerSesion(c.get('db'), token, config.sesionInactividadMin, config.sesionLargaInactividadDias * 1440);
       if (s) {
         c.set('usuario', s.usuario);
         c.set('sesion', s.sesion);
@@ -266,9 +266,12 @@ export function crearApp({ db: fuenteDb, config, almacen, asistente, correo, pus
     await ejecutar(db, 'UPDATE usuarios SET ultimo_acceso = ? WHERE id = ?', [ahora(), u.id]);
     await U.purgarSesionesVencidas(db);
     await AC.purgarVencidos(db);
-    const token = await U.crearSesion(db, Number(u.id), config.sesionMaxHoras, o.ip, o.agente, o.lugar);
-    setCookie(c, nombreCookie(c, 'copol_panel'), token, { ...opcionesCookie(c), maxAge: config.sesionMaxHoras * 3600 });
-    for (const k of ['copol_pre', 'copol_verif', 'copol_pin']) deleteCookie(c, nombreCookie(c, k), opcionesCookie(c));
+    // «Mantener la sesión iniciada» (casilla del ingreso): no se cierra mientras se use; vence tras días sin usarla o al tope.
+    const larga = c.get('mantener') === true || cookieDe(c, 'copol_mantener') === '1';
+    const horas = larga ? config.sesionLargaMaxDias * 24 : config.sesionMaxHoras;
+    const token = await U.crearSesion(db, Number(u.id), horas, o.ip, o.agente, o.lugar, larga);
+    setCookie(c, nombreCookie(c, 'copol_panel'), token, { ...opcionesCookie(c), maxAge: horas * 3600 });
+    for (const k of ['copol_pre', 'copol_verif', 'copol_pin', 'copol_mantener']) deleteCookie(c, nombreCookie(c, k), opcionesCookie(c));
     await registrar(db, { id: Number(u.id), usuario: u.usuario, ip: o.ip }, 'sesion.ingreso', 'usuario', String(u.id), { verificacion, ...desde(c) });
     return c.redirect(u.debe_cambiar_clave ? r('/perfil/clave') : volver);
   };
@@ -280,6 +283,10 @@ export function crearApp({ db: fuenteDb, config, almacen, asistente, correo, pus
     const usuario = texto(b.usuario, 120).toLowerCase();
     const clave = typeof b.clave === 'string' ? b.clave.slice(0, 200) : '';
     const ip = c.get('ip') ?? 'desconocida';
+    // La elección viaja en una cookie corta hasta terminar el ingreso (puede pasar por el código del correo).
+    c.set('mantener', b.mantener === '1');
+    if (b.mantener === '1') setCookie(c, nombreCookie(c, 'copol_mantener'), '1', { ...opcionesCookie(c), maxAge: 3600 });
+    else deleteCookie(c, nombreCookie(c, 'copol_mantener'), opcionesCookie(c));
     const fallo = (msg = 'Usuario o contraseña incorrectos.', estado: 401 | 403 = 401) => c.html(V.vistaIngreso(ctx(c), msg, usuario), estado);
     if (await AC.excedido(db, `ingreso:${ip}`, 20, 15 * 60_000)) {
       await registrar(db, { id: null, usuario, ip }, 'sesion.ingreso-fallido', 'usuario', usuario, { motivo: 'límite por IP', ...desde(c) });
@@ -1448,7 +1455,7 @@ export function crearApp({ db: fuenteDb, config, almacen, asistente, correo, pus
     const pagina = Math.max(1, Number(c.req.query('pagina')) || 1);
     const usuario = texto(c.req.query('usuario'), 120);
     const [sesiones, equipos, eventos, usuarios] = await Promise.all([
-      AC.sesionesAbiertas(db, config.sesionInactividadMin), AC.equiposRecordados(db),
+      AC.sesionesAbiertas(db, config.sesionInactividadMin, config.sesionLargaInactividadDias * 1440), AC.equiposRecordados(db),
       listarAccesos(db, { usuario: usuario || undefined, limite: 51, desde: (pagina - 1) * 50 }), U.listarUsuarios(db),
     ]);
     return c.html(V.vistaAccesos(ctx(c), { sesiones, equipos, eventos: eventos.slice(0, 50), hayMas: eventos.length > 50, pagina, usuario, usuarios: usuarios.map((x) => x.usuario), sesionActual: c.get('sesion')!.id_hash }));
