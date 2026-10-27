@@ -3,7 +3,6 @@
 // de una página estática, y la CDN lo guarda hasta el próximo cambio; ver src/lib/cache-publica.ts).
 // Usar con `server:defer` y un `slot="fallback"`.
 import TarjetaProducto from './TarjetaProducto.astro';
-import Button from './ui/Button.astro';
 import Icono from './Icono.astro';
 import { destacados, obtenerCatalogo } from '../lib/inventario';
 import { cachearEnCdn, ETIQUETAS_WEB, sinCache } from '../lib/cache-publica';
@@ -21,11 +20,6 @@ const lista = destacados(catalogo, cantidad);
 const chips = [...catalogo.categorias].filter((c) => c.id !== 'destacados').sort((a, b) => b.conStock - a.conStock).slice(0, 8);
 ---
 <div class="estante-bazar">
-  {completo && (
-    <div class="estante-bazar__cabecera">
-      <Button href="/hipermercado/bazar/" variant="outline">Ver los {catalogo.totales.total} productos <Icono nombre="flecha" tamano={18} /></Button>
-    </div>
-  )}
   {completo && (
     <nav class="chips" aria-label="Categorías del Bazar">
       {chips.map((c) => <a class="chip" href={`/hipermercado/bazar/?categoria=${encodeURIComponent(c.id)}`}>{c.nombre}<span class="chip__n">{c.total}</span></a>)}
@@ -50,7 +44,6 @@ const chips = [...catalogo.categorias].filter((c) => c.id !== 'destacados').sort
 
 <style is:global>
   .estante-bazar { display: grid; gap: clamp(16px, 2.2vw, 24px); }
-  .estante-bazar__cabecera { display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: center; justify-content: flex-end; }
   .chips { display: flex; gap: 8px; flex-wrap: wrap; }
   .chip {
     display: inline-flex; align-items: center; gap: 8px; padding: 7px 8px 7px 14px; border-radius: var(--radio-pill);
