@@ -1840,18 +1840,6 @@
       "lng": -55.67574
     },
     {
-      "id": "super-paseo-colon-154",
-      "nombre": "Super Paseo Colon",
-      "rubro": "Supermercado",
-      "rubroOriginal": "Supermercado",
-      "departamento": "Canelones",
-      "localidad": "Salinas",
-      "direccion": "Calle Colon esq. 32",
-      "telefono": null,
-      "lat": -34.7818,
-      "lng": -55.83701
-    },
-    {
       "id": "don-luis-caloca-155",
       "nombre": "Don Luis Caloca",
       "rubro": "Supermercado",

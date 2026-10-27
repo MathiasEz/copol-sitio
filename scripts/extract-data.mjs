@@ -93,6 +93,8 @@ console.log(`Locales: ${locales.length} (fotos: ${locales.filter((l) => l.foto).
 const convHtml = await (await fetch(`${BASE}/convenios`)).text();
 const literal = sliceArray(convHtml, 'var CONVS=');
 const raw = vm.runInNewContext(`(${literal})`, Object.create(null), { timeout: 1000 });
+// Comercios que COPOL pidió sacar del listado: si se vuelve a extraer del sitio anterior, no se agregan.
+const QUITADOS = new Set(['Super Paseo Colon']);
 const convenios = raw.map((c, i) => {
   const [departamento, localidad] = c.d.split(/\s+-\s+/);
   return {
@@ -107,7 +109,7 @@ const convenios = raw.map((c, i) => {
     lat: c.lat ?? null,
     lng: c.lng ?? null,
   };
-});
+}).filter((c) => !QUITADOS.has(c.nombre));
 await fs.writeFile(
   path.join(DATA, 'confirmado', 'convenios.json'),
   JSON.stringify(
