@@ -223,11 +223,11 @@ const datos = puntos.map((p) => [p.id, +p.lat.toFixed(5), +p.lng.toFixed(5), p.t
       lienzo.style.setProperty('--desenfoque', '0px');
       const cancelado = () => miTurno !== turno;
       const terminar = () => { lienzo.style.setProperty('--desenfoque', '0px'); marcar(p); };
-      const alTerminar = () => new Promise<void>((ok) => m.once('moveend', () => ok()));
+      // Se anota el fin del movimiento ANTES de arrancarlo (si no se mueve nada, el evento llega enseguida).
+      const mover = (arrancar: () => void) => new Promise<void>((ok) => { m.once('moveend', () => ok()); arrancar(); });
 
       if (reducir.matches) {
-        m.easeTo({ center: destino, zoom: zoomFinal, duration: 1200, easing: suave, essential: true });
-        await alTerminar();
+        await mover(() => m.easeTo({ center: destino, zoom: zoomFinal, duration: 1200, easing: suave, essential: true }));
         if (!cancelado()) terminar();
         return;
       }
@@ -237,9 +237,12 @@ const datos = puntos.map((p) => [p.id, +p.lat.toFixed(5), +p.lng.toFixed(5), p.t
       const zoomAbierto = lejos ? 7 : 11.5;
       if (m.getZoom() > zoomAbierto + 0.5 || lejos) {
         const zoomPaso = Math.min(m.getZoom(), zoomAbierto);
-        if (lejos) m.flyTo({ center: destino, zoom: zoomPaso, speed: 0.9, curve: 1.5, maxDuration: 3200, essential: true });
-        else m.easeTo({ center: destino, zoom: zoomPaso, duration: 1000, easing: suave, essential: true });
-        await alTerminar();
+        // Ojo: en flyTo, `maxDuration` manda la duración a 0 cuando el viaje es más largo (el mapa «salta»): se fija `duration`.
+        const km = m.getCenter().distanceTo(destino) / 1000;
+        const ms = Math.round(Math.min(2800, 1300 + km * 3));
+        await mover(() => (lejos
+          ? m.flyTo({ center: destino, zoom: zoomPaso, duration: ms, curve: 1.4, essential: true })
+          : m.easeTo({ center: destino, zoom: zoomPaso, duration: 1000, easing: suave, essential: true })));
         if (cancelado()) return;
       }
 
@@ -252,14 +255,13 @@ const datos = puntos.map((p) => [p.id, +p.lat.toFixed(5), +p.lng.toFixed(5), p.t
         lienzo.style.setProperty('--desenfoque', `${(Math.sin(Math.PI * avance) * 5).toFixed(2)}px`);
       };
       m.on('zoom', alAcercar);
-      m.easeTo({
+      await mover(() => m.easeTo({
         center: destino,
         zoom: zoomFinal,
         duration: desdeTarjeta ? 3600 : 2400,
         easing: (t: number) => 0.5 - Math.cos(Math.PI * t) / 2,
         essential: true,
-      });
-      await alTerminar();
+      }));
       m.off('zoom', alAcercar);
       if (!cancelado()) terminar();
     }
