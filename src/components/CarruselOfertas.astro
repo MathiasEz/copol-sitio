@@ -39,7 +39,6 @@ const { piezas, titulo } = Astro.props;
       ))}
     </ul>
   </div>
-  <p class="ofertas__ayuda" data-ayuda hidden>{piezas.length} ofertas · pasá el mouse por encima para detenerlas y tocá una para verla en grande</p>
 </copol-ofertas>
 
 <script>
@@ -62,7 +61,6 @@ const { piezas, titulo } = Astro.props;
       });
     }
     raiz.classList.add('ofertas--js');
-    raiz.querySelector<HTMLElement>('[data-ayuda]')!.hidden = false;
 
     const paso = () => (pista.children[1] as HTMLElement).offsetLeft - (pista.children[0] as HTMLElement).offsetLeft;
     const anchoSet = () => (pista.children[originales.length] as HTMLElement).offsetLeft - (pista.children[0] as HTMLElement).offsetLeft;
@@ -223,6 +221,4 @@ const { piezas, titulo } = Astro.props;
     }
   }
 
-  .ofertas__ayuda { font-size: 0.875rem; font-weight: 600; color: var(--muted-foreground); }
-  @media (hover: none) { .ofertas__ayuda { display: none; } }
 </style>

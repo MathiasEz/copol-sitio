@@ -108,11 +108,11 @@
   body::after { right: 0; background-position: top left; }
 }
 
-/* Páginas a todo el ancho (Inicio): el contenido llega de borde a borde, con un margen interno chico, y no
-   hay textura lateral porque no sobra espacio a los costados. */
-.ancho-completo { --ancho: 100vw; --gutter: clamp(16px, 2.6vw, 44px); }
-.ancho-completo::before,
-.ancho-completo::after { display: none !important; }
+/* Todo el sitio a todo el ancho: el contenido llega de borde a borde, con el mismo margen interno en todas las
+   páginas, el encabezado y el pie, y no hay textura lateral porque no sobra espacio a los costados. */
+body { --ancho: 100vw; --gutter: clamp(16px, 2.6vw, 44px); }
+body::before,
+body::after { display: none !important; }
 
 [hidden] {
   display: none !important;
@@ -614,10 +614,8 @@ a:hover > .media::after { box-shadow: var(--anillo-fuerte); }
 }
 
 /* ── Bloques de Inicio (banner + contenido); globales porque los usan también las server islands ── */
-.bloque { padding-top: var(--seccion); display: grid; gap: clamp(20px, 2.6vw, 28px); }
-.bloque--suave { padding-bottom: 0; margin-top: var(--seccion); padding-top: 0; }
+.bloque { padding-top: var(--seccion); display: grid; gap: 16px; }
 .bloque--final { padding-bottom: var(--seccion); }
-.bloque__interior { display: grid; gap: clamp(20px, 2.6vw, 28px); }
 .bloque__cabecera { display: flex; flex-wrap: wrap; gap: 16px 24px; align-items: flex-end; justify-content: space-between; }
 .bloque__cabecera h2 { font-size: clamp(1.625rem, 3vw, 2.25rem); }
 .bloque__bajada { color: var(--muted-foreground); margin-top: 8px; max-width: 60ch; }

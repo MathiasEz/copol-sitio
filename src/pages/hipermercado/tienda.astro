@@ -53,7 +53,7 @@ const rubros = [
 
   <section class="seccion seccion--suave" aria-labelledby="horarios-titulo">
     <div class="contenedor info escalonar">
-      <div class="card info__bloque info__bloque--horarios">
+      <div class="card info__bloque info__bloque">
         <span class="info__icono"><Icono nombre="reloj" tamano={26} /></span>
         <h2 id="horarios-titulo">Horarios</h2>
         <dl>
@@ -104,16 +104,9 @@ const rubros = [
   .rubro a {
     position: relative; display: grid; gap: 18px; align-content: space-between; min-height: 210px; height: 100%; padding: clamp(20px, 2.4vw, 28px);
     border-radius: var(--radio-xl); text-decoration: none; overflow: hidden; isolation: isolate;
-    background-size: 160% 160%; background-position: 0% 50%;
     box-shadow: var(--anillo);
-    transition: transform 450ms var(--resorte), box-shadow 300ms var(--ease-out-quart), background-position 700ms var(--ease-out-quart);
-  }
-  .rubro a::after { /* brillo que cruza la tarjeta al pasar el puntero */
-    content: ''; position: absolute; inset: 0; z-index: -1; background: linear-gradient(110deg, transparent 35%, rgb(255 255 255 / 0.28) 50%, transparent 65%);
-    transform: translateX(-120%); transition: transform 800ms var(--ease-out-quart);
-  }
-  .rubro a:hover { transform: translateY(-6px); box-shadow: var(--sombra); background-position: 100% 50%; }
-  .rubro a:hover::after { transform: translateX(120%); }
+      }
+  .rubro a:hover { transform: translateY(-6px); box-shadow: var(--sombra); }
   .rubro a:active { transform: translateY(-2px) scale(0.99); }
   .rubro__icono { width: 60px; height: 60px; border-radius: 18px; display: grid; place-items: center; transition: transform 500ms var(--resorte); }
   .rubro a:hover .rubro__icono { transform: rotate(-8deg) scale(1.1); }
@@ -124,20 +117,16 @@ const rubros = [
   .rubro a:hover .rubro__consulta, .rubro a:focus-visible .rubro__consulta { opacity: 1; transform: none; }
   @media (hover: none) { .rubro__consulta { opacity: 1; transform: none; } }
 
-  .rubro--verde a { background-image: linear-gradient(135deg, var(--verde-oscuro), var(--verde-copol), var(--verde-oscuro)); color: var(--sobre-verde); }
-  .rubro--verde .rubro__icono { background: var(--amarillo-copol); color: var(--tinta); }
-  .rubro--verde .rubro__texto span { color: var(--sobre-verde); }
-  .rubro--amarillo a { background-image: linear-gradient(135deg, var(--amarillo-copol), #f6ec5a, var(--amarillo-copol)); color: var(--tinta); }
-  .rubro--amarillo .rubro__icono { background: var(--verde-oscuro); color: var(--amarillo-copol); }
-  .rubro--blanco a { background-color: var(--card); color: var(--tinta); }
-  .rubro--blanco .rubro__icono { background: var(--accent); color: var(--tinta); }
-  .rubro--blanco .rubro__texto span { color: var(--muted-foreground); }
-  .rubro--oscuro a { background-image: linear-gradient(135deg, #0b3d22, var(--verde-oscuro), #0b3d22); color: var(--sobre-verde); }
-  .rubro--oscuro .rubro__icono { background: rgb(255 255 255 / 0.14); color: var(--amarillo-copol); }
-  .rubro--oscuro .rubro__texto span { color: var(--sobre-verde); }
-  .rubro--claro a { background-image: linear-gradient(135deg, var(--muted), #ffffff, var(--muted)); color: var(--verde-oscuro); box-shadow: var(--anillo-fuerte); }
-  .rubro--claro .rubro__icono { background: var(--primary); color: var(--accent); }
-  .rubro--claro .rubro__texto span { color: var(--muted-foreground); }
+  /* Paleta sobria: tarjetas blancas con detalle amarillo; al pasar el puntero se llenan de verde de marca */
+  .rubro a { background-color: var(--card); color: var(--tinta); }
+  .rubro__icono { background: var(--accent); color: var(--tinta); }
+  .rubro__texto strong { color: var(--verde-oscuro); }
+  .rubro__texto span { color: var(--muted-foreground); }
+  .rubro__consulta { color: var(--verde-oscuro); }
+  .rubro a { background-image: linear-gradient(var(--verde-oscuro), var(--verde-oscuro)); background-repeat: no-repeat; background-size: 100% 0%; background-position: 0 100%; transition: transform 450ms var(--resorte), box-shadow 300ms var(--ease-out-quart), background-size 500ms var(--ease-out-quart), color 300ms; }
+  .rubro a:hover { background-size: 100% 100%; background-position: 0 100%; }
+  .rubro a:hover .rubro__texto strong, .rubro a:hover .rubro__consulta { color: var(--blanco); }
+  .rubro a:hover .rubro__texto span { color: var(--sobre-verde); }
 
   .info { display: grid; gap: 18px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); }
   .info__bloque { gap: 12px; align-items: flex-start; padding: 26px; border-radius: var(--radio-xl); transition: transform 450ms var(--resorte), box-shadow 300ms var(--ease-out-quart); }
@@ -149,14 +138,6 @@ const rubros = [
   .info__bloque dt { font-weight: 700; color: var(--verde-oscuro); margin-top: 8px; }
   .info__bloque dd { margin: 0; color: var(--tinta-suave); }
   .info__bloque dd strong { color: var(--tinta); }
-  .info__bloque--horarios { background: linear-gradient(135deg, var(--verde-oscuro), var(--verde-copol)); color: var(--sobre-verde); }
-  .info__bloque--horarios h2, .info__bloque--horarios dt, .info__bloque--horarios dd strong { color: var(--blanco); }
-  .info__bloque--horarios dd { color: var(--sobre-verde); }
-  .info__bloque--horarios .info__icono { background: var(--amarillo-copol); color: var(--tinta); }
-  .info__bloque--insta { background: var(--accent); }
-  .info__bloque--insta p { color: var(--tinta); }
-  .info__bloque--insta .info__icono { background: var(--verde-oscuro); color: var(--amarillo-copol); }
-
   .cta-bazar { display: grid; gap: clamp(16px, 4vw, 48px); align-items: center; padding: 8px; border-radius: 32px; background: var(--card); box-shadow: var(--anillo), var(--sombra-suave); }
   @media (min-width: 900px) { .cta-bazar { grid-template-columns: 440px 1fr; } }
   .cta-bazar > div { display: grid; gap: 14px; justify-items: start; padding: clamp(16px, 3vw, 32px); }

@@ -1,15 +1,10 @@
 ---
-// Novedades publicadas desde el panel (las mismas que antes se veían al final de Inicio), en formato compacto
-// para el desplegable de la campana del encabezado. Server island: se genera en el servidor y la CDN lo guarda
-// hasta el próximo cambio en el panel (src/lib/cache-publica.ts).
+// Lista compacta de las Novedades publicadas en el panel, para el desplegable de la campana (Campana.astro).
 import Icono from './Icono.astro';
-import { obtenerNovedades, type Novedad } from '../lib/inventario';
-import { cachearEnCdn, ETIQUETAS_WEB, sinCache } from '../lib/cache-publica';
+import type { Novedad } from '../lib/inventario';
 
-const leidas = await obtenerNovedades();
-if (leidas) cachearEnCdn(Astro.response.headers, ETIQUETAS_WEB.novedades);
-else sinCache(Astro.response.headers);
-const novedades = leidas ?? [];
+interface Props { novedades: Novedad[] }
+const { novedades } = Astro.props;
 const variante = (url: string, ancho: number) => url.replace(/-\d+\.webp$/, `-${ancho}.webp`);
 const externo = (url: string | null) => Boolean(url && /^https?:/.test(url));
 ---

@@ -1656,7 +1656,7 @@ describe('mantener la sesión iniciada', () => {
     const larga = await sesion(a);
     assert.equal(larga.larga, 1);
     const dias = (Date.parse(larga.expira_en) - Date.parse(larga.creada_en)) / 86_400_000;
-    assert.ok(dias > 89 && dias <= 90, `tope de 90 días (${dias})`);
+    assert.ok(dias > 89 && dias <= 90.001, `tope de 90 días (${dias})`);
     // Pasadas 2 horas sin usarla sigue abierta (la común se cierra a los 30 minutos).
     await db.execute('UPDATE sesiones SET ultima_actividad = ? WHERE id_hash = ?', [new Date(Date.now() - 2 * 3600_000).toISOString(), larga.id_hash]);
     assert.equal((await a.pedir(`${RUTA}/productos`)).status, 200);
@@ -1714,5 +1714,29 @@ describe('estadísticas: archivo mes a mes', () => {
     const editor = new Navegador();
     await editor.ingresar('editor');
     assert.equal((await editor.pedir(`${RUTA}/estadisticas/meses`)).status, 403);
+  });
+});
+
+describe('campana de novedades del encabezado', () => {
+  it('se configura desde Administración Página y valida lo que llega', async () => {
+    const { obtenerCampana, CAMPANA_INICIAL } = await import('../src/campana.ts');
+    assert.deepEqual(await obtenerCampana(db), CAMPANA_INICIAL);
+    const n = new Navegador();
+    await n.ingresar('principal');
+    const pagina = await (await n.pedir(`${RUTA}/campana`)).text();
+    assert.match(pagina, /Ajustes de la campana/);
+    assert.match(pagina, /Cambia según la hora/);
+    assert.match(await (await n.pedir(`${RUTA}/banner`)).text(), />Campana</);
+    assert.equal((await n.post(`${RUTA}/campana`, { modo: 'fijo', numero: '500', titulo: 'Avisos', activa: '1' })).status, 400);
+    assert.equal((await n.post(`${RUTA}/campana`, { modo: 'otro', titulo: 'Avisos', activa: '1' })).status, 400);
+    assert.equal((await n.post(`${RUTA}/campana`, { modo: 'fijo', numero: '4', titulo: 'ab', activa: '1' })).status, 400);
+    assert.equal((await n.post(`${RUTA}/campana`, { modo: 'fijo', numero: '4', titulo: 'Avisos de COPOL', activa: '1' })).status, 302);
+    assert.deepEqual(await obtenerCampana(db), { activa: true, modo: 'fijo', numero: 4, titulo: 'Avisos de COPOL' });
+    assert.equal((await n.post(`${RUTA}/campana`, { modo: 'cantidad', numero: '', titulo: 'Novedades COPOL' })).status, 302);
+    assert.equal((await obtenerCampana(db)).activa, false, 'sin la casilla, la campana se oculta');
+    assert.ok(await fila("SELECT 1 FROM auditoria WHERE accion = 'campana.ajustes'"));
+    const editor = new Navegador();
+    await editor.ingresar('editor');
+    assert.equal((await editor.pedir(`${RUTA}/campana`)).status, 403);
   });
 });

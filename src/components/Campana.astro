@@ -1,0 +1,61 @@
+---
+// Campana de novedades del encabezado (server island: se genera en el servidor y la CDN la guarda hasta el
+// próximo cambio en el panel, ver src/lib/cache-publica.ts). Se configura en el panel (Administración Página →
+// Campana): si se muestra, el número del globito y el título. El contenido son las Novedades publicadas.
+import Icono from './Icono.astro';
+import NovedadesCampana from './NovedadesCampana.astro';
+import { leerCampana } from '../lib/contenido';
+import { obtenerNovedades } from '../lib/inventario';
+import { cachearEnCdn, ETIQUETAS_WEB, sinCache } from '../lib/cache-publica';
+
+const { valor: ajustes, enVivo } = await leerCampana();
+const leidas = await obtenerNovedades();
+if (enVivo && leidas) cachearEnCdn(Astro.response.headers, ETIQUETAS_WEB.novedades);
+else sinCache(Astro.response.headers);
+const novedades = leidas ?? [];
+---
+{ajustes.activa && (
+  <div class="campana" data-campana>
+    <button type="button" class="campana__boton" aria-expanded="false" aria-controls="campana-panel" data-campana-boton aria-label="Novedades de COPOL">
+      <Icono nombre="campana" tamano={22} />
+      <span class="campana__n" data-campana-n data-modo={ajustes.modo} data-numero={ajustes.numero} data-cantidad={Math.min(99, novedades.length)} aria-hidden="true"></span>
+    </button>
+    <div class="campana__panel" id="campana-panel" role="region" aria-label={ajustes.titulo} data-campana-panel hidden>
+      <p class="campana__titulo">{ajustes.titulo}</p>
+      <NovedadesCampana novedades={novedades} />
+      <a href="/hipermercado/promociones/" class="enlace-flecha campana__pie">Ver promociones <Icono nombre="flecha" tamano={16} /></a>
+    </div>
+  </div>
+)}
+
+<style is:global>
+  /* Campana de novedades: el panel se ancla al encabezado (sticky), no al botón */
+  .campana { margin-left: auto; flex: none; }
+  .campana__boton {
+    position: relative; display: inline-flex; align-items: center; justify-content: center; width: 48px; height: 48px;
+    border-radius: var(--radio-pill); border: 1px solid var(--border); background: var(--background); color: var(--verde-oscuro); cursor: pointer;
+    transition: background-color var(--transicion), transform 300ms var(--resorte);
+  }
+  .campana__boton:hover,
+  .campana__boton[aria-expanded='true'] { background: var(--muted); }
+  .campana__boton:active { transform: scale(0.95); }
+  .campana__n {
+    position: absolute; top: -4px; right: -4px; min-width: 22px; height: 22px; padding: 0 6px; border-radius: var(--radio-pill);
+    display: grid; place-items: center; background: var(--destructive); color: var(--blanco); font-size: 0.75rem; font-weight: 800;
+    box-shadow: 0 0 0 2px var(--fondo-pagina); font-variant-numeric: tabular-nums;
+  }
+  .campana__n:empty { display: none; }
+  .campana__panel {
+    position: absolute; z-index: 70; top: calc(100% + 6px); left: 12px; right: 12px;
+    max-height: min(72vh, 620px); overflow-y: auto; overscroll-behavior: contain;
+    display: grid; gap: 12px; padding: 14px; border-radius: 20px; background: var(--background); box-shadow: var(--anillo), var(--sombra);
+    transform-origin: top right;
+  }
+  .campana__panel--entra { animation: campana-entra 320ms var(--ease-out-quart); }
+  .campana__titulo { margin: 0; font-weight: 800; font-size: 1.0625rem; color: var(--verde-oscuro); }
+  .campana__pie { justify-self: start; color: var(--verde-oscuro); }
+  @keyframes campana-entra { from { opacity: 0; transform: translateY(-6px) scale(0.98); } to { opacity: 1; transform: none; } }
+  @media (min-width: 700px) { .campana__panel { left: auto; right: var(--gutter); width: 420px; } }
+  @media (min-width: 1100px) { .campana { order: 3; margin-left: 4px; } }
+  @media (prefers-reduced-motion: reduce) { .campana__panel--entra { animation: none; } }
+</style>

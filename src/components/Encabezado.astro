@@ -8,7 +8,7 @@ import { CONTACTO, SITIO, whatsapp } from '../data/confirmado/sitio';
 import logo from '../assets/brand/logo-copol.svg';
 import Icono from './Icono.astro';
 import Button from './ui/Button.astro';
-import NovedadesCampana from './NovedadesCampana.astro';
+import Campana from './Campana.astro';
 
 const ruta = Astro.url.pathname.replace(/\/?$/, '/');
 const activo = (href: string) => (href === '/' ? ruta === '/' : ruta.startsWith(href));
@@ -36,20 +36,10 @@ const actual = (href: string) => ruta === href;
       <img src={logo.src} width="150" height="69" alt="" />
     </a>
 
-    <!-- Campana de novedades: el número (1 a 5) cambia con la hora del día; el desplegable muestra las novedades del panel -->
-    <div class="campana" data-campana>
-      <button type="button" class="campana__boton" aria-expanded="false" aria-controls="campana-panel" data-campana-boton aria-label="Novedades de COPOL">
-        <Icono nombre="campana" tamano={22} />
-        <span class="campana__n" data-campana-n aria-hidden="true">1</span>
-      </button>
-      <div class="campana__panel" id="campana-panel" role="region" aria-label="Novedades de COPOL" data-campana-panel hidden>
-        <p class="campana__titulo">Novedades COPOL</p>
-        <NovedadesCampana server:defer>
-          <p slot="fallback" class="nc-vacio">Cargando novedades…</p>
-        </NovedadesCampana>
-        <a href="/hipermercado/promociones/" class="enlace-flecha campana__pie">Ver promociones <Icono nombre="flecha" tamano={16} /></a>
-      </div>
-    </div>
+    <!-- Campana de novedades: se configura en el panel (mostrar, número del globito, título) -->
+    <Campana server:defer>
+      <div slot="fallback" class="campana"><button type="button" class="campana__boton" disabled aria-label="Novedades de COPOL"><Icono nombre="campana" tamano={22} /></button></div>
+    </Campana>
 
     <button class="encabezado__menu" type="button" aria-expanded="false" aria-controls="navegacion-principal" data-menu-boton>
       <Icono nombre="menu" tamano={22} />
@@ -172,28 +162,42 @@ const actual = (href: string) => ruta === href;
     });
   });
 
-  // ── Campana de novedades ──
-  const campana = document.querySelector<HTMLElement>('[data-campana]')!;
-  const campanaBoton = campana.querySelector<HTMLButtonElement>('[data-campana-boton]')!;
-  const campanaPanel = campana.querySelector<HTMLElement>('[data-campana-panel]')!;
-  const campanaN = campana.querySelector<HTMLElement>('[data-campana-n]')!;
-  // El número va de 1 a 5 según la hora de Uruguay: siempre hay uno visible.
-  const pintarNumero = () => {
-    const hora = Number(new Intl.DateTimeFormat('es-UY', { hour: 'numeric', hourCycle: 'h23', timeZone: 'America/Montevideo' }).format(new Date()));
-    const n = (hora % 5) + 1;
-    campanaN.textContent = String(n);
-    campanaBoton.setAttribute('aria-label', `Novedades de COPOL: ${n} para ver`);
+  // ── Campana de novedades (la genera Campana.astro; los eventos van delegados porque llega después) ──
+  // Número del globito: por hora (1 a 5, hora de Uruguay), cantidad de novedades o fijo, según el panel.
+  const pintarNumeros = () => {
+    document.querySelectorAll<HTMLElement>('[data-campana-n]').forEach((el) => {
+      const modo = el.dataset.modo;
+      let n = Number(el.dataset.numero) || 1;
+      if (modo === 'cantidad') n = Number(el.dataset.cantidad) || 0;
+      else if (modo === 'hora') n = (Number(new Intl.DateTimeFormat('es-UY', { hour: 'numeric', hourCycle: 'h23', timeZone: 'America/Montevideo' }).format(new Date())) % 5) + 1;
+      el.textContent = n > 0 ? String(n) : '';
+      el.closest('[data-campana-boton]')?.setAttribute('aria-label', `Novedades de COPOL${n > 0 ? `: ${n} para ver` : ''}`);
+    });
   };
-  pintarNumero();
-  setInterval(pintarNumero, 5 * 60_000);
-  const abrirCampana = (abrir: boolean) => {
-    campanaBoton.setAttribute('aria-expanded', String(abrir));
-    campanaPanel.hidden = !abrir;
-    if (abrir) { cerrarSubmenus(); campanaPanel.classList.remove('campana__panel--entra'); void campanaPanel.offsetWidth; campanaPanel.classList.add('campana__panel--entra'); }
+  pintarNumeros();
+  new MutationObserver(pintarNumeros).observe(encabezado, { childList: true, subtree: true });
+  setInterval(pintarNumeros, 5 * 60_000);
+  const abrirCampana = (campana: HTMLElement, abrir: boolean) => {
+    const boton = campana.querySelector<HTMLButtonElement>('[data-campana-boton]')!;
+    const panel = campana.querySelector<HTMLElement>('[data-campana-panel]')!;
+    boton.setAttribute('aria-expanded', String(abrir));
+    panel.hidden = !abrir;
+    if (abrir) { cerrarSubmenus(); panel.classList.remove('campana__panel--entra'); void panel.offsetWidth; panel.classList.add('campana__panel--entra'); }
   };
-  campanaBoton.addEventListener('click', () => abrirCampana(campanaBoton.getAttribute('aria-expanded') !== 'true'));
-  document.addEventListener('click', (e) => { if (!campana.contains(e.target as Node)) abrirCampana(false); });
-  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !campanaPanel.hidden) { abrirCampana(false); campanaBoton.focus(); } });
+  const cerrarCampanas = (excepto?: Element | null) => document.querySelectorAll<HTMLElement>('[data-campana]').forEach((c) => c !== excepto && abrirCampana(c, false));
+  document.addEventListener('click', (e) => {
+    const destino = e.target as HTMLElement;
+    const campana = destino.closest<HTMLElement>('[data-campana]');
+    if (campana && destino.closest('[data-campana-boton]')) {
+      const abierta = campana.querySelector('[data-campana-boton]')!.getAttribute('aria-expanded') === 'true';
+      abrirCampana(campana, !abierta);
+    } else if (!campana) cerrarCampanas();
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return;
+    const abierta = document.querySelector<HTMLElement>('[data-campana] [data-campana-boton][aria-expanded="true"]');
+    if (abierta) { cerrarCampanas(); abierta.focus(); }
+  });
 
   // ── Resalte que se desliza entre ítems (solo escritorio con puntero) ──
   const lista = document.querySelector<HTMLElement>('[data-nav-lista]')!;
@@ -254,35 +258,6 @@ const actual = (href: string) => ruta === href;
     color: var(--verde-oscuro); font-weight: 700; cursor: pointer;
   }
   .encabezado__menu:hover { background: var(--muted); }
-
-  /* Campana de novedades: el panel se ancla al encabezado (sticky), no al botón */
-  .campana { margin-left: auto; flex: none; }
-  .campana__boton {
-    position: relative; display: inline-flex; align-items: center; justify-content: center; width: 48px; height: 48px;
-    border-radius: var(--radio-pill); border: 1px solid var(--border); background: var(--background); color: var(--verde-oscuro); cursor: pointer;
-    transition: background-color var(--transicion), transform 300ms var(--resorte);
-  }
-  .campana__boton:hover,
-  .campana__boton[aria-expanded='true'] { background: var(--muted); }
-  .campana__boton:active { transform: scale(0.95); }
-  .campana__n {
-    position: absolute; top: -4px; right: -4px; min-width: 22px; height: 22px; padding: 0 6px; border-radius: var(--radio-pill);
-    display: grid; place-items: center; background: var(--destructive); color: var(--blanco); font-size: 0.75rem; font-weight: 800;
-    box-shadow: 0 0 0 2px var(--fondo-pagina); font-variant-numeric: tabular-nums;
-  }
-  .campana__panel {
-    position: absolute; z-index: 70; top: calc(100% + 6px); left: 12px; right: 12px;
-    max-height: min(72vh, 620px); overflow-y: auto; overscroll-behavior: contain;
-    display: grid; gap: 12px; padding: 14px; border-radius: 20px; background: var(--background); box-shadow: var(--anillo), var(--sombra);
-    transform-origin: top right;
-  }
-  .campana__panel--entra { animation: campana-entra 320ms var(--ease-out-quart); }
-  .campana__titulo { margin: 0; font-weight: 800; font-size: 1.0625rem; color: var(--verde-oscuro); }
-  .campana__pie { justify-self: start; color: var(--verde-oscuro); }
-  @keyframes campana-entra { from { opacity: 0; transform: translateY(-6px) scale(0.98); } to { opacity: 1; transform: none; } }
-  @media (min-width: 700px) { .campana__panel { left: auto; right: var(--gutter); width: 420px; } }
-  @media (min-width: 1100px) { .campana { order: 3; margin-left: 4px; } }
-  @media (prefers-reduced-motion: reduce) { .campana__panel--entra { animation: none; } }
 
   .nav__pista { position: relative; }
   .nav__lista { list-style: none; margin: 0; padding: 0; position: relative; }

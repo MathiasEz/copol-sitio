@@ -18,6 +18,7 @@ import * as N from './novedades.ts';
 import * as B from './banner.ts';
 import * as OF from './ofertas.ts';
 import * as CR from './creditos.ts';
+import * as CA from './campana.ts';
 import * as NT from './notificaciones.ts';
 import * as EN from './envio-notificaciones.ts';
 import * as ES from './estadisticas.ts';
@@ -56,6 +57,7 @@ const AVISOS: Record<string, V.Contexto['aviso']> = {
   'ofertas-agregadas': { tipo: 'ok', texto: 'Piezas agregadas al final. Describí cada una con el producto y el precio, y guardá.' },
   'ofertas-error-subida': { tipo: 'error', texto: 'Alguna imagen no se pudo agregar (formato no admitido, muy chica o demasiado grande). Las demás se agregaron.' },
   'ofertas-vaciadas': { tipo: 'ok', texto: 'Se quitaron todas las piezas: la sección de ofertas no se muestra hasta que cargues otras.' },
+  'campana-guardada': { tipo: 'ok', texto: 'Ajustes de la campana guardados. La web ya muestra el cambio.' },
   'creditos-guardado': { tipo: 'ok', texto: 'Fechas de crédito guardadas. La web ya muestra el cambio.' },
   'banner-maximo':{ tipo: 'error', texto: 'El banner ya tiene el máximo de diapositivas: eliminá una para agregar otra.' },
   'usuario-creado': { tipo: 'ok', texto: 'Usuario agregado.' },
@@ -824,6 +826,28 @@ export function crearApp({ db: fuenteDb, config, almacen, asistente, correo, pus
     await registrar(db, actor(c), 'creditos.baja', 'creditos', fecha, { fecha });
     await EN.sincronizar(db, push);
     return c.redirect(`${r('/creditos')}?aviso=creditos-guardado`);
+  });
+
+  // ── Campana de novedades del encabezado ──
+  app.get('/campana', requiere('novedades'), async (c) => c.html(V.vistaCampana(ctx(c), { campana: await CA.obtenerCampana(c.get('db')), novedades: (await N.novedadesPublicadas(c.get('db'))).length })));
+  app.post('/campana', requiere('novedades'), async (c) => {
+    const db = c.get('db');
+    const b = await cuerpo(c);
+    const errores: Record<string, string> = {};
+    const modo = texto(b.modo, 10);
+    if (!CA.esModo(modo)) errores.modo = 'Elegí una opción.';
+    const numero = Number(texto(b.numero, 4));
+    if (modo === 'fijo' && !(Number.isInteger(numero) && numero >= 1 && numero <= 99)) errores.numero = 'Elegí un número entero de 1 a 99.';
+    const titulo = texto(b.titulo, 60).replace(/\s+/g, ' ').trim();
+    if (titulo.length < 3 || titulo.length > 60) errores.titulo = 'El título lleva de 3 a 60 caracteres.';
+    if (Object.keys(errores).length) {
+      const previo = CA.limpiarCampana({ activa: b.activa === '1', modo, numero, titulo });
+      return c.html(V.vistaCampana(ctx(c), { campana: previo, novedades: (await N.novedadesPublicadas(db)).length }, errores), 400);
+    }
+    const nueva = CA.limpiarCampana({ activa: b.activa === '1', modo, numero: Number.isFinite(numero) ? numero : undefined, titulo });
+    await CA.guardarCampana(db, nueva);
+    await registrar(db, actor(c), 'campana.ajustes', 'campana', null, nueva);
+    return c.redirect(`${r('/campana')}?aviso=campana-guardada`);
   });
 
   // ── Novedades ──

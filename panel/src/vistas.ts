@@ -24,6 +24,7 @@ import { ESTADOS, miniatura, type Categoria, type EstadoStock, type Producto } f
 import { GRUPOS_ROL, nombresRoles, puede, ROLES, type Rol } from './seguridad.ts';
 import type { UsuarioPublico } from './usuarios.ts';
 import type { EstadoPlanilla, Registro } from './registros.ts';
+import { MODOS as MODOS_CAMPANA, type Campana } from './campana.ts';
 
 type H = HtmlEscapedString | Promise<HtmlEscapedString>;
 export interface Contexto {
@@ -124,7 +125,7 @@ const alerta = (a: Contexto['aviso']) =>
 
 export function layout(c: Contexto, titulo: string, cuerpo: H, acciones: H | '' = '', extra: Recursos = {}) {
   const u = c.usuario!;
-  const activo = (p: string) => (p === '/productos' ? c.ruta === r() || c.ruta.startsWith(r('/productos')) || c.ruta.startsWith(r('/?')) : p === '/banner' ? ['/banner', '/ofertas', '/creditos', '/novedades', '/notificaciones'].some((s) => c.ruta.startsWith(r(s))) : p === '/registros' ? c.ruta === r(p) || c.ruta.startsWith(`${r(p)}?`) : c.ruta === r(p) || c.ruta.startsWith(`${r(p)}/`) || c.ruta.startsWith(`${r(p)}?`));
+  const activo = (p: string) => (p === '/productos' ? c.ruta === r() || c.ruta.startsWith(r('/productos')) || c.ruta.startsWith(r('/?')) : p === '/banner' ? ['/banner', '/ofertas', '/creditos', '/novedades', '/campana', '/notificaciones'].some((s) => c.ruta.startsWith(r(s))) : p === '/registros' ? c.ruta === r(p) || c.ruta.startsWith(`${r(p)}?`) : c.ruta === r(p) || c.ruta.startsWith(`${r(p)}/`) || c.ruta.startsWith(`${r(p)}?`));
   const item = (p: string, texto: string, ic: string) => html`<a href="${r(p === '/productos' ? '' : p)}" class="nav__item" ${si(activo(p), 'aria-current="page"')}>${icono(ic)}<span>${texto}</span></a>`;
   // El menú se arma en tres secciones; cada una aparece solo si la persona tiene algo para hacer en ella.
   const seccion = (titulo: string, items: (H | '')[]) => {
@@ -487,8 +488,8 @@ const evento = (e: Evento) => {
 };
 
 // ── Administración Página: banner de Inicio y novedades ──
-type SeccionPagina = 'banner' | 'ofertas' | 'creditos' | 'novedades' | 'notificaciones';
-const SECCIONES_PAGINA: [SeccionPagina, string, string][] = [['banner', 'Banner de inicio', 'imagen'], ['ofertas', 'Ofertas', 'etiqueta'], ['creditos', 'Créditos', 'calendario'], ['novedades', 'Novedades', 'noticia'], ['notificaciones', 'Notificaciones', 'campana']];
+type SeccionPagina = 'banner' | 'ofertas' | 'creditos' | 'novedades' | 'campana' | 'notificaciones';
+const SECCIONES_PAGINA: [SeccionPagina, string, string][] = [['banner', 'Banner de inicio', 'imagen'], ['ofertas', 'Ofertas', 'etiqueta'], ['creditos', 'Créditos', 'calendario'], ['novedades', 'Novedades', 'noticia'], ['campana', 'Campana', 'campana'], ['notificaciones', 'Notificaciones', 'campana']];
 const tabsPagina = (activo: SeccionPagina) => html`<nav class="tabs" aria-label="Secciones de la web">
   ${SECCIONES_PAGINA.map(([k, texto, ic]) => html`<a class="tabs__item" href="${r(`/${k}`)}" ${si(activo === k, 'aria-current="true"')}>${icono(ic, 16)}${texto}</a>`)}
 </nav>`;
@@ -733,6 +734,27 @@ export function vistaEstadisticasMeses(c: Contexto, d: { enCurso: { mes: string;
 <thead><tr><th scope="col">Mes</th><th scope="col">Vistas</th><th scope="col">Visitantes</th><th scope="col">Clics a WhatsApp</th><th scope="col">Desde el celular</th><th scope="col"><span class="sr">Acciones</span></th></tr></thead>
 <tbody>${fila(d.enCurso.mes, d.enCurso.resumen, html`<span class="badge badge--aviso">En curso</span>`)}${d.meses.map((m) => fila(m.mes, m.resumen, html`<span class="badge badge--ok">Guardado</span>`))}</tbody></table></div>
 ${d.meses.length ? '' : html`<p class="muted ayuda">Todavía no hay meses cerrados: el primero se guarda solo cuando termine el mes en curso.</p>`}`);
+}
+
+// ── Campana de novedades del encabezado ──
+export function vistaCampana(c: Contexto, d: { campana: Campana; novedades: number }, errores: Record<string, string> = {}) {
+  const k = d.campana;
+  const err = (n: string) => (errores[n] ? html`<span class="error">${errores[n]}</span>` : '');
+  return layout(c, 'Administración Página', html`
+${tabsPagina('campana')}
+<p class="muted subtitulo">La campana está en el encabezado de todas las páginas de la web. Al tocarla se despliegan las <a href="${r('/novedades')}">Novedades</a> publicadas (${d.novedades} ahora); desde acá elegís si se muestra, el número del globito y el título.</p>
+<form class="card form ajustes-banner" method="post" action="${r('/campana')}" novalidate>
+  ${csrfCampo(c)}
+  <h2 class="card__titulo">Ajustes de la campana</h2>
+  <label class="check"><input type="checkbox" name="activa" value="1" ${si(k.activa, 'checked')}><span>Mostrar la campana en la web</span></label>
+  <fieldset class="campo roles"><legend class="label">Número del globito rojo</legend>
+    ${(Object.keys(MODOS_CAMPANA) as (keyof typeof MODOS_CAMPANA)[]).map((m) => html`<label class="check check--rol"><input type="radio" name="modo" value="${m}" ${si(k.modo === m, 'checked')}><span><strong>${MODOS_CAMPANA[m]}</strong></span></label>`)}
+    ${err('modo')}
+  </fieldset>
+  <label class="campo"><span class="label">Número fijo <span class="opcional">(solo si elegís "Un número fijo", de 1 a 99)</span></span><input class="input" type="number" name="numero" min="1" max="99" value="${k.numero}" inputmode="numeric">${err('numero')}</label>
+  <label class="campo"><span class="label">Título del desplegable</span><input class="input" name="titulo" maxlength="60" value="${k.titulo}" required>${err('titulo')}</label>
+  <button class="btn" type="submit">Guardar</button>
+</form>`);
 }
 
 // ── Ofertas del supermercado (Promociones) ──

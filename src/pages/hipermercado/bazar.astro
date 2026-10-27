@@ -163,6 +163,26 @@ const secciones = catalogo.categorias.map((c) => ({ ...c, modelos: MODELOS.filte
       </div>
     </dialog>
 
+    <!-- Antes de enviar el carrito: ¿enviar así o agregar otro producto? Con recomendaciones en stock de las mismas categorías -->
+    <dialog class="ficha carrito consulta" data-envio aria-labelledby="envio-titulo">
+      <div class="ficha__caja">
+        <div class="ficha__barra"><button type="button" class="ficha__cerrar" data-envio-cerrar aria-label="Cerrar"><Icono nombre="cerrar" tamano={20} /></button></div>
+        <div class="consulta__cuerpo">
+          <span class="consulta__icono"><Icono nombre="carrito" tamano={28} /></span>
+          <h2 id="envio-titulo" class="ficha__titulo">¿Querés enviar tu consulta así o preferís agregar algún otro producto antes?</h2>
+          <p class="consulta__producto" data-envio-resumen></p>
+        </div>
+        <section class="reco" data-envio-reco hidden aria-labelledby="reco-titulo">
+          <h3 id="reco-titulo" class="reco__titulo">Otros productos con stock que te pueden interesar</h3>
+          <ul class="reco__lista" data-envio-lista></ul>
+        </section>
+        <div class="consulta__acciones">
+          <a class="btn btn--default btn--lg" href="#" target="_blank" rel="noopener" data-envio-enviar><Icono nombre="whatsapp" tamano={18} /> Enviar la consulta por WhatsApp</a>
+          <button type="button" class="btn btn--outline btn--lg" data-envio-mas><Icono nombre="mas" tamano={18} /> Agregar otro producto</button>
+        </div>
+      </div>
+    </dialog>
+
     <div class="aviso-legal">
       <p>Las imágenes son ilustrativas y pueden presentar diferencias con el producto real. Las características, colores y especificaciones técnicas están sujetos a cambios sin previo aviso.</p>
       <p>El estado de stock es orientativo y puede variar durante el día: confirmalo por WhatsApp. El pedido se considerará confirmado únicamente cuando haya sido gestionado por nuestro equipo a través de WhatsApp. La cooperativa no se responsabiliza por posibles errores tipográficos o de publicación.</p>
@@ -615,6 +635,44 @@ const secciones = catalogo.categorias.map((c) => ({ ...c, modelos: MODELOS.filte
     if (ficha.open) ficha.close();
     agregar(fila);
   });
+  // Enviar el carrito: antes de abrir WhatsApp se ofrece seguir agregando, con productos en stock de las mismas categorías.
+  const envioDialogo = document.querySelector<HTMLDialogElement>('[data-envio]')!;
+  const envioEnviar = envioDialogo.querySelector<HTMLAnchorElement>('[data-envio-enviar]')!;
+  const envioReco = envioDialogo.querySelector<HTMLElement>('[data-envio-reco]')!;
+  const envioLista = envioDialogo.querySelector<HTMLElement>('[data-envio-lista]')!;
+  const MAX_RECOMENDADOS = 4;
+  const recomendados = () => {
+    const categorias = new Set(carrito.map((i) => i.categoria));
+    const enCarrito = new Set(carrito.map((i) => i.id));
+    return [...document.querySelectorAll<HTMLElement>('.producto--modelo[data-estado="con-stock"]')]
+      .filter((t) => categorias.has(t.dataset.categoriaNombre ?? '') && !(t.dataset.ids ?? '').split(' ').some((id) => enCarrito.has(id)))
+      .slice(0, MAX_RECOMENDADOS);
+  };
+  carritoEnviar.addEventListener('click', (e) => {
+    if (e.ctrlKey || e.metaKey || e.shiftKey) return;
+    e.preventDefault();
+    envioEnviar.href = carritoEnviar.href;
+    envioDialogo.querySelector('[data-envio-resumen]')!.textContent = `Tu carrito tiene ${carrito.length} ${carrito.length === 1 ? 'producto' : 'productos'} (${unidades()} ${unidades() === 1 ? 'unidad' : 'unidades'}). Así hacés una sola consulta con todo.`;
+    const reco = recomendados();
+    envioReco.hidden = reco.length === 0;
+    envioLista.replaceChildren(...reco.map((t) => {
+      const li = document.createElement('li');
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'reco__item';
+      const img = t.querySelector<HTMLImageElement>('.producto__media img');
+      if (img) b.append(Object.assign(document.createElement('img'), { src: img.currentSrc || img.src, alt: '', loading: 'lazy', decoding: 'async' }));
+      b.append(span('reco__nombre', t.querySelector('[data-nombre]')?.textContent ?? ''), span('reco__accion', 'Ver y agregar'));
+      b.addEventListener('click', () => { envioDialogo.close(); carritoDialogo.close(); abrirFicha(t); });
+      li.append(b);
+      return li;
+    }));
+    envioDialogo.showModal();
+  });
+  envioDialogo.querySelector('[data-envio-cerrar]')!.addEventListener('click', () => envioDialogo.close());
+  envioDialogo.addEventListener('click', (e) => { if (e.target === envioDialogo) envioDialogo.close(); });
+  envioEnviar.addEventListener('click', () => envioDialogo.close());
+  envioDialogo.querySelector('[data-envio-mas]')!.addEventListener('click', () => { envioDialogo.close(); carritoDialogo.close(); });
   carritoBoton.addEventListener('click', () => {
     if (ficha.open) ficha.close();
     carritoAviso.classList.remove('carrito-aviso--visible');
@@ -906,6 +964,18 @@ const secciones = catalogo.categorias.map((c) => ({ ...c, modelos: MODELOS.filte
   .carrito__cantidad { min-width: 24px; text-align: center; font-weight: 800; font-variant-numeric: tabular-nums; }
   .carrito__vacio p { margin: 0; color: var(--muted-foreground); }
   .carrito__pie { display: grid; gap: 12px; }
+  .reco { display: grid; gap: 10px; margin-top: 4px; }
+  .reco__titulo { font-size: 1rem; color: var(--verde-oscuro); }
+  .reco__lista { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .reco__item {
+    display: grid; gap: 6px; width: 100%; text-align: left; font: inherit; cursor: pointer; padding: 10px; border-radius: var(--radio-lg);
+    border: 1.5px solid var(--borde); background: var(--background); color: var(--foreground);
+    transition: transform 350ms var(--resorte), border-color var(--transicion), box-shadow 250ms var(--ease-out-quart);
+  }
+  .reco__item:hover { transform: translateY(-3px); border-color: var(--verde-oscuro); box-shadow: var(--sombra-suave); }
+  .reco__item img { width: 100%; aspect-ratio: 1; object-fit: contain; background: #fff; border-radius: var(--radio-md); }
+  .reco__nombre { font-weight: 700; font-size: 0.875rem; line-height: 1.25; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .reco__accion { font-size: 0.8125rem; font-weight: 800; color: var(--verde-oscuro); }
   .consulta { max-width: min(520px, 94vw); }
   .consulta__cuerpo { display: grid; gap: 12px; justify-items: start; padding: 4px 4px 8px; }
   .consulta__icono { width: 56px; height: 56px; border-radius: 18px; display: grid; place-items: center; background: var(--accent); color: var(--tinta); }

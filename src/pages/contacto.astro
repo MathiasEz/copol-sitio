@@ -179,14 +179,13 @@ const canales = [
   .canal__enlace {
     position: relative; display: grid; gap: 14px; align-content: space-between; height: 100%; min-height: 170px; padding: clamp(20px, 2.6vw, 32px);
     border-radius: var(--radio-xl); text-decoration: none; overflow: hidden; isolation: isolate; box-shadow: var(--anillo);
-    background-size: 160% 160%; background-position: 0% 50%;
-    transition: transform 450ms var(--resorte), box-shadow 300ms var(--ease-out-quart), background-position 700ms var(--ease-out-quart);
+    transition: transform 450ms var(--resorte), box-shadow 300ms var(--ease-out-quart);
   }
   .canal__enlace::after {
     content: ''; position: absolute; inset: 0; z-index: -1; background: linear-gradient(110deg, transparent 35%, rgb(255 255 255 / 0.25) 50%, transparent 65%);
     transform: translateX(-120%); transition: transform 800ms var(--ease-out-quart);
   }
-  .canal__enlace:hover { transform: translateY(-5px); box-shadow: var(--sombra); background-position: 100% 50%; }
+  .canal__enlace:hover { transform: translateY(-5px); box-shadow: var(--sombra); }
   .canal__enlace:hover::after { transform: translateX(120%); }
   .canal__enlace:active { transform: translateY(-1px) scale(0.99); }
   .canal__icono { width: 56px; height: 56px; border-radius: 18px; display: grid; place-items: center; transition: transform 500ms var(--resorte); }
@@ -200,19 +199,17 @@ const canales = [
   .canal__accion { display: inline-flex; align-items: center; gap: 8px; font-weight: 800; justify-self: start; padding: 8px 16px; border-radius: var(--radio-pill); transition: gap 300ms var(--resorte); }
   .canal__enlace:hover .canal__accion { gap: 14px; }
 
-  .canal--verde .canal__enlace { background-image: linear-gradient(135deg, var(--verde-oscuro), var(--verde-copol), var(--verde-oscuro)); color: var(--sobre-verde); }
+  /* Paleta sobria: WhatsApp resaltado en verde de marca; el resto, tarjetas blancas con detalle amarillo */
+  .canal--blanco .canal__enlace, .canal--amarillo .canal__enlace, .canal--oscuro .canal__enlace { background-color: var(--card); color: var(--tinta); }
+  .canal--blanco .canal__icono, .canal--amarillo .canal__icono, .canal--oscuro .canal__icono { background: var(--accent); color: var(--tinta); }
+  .canal--blanco .canal__detalle, .canal--amarillo .canal__detalle, .canal--oscuro .canal__detalle { color: var(--muted-foreground); }
+  .canal--blanco .canal__dato, .canal--amarillo .canal__dato, .canal--oscuro .canal__dato { color: var(--verde-oscuro); }
+  .canal--blanco .canal__accion, .canal--amarillo .canal__accion, .canal--oscuro .canal__accion { background: var(--muted); color: var(--verde-oscuro); }
+  .canal__enlace:hover .canal__accion { background: var(--verde-oscuro); color: var(--blanco); }
+  .canal--verde .canal__enlace { background-image: linear-gradient(135deg, var(--verde-oscuro), var(--verde-copol)); color: var(--sobre-verde); }
   .canal--verde .canal__icono { background: var(--amarillo-copol); color: var(--tinta); }
   .canal--verde .canal__accion { background: var(--amarillo-copol); color: var(--tinta); }
-  .canal--amarillo .canal__enlace { background-image: linear-gradient(135deg, var(--amarillo-copol), #f6ec5a, var(--amarillo-copol)); color: var(--tinta); }
-  .canal--amarillo .canal__icono { background: var(--verde-oscuro); color: var(--amarillo-copol); }
-  .canal--amarillo .canal__accion { background: var(--verde-oscuro); color: var(--blanco); }
-  .canal--blanco .canal__enlace { background-color: var(--card); color: var(--tinta); }
-  .canal--blanco .canal__icono { background: var(--muted); color: var(--verde-oscuro); }
-  .canal--blanco .canal__detalle { color: var(--muted-foreground); }
-  .canal--blanco .canal__accion { background: var(--muted); color: var(--verde-oscuro); }
-  .canal--oscuro .canal__enlace { background-image: linear-gradient(135deg, #0b3d22, var(--verde-oscuro), #0b3d22); color: var(--sobre-verde); }
-  .canal--oscuro .canal__icono { background: rgb(255 255 255 / 0.14); color: var(--amarillo-copol); }
-  .canal--oscuro .canal__accion { background: rgb(255 255 255 / 0.14); color: var(--blanco); }
+  .canal--verde .canal__enlace:hover .canal__accion { background: var(--amarillo-copol); color: var(--tinta); }
   @media (min-width: 1000px) { .canal--ubicacion .canal__enlace { grid-template-columns: auto 1fr auto; align-items: center; min-height: 0; gap: 24px; } }
 
   /* Horarios: dentro de la columna del formulario */

@@ -10,6 +10,7 @@ export type EtiquetaWeb = (typeof ETIQUETAS_WEB)[keyof typeof ETIQUETAS_WEB];
 /** Etiquetas afectadas por una acción del registro (auditoria.ts), o [] si no cambia nada público. */
 export function etiquetasDe(accion: string): EtiquetaWeb[] {
   if (/^(stock|producto)\./.test(accion)) return [ETIQUETAS_WEB.bazar];
+  if (accion.startsWith('campana.')) return [ETIQUETAS_WEB.novedades];
   if (accion.startsWith('novedad.')) return [ETIQUETAS_WEB.novedades, ETIQUETAS_WEB.notificaciones];
   if (accion.startsWith('empleados.')) return [ETIQUETAS_WEB.empleados];
   if (accion.startsWith('banner.')) return [ETIQUETAS_WEB.banner];

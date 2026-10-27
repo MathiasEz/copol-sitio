@@ -98,16 +98,13 @@ const faqLd = {
         <article class="resultado resultado--nose" data-resultado="nose">
           <span class="guia__paso" aria-hidden="true">2</span>
           <Badge variant="outline">¿Tenés convenio? Averiguá</Badge>
-          <h3>Buscá tu empresa o institución</h3>
+          <h3>Consultá si tu empresa tiene convenio</h3>
           <ol class="resultado__pasos">
-            <li>Buscá tu empresa o institución en el listado de convenios.</li>
-            <li>Si figura, te asociás directamente.</li>
-            <li>Si no figura, pueden crear el convenio con 6 o más personas.</li>
+            <li>Escribinos con el nombre de tu empresa o institución.</li>
+            <li>Verificamos si ya tiene convenio con COPOL.</li>
+            <li>Si lo tiene, te asociás directamente; si no, pueden crearlo con 6 o más personas.</li>
           </ol>
-          <div class="resultado__acciones">
-            <Button href="/beneficios/convenios/" size="lg">Ver convenios <Icono nombre="flecha" tamano={18} /></Button>
-            <Button href={ws('Hola, quiero saber si mi empresa tiene convenio con COPOL')} variant="outline" size="lg"><Icono nombre="whatsapp" tamano={18} /> Consultanos</Button>
-          </div>
+          <Button href={ws('Hola, quiero saber si mi empresa tiene convenio con COPOL')} size="lg"><Icono nombre="whatsapp" tamano={18} /> Consultanos <Icono nombre="flecha" tamano={18} /></Button>
         </article>
       </div>
     </div>

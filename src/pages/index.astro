@@ -84,8 +84,7 @@ const accesos = [
   </AperturasCredito>
 
   <!-- ── Servicios sociales: banner + servicios ── -->
-  <section class="bloque bloque--suave" aria-labelledby="servicios-titulo">
-    <div class="contenedor bloque__interior">
+  <section class="contenedor bloque" aria-labelledby="servicios-titulo">
       <BannerSeccion src={bannerServicios} movil={bannerServiciosMovil} href="/beneficios/servicios-sociales/" alt="COPOL Servicios sociales. Ver todos los servicios sociales." />
       <h2 id="servicios-titulo" class="visualmente-oculto">Servicios sociales para vos y tu familia</h2>
       <ul class="servicios-lista escalonar">
@@ -99,11 +98,10 @@ const accesos = [
           </li>
         ))}
       </ul>
-    </div>
   </section>
 
   <!-- ── Bazar: banner + estante de productos ── -->
-  <section class="contenedor bloque bloque--pegado" aria-labelledby="bazar-titulo">
+  <section class="contenedor bloque" aria-labelledby="bazar-titulo">
     <BannerSeccion src={bannerBazar} movil={bannerBazarMovil} href="/hipermercado/bazar/" alt="Bazar: todo para ti y tu hogar. Hasta 15 cuotas sin recargo. Ver el catálogo del Bazar." />
     <h2 id="bazar-titulo" class="visualmente-oculto">Lo más buscado del Bazar</h2>
     <!-- Stock vigente: se genera en cada visita a partir de la base del panel -->
@@ -136,8 +134,7 @@ const accesos = [
   </section>
 
   <!-- ── Hacete socio: banner + beneficios ── -->
-  <section class="bloque bloque--suave bloque--final" aria-labelledby="socio-titulo">
-    <div class="contenedor bloque__interior">
+  <section class="contenedor bloque bloque--final" aria-labelledby="socio-titulo">
       <BannerSeccion src={bannerSocio} movil={bannerSocioMovil} href="/hacete-socio/" alt="Hacete socio de COPOL. Ver cómo hacerte socio." />
       <h2 id="socio-titulo" class="visualmente-oculto">Hacete socio: sumate a COPOL</h2>
       <ul class="beneficios escalonar">
@@ -155,7 +152,6 @@ const accesos = [
         <Button href="/hacete-socio/">Cómo hacerte socio <Icono nombre="flecha" tamano={18} /></Button>
         <Button href={whatsapp(CONTACTO.whatsappSocios.numero, 'Hola, quiero info para asociarme')} variant="outline"><Icono nombre="whatsapp" tamano={18} /> {CONTACTO.whatsappSocios.texto}</Button>
       </div>
-    </div>
   </section>
 </Base>
 
@@ -172,8 +168,8 @@ const accesos = [
   @media (min-width: 784px) { .banner-esqueleto { border-radius: 0; max-height: 680px; } }
 
   /* Banner de beneficios entre el banner de Inicio y los accesos rápidos */
-  .banner-beneficios { padding-top: clamp(24px, 4vw, 48px); }
-  .accesos { padding-top: clamp(40px, 5vw, 64px); }
+  .banner-beneficios { padding-top: var(--seccion); }
+  .accesos { padding-top: var(--seccion); }
   .accesos__titulo { font-size: clamp(1.5rem, 2.4vw, 1.875rem); margin-bottom: 20px; }
   .accesos__lista {
     list-style: none; margin: 0; padding: 0;
@@ -195,9 +191,8 @@ const accesos = [
     .accesos :global(.acceso) { padding: 16px 14px; }
   }
 
-  /* Bazar: los productos van pegados al banner */
-  .bloque--pegado { gap: 10px; }
-  .bloque--pegado :global(.estante-bazar) { gap: 10px; }
+  /* Todos los bloques: misma separación entre secciones y entre el banner y su contenido */
+  .bloque :global(.estante-bazar) { gap: 16px; }
 
   /* Íconos quietos: sin gestos animados ni giros al pasar el puntero (solo Inicio) */
   main :global(.icono__g), main :global(.icono__parte) { animation: none !important; }

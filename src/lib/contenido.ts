@@ -4,9 +4,10 @@
 import { obtenerDb, type Db } from '../../panel/src/db.ts';
 import { OFERTAS_INICIALES, obtenerOfertas, piezasVigentes, type Ofertas, type Pieza } from '../../panel/src/ofertas.ts';
 import { APERTURAS_INICIALES, obtenerAperturas, proximas, type Apertura } from '../../panel/src/creditos.ts';
+import { CAMPANA_INICIAL, obtenerCampana, type Campana } from '../../panel/src/campana.ts';
 import { hoyUruguay } from '../../panel/src/fechas.ts';
 
-export type { Apertura, Ofertas, Pieza };
+export type { Apertura, Campana, Ofertas, Pieza };
 export { hoyUruguay, piezasVigentes, proximas };
 
 async function leer<T>(que: string, lector: (db: Db) => Promise<T>, inicial: T): Promise<{ valor: T; enVivo: boolean }> {
@@ -19,6 +20,7 @@ async function leer<T>(que: string, lector: (db: Db) => Promise<T>, inicial: T):
 }
 
 export const leerOfertas = () => leer('ofertas del supermercado', (db) => obtenerOfertas(db), OFERTAS_INICIALES);
+export const leerCampana = () => leer('campana de novedades', (db) => obtenerCampana(db), CAMPANA_INICIAL);
 export const leerAperturas = () => leer('aperturas de crédito', (db) => obtenerAperturas(db), APERTURAS_INICIALES);
 
 /** Imagen de una pieza: variantes de 400 y 800 px (las iniciales y las subidas desde el panel). */
