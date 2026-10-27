@@ -206,8 +206,11 @@ const accesos = [
   /* Servicios */
   .servicios-lista {
     list-style: none; margin: 0; padding: 0; display: grid; gap: 14px;
-    grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr));
+    /* 6 servicios: 3 × 2 en computadora, 2 × 3 en tableta y 1 columna en celular (sin tarjeta huérfana) */
+    grid-template-columns: 1fr;
   }
+  @media (min-width: 640px) { .servicios-lista { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (min-width: 1000px) { .servicios-lista { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
   .servicios-lista > li { display: flex; }
   .servicios-lista :global(.servicio-mini) { flex: 1; flex-direction: row; align-items: center; gap: 14px; padding: 16px 18px; }
   .servicio-mini__texto { display: grid; flex: 1; }
