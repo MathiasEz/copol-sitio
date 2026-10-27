@@ -87,12 +87,7 @@ const accesos = [
   <!-- ── Bazar: banner + estante de productos ── -->
   <section class="contenedor bloque" aria-labelledby="bazar-titulo">
     <BannerSeccion src={bannerBazar} movil={bannerBazarMovil} href="/hipermercado/bazar/" alt="Bazar: todo para ti y tu hogar. Hasta 15 cuotas sin recargo. Ver el catálogo del Bazar." />
-    <div class="bloque__cabecera">
-      <div>
-        <span class="eyebrow">Hipermercado · Bazar</span>
-        <h2 id="bazar-titulo"><span class="mascara"><span>Lo más buscado del Bazar</span></span></h2>
-      </div>
-    </div>
+    <h2 id="bazar-titulo" class="visualmente-oculto">Lo más buscado del Bazar</h2>
     <!-- Stock vigente: se genera en cada visita a partir de la base del panel -->
     <EstanteBazar server:defer cantidad={10}>
       <div slot="fallback" class="estante-esqueleto" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span></div>
@@ -103,13 +98,7 @@ const accesos = [
   <section class="bloque bloque--suave" aria-labelledby="servicios-titulo">
     <div class="contenedor bloque__interior">
       <BannerSeccion src={bannerServicios} movil={bannerServiciosMovil} href="/beneficios/servicios-sociales/" alt="COPOL Servicios sociales. Ver todos los servicios sociales." />
-      <div class="bloque__cabecera">
-        <div>
-          <span class="eyebrow">Beneficios</span>
-          <h2 id="servicios-titulo"><span class="mascara"><span>Servicios sociales para vos y tu familia</span></span></h2>
-        </div>
-        <Button href="/beneficios/servicios-sociales/" variant="outline">Ver todos los servicios <Icono nombre="flecha" tamano={18} /></Button>
-      </div>
+      <h2 id="servicios-titulo" class="visualmente-oculto">Servicios sociales para vos y tu familia</h2>
       <ul class="servicios-lista escalonar">
         {otrosServicios.map((s) => (
           <li>
@@ -156,17 +145,7 @@ const accesos = [
   <section class="bloque bloque--suave bloque--final" aria-labelledby="socio-titulo">
     <div class="contenedor bloque__interior">
       <BannerSeccion src={bannerSocio} movil={bannerSocioMovil} href="/hacete-socio/" alt="Hacete socio de COPOL. Ver cómo hacerte socio." />
-      <div class="bloque__cabecera">
-        <div>
-          <span class="eyebrow">Hacete socio</span>
-          <h2 id="socio-titulo"><span class="mascara"><span>Sumate a COPOL</span></span></h2>
-          <p class="bloque__bajada">Asociate con el convenio de tu empresa o institución, o crealo junto a 6 o más personas del mismo lugar de trabajo.</p>
-        </div>
-        <div class="bloque__acciones">
-          <Button href="/hacete-socio/">Cómo hacerte socio <Icono nombre="flecha" tamano={18} /></Button>
-          <Button href={whatsapp(CONTACTO.whatsappSocios.numero, 'Hola, quiero info para asociarme')} variant="outline"><Icono nombre="whatsapp" tamano={18} /> {CONTACTO.whatsappSocios.texto}</Button>
-        </div>
-      </div>
+      <h2 id="socio-titulo" class="visualmente-oculto">Hacete socio: sumate a COPOL</h2>
       <ul class="beneficios escalonar">
         {beneficios.map((b) => (
           <li>
@@ -178,6 +157,10 @@ const accesos = [
           </li>
         ))}
       </ul>
+      <div class="socio__acciones">
+        <Button href="/hacete-socio/">Cómo hacerte socio <Icono nombre="flecha" tamano={18} /></Button>
+        <Button href={whatsapp(CONTACTO.whatsappSocios.numero, 'Hola, quiero info para asociarme')} variant="outline"><Icono nombre="whatsapp" tamano={18} /> {CONTACTO.whatsappSocios.texto}</Button>
+      </div>
     </div>
   </section>
 </Base>
@@ -249,6 +232,9 @@ const accesos = [
   .pinecoop__lista { padding: 20px; border-radius: var(--radio-lg); background: var(--card); box-shadow: var(--anillo); }
   .pinecoop__chuy { display: grid; gap: 10px; text-decoration: none; color: var(--foreground); }
   .pinecoop__chuy span { display: flex; align-items: center; gap: 8px; }
+
+  /* Hacete socio: el banner es el título; los botones van debajo de los beneficios */
+  .socio__acciones { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 8px; }
 
   /* Beneficios de socio */
   .beneficios { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); }

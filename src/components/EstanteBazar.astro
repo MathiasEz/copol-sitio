@@ -23,9 +23,6 @@ const chips = [...catalogo.categorias].filter((c) => c.id !== 'destacados').sort
 <div class="estante-bazar">
   {completo && (
     <div class="estante-bazar__cabecera">
-      <p class="estante-bazar__bajada">
-        {catalogo.enVivo ? `${catalogo.totales.conStock} productos con stock. ` : ''}Consultá condiciones por WhatsApp; las imágenes son ilustrativas.
-      </p>
       <Button href="/hipermercado/bazar/" variant="outline">Ver los {catalogo.totales.total} productos <Icono nombre="flecha" tamano={18} /></Button>
     </div>
   )}
@@ -53,8 +50,7 @@ const chips = [...catalogo.categorias].filter((c) => c.id !== 'destacados').sort
 
 <style is:global>
   .estante-bazar { display: grid; gap: clamp(16px, 2.2vw, 24px); }
-  .estante-bazar__cabecera { display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: center; justify-content: space-between; }
-  .estante-bazar__bajada { color: var(--muted-foreground); max-width: 60ch; }
+  .estante-bazar__cabecera { display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: center; justify-content: flex-end; }
   .chips { display: flex; gap: 8px; flex-wrap: wrap; }
   .chip {
     display: inline-flex; align-items: center; gap: 8px; padding: 7px 8px 7px 14px; border-radius: var(--radio-pill);
