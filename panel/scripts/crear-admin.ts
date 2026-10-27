@@ -45,7 +45,7 @@ if (existente) {
   await registrar(db, { id: null, usuario: 'sistema', ip: null }, 'usuario.clave', 'usuario', String(existente.id), { usuario, via: 'consola' });
   console.log(`Se restableció la contraseña de "${usuario}" (administrador principal). Deberá cambiarla al ingresar.`);
 } else {
-  const id = await U.crearUsuario(db, { usuario, rol: 'administrador', clave, debeCambiar: true, protegido: true, creadoPor: 'consola' });
+  const id = await U.crearUsuario(db, { usuario, roles: ['administrador'], clave, debeCambiar: true, protegido: true, creadoPor: 'consola' });
   await registrar(db, { id: null, usuario: 'sistema', ip: null }, 'usuario.alta', 'usuario', String(id), { usuario, rol: 'administrador', protegido: true, via: 'consola' });
   console.log(`Administrador principal "${usuario}" creado. Deberá cambiar la contraseña al ingresar.`);
 }

@@ -6,19 +6,19 @@
 //   la persona confirma en una tarjeta y el panel valida con las mismas reglas que los formularios).
 // - No tiene herramientas para precios, imágenes, novedades, usuarios, contraseñas ni código.
 // - Nunca lee páginas del panel; 80 consultas por usuario y por día; todo queda en el Registro.
-import { ROLES, puede, type Rol } from './seguridad.ts';
+import { nombresRoles, puede, type Rol } from './seguridad.ts';
 
 export interface DatosInstructivo {
-  rol: Rol;
+  roles: Rol[];
   hoy: string;
   paginas: string[];
   categorias: { id: string; nombre: string }[];
 }
 
-export function armarInstructivo({ rol, hoy, paginas, categorias }: DatosInstructivo): string {
-  const cambia = puede(rol, 'stock');
+export function armarInstructivo({ roles, hoy, paginas, categorias }: DatosInstructivo): string {
+  const cambia = puede(roles, 'stock');
   return `# Quién sos
-Sos el **Asistente del panel de stock de COPOL** (Cooperativa Policial, Uruguay). Ayudás a una persona del equipo de COPOL que usa el panel con el rol **${ROLES[rol].nombre}**. No sos un asistente general: tu trabajo es solo el que se describe acá.
+Sos el **Asistente del panel de stock de COPOL** (Cooperativa Policial, Uruguay). Ayudás a una persona del equipo de COPOL que usa el panel con el rol **${nombresRoles(roles)}**. No sos un asistente general: tu trabajo es solo el que se describe acá.
 
 # De qué podés hablar (y de nada más)
 1. **El sitio web público de COPOL**: páginas, locales, horarios, teléfonos, servicios sociales, convenios, promociones, historia, cómo hacerse socio. Lo leés con la herramienta leer_pagina.
@@ -62,5 +62,5 @@ ${cambia ? `- Solo podés **proponer** cambios de productos del Bazar con propon
 - Hoy es ${hoy}.
 - Páginas del sitio público: ${paginas.join(', ')}
 - Categorías del Bazar (id = nombre): ${categorias.map((c) => `${c.id} = ${c.nombre}`).join('; ')}
-- Secciones del panel: Inventario (buscar productos, marcar con o sin stock o cargar una cantidad, escanear el código interno COPOL con la cámara), Agregar producto, Administración Página (banner de Inicio con vista previa y novedades de la portada; solo administradores), Usuarios (solo administradores), Registro (historial de cambios; solo administradores), Asistente (esta conversación) y Mi perfil (cambiar la propia contraseña). Los cambios de stock se ven en la web pública al instante.`;
+- El panel tiene tres secciones. **Stock Bazar**: Inventario (buscar productos, marcar con o sin stock o cargar una cantidad, escanear el código interno COPOL con la cámara), Agregar producto y Asistente (esta conversación). **Registros**: Nuevo registro (formulario de socio y producto, con otro asistente propio) y Planilla; no es parte de tu trabajo: si preguntan, explicá que está en esa sección. **Administración**: Administración Página (banner de Inicio con vista previa y novedades de la portada; solo administradores), Información empleados, Estadísticas, Usuarios, Registro de cambios y Accesos (solo administradores). Cada persona puede tener varios roles. Además, Mi perfil (cambiar la propia contraseña). Los cambios de stock se ven en la web pública al instante.`;
 }

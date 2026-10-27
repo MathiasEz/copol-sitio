@@ -1,12 +1,13 @@
 // Acceso a usuarios y sesiones.
 import { ahora, ejecutar, todas, una, type Db } from './db.ts';
-import { hashClave, sha256, tokenAleatorio, type Rol } from './seguridad.ts';
+import { guardarRoles, hashClave, leerRoles, rolHeredado, sha256, tokenAleatorio, type Rol } from './seguridad.ts';
 
 export interface Usuario {
   id: number;
   usuario: string;
   nombre: string;
-  rol: Rol;
+  /** Roles de la persona (uno o varios); sus permisos se suman. */
+  roles: Rol[];
   hash: string;
   debe_cambiar_clave: number;
   activo: number;
@@ -21,21 +22,31 @@ export interface Usuario {
 }
 export type UsuarioPublico = Omit<Usuario, 'hash'>;
 
-const COLUMNAS_PUBLICAS = 'id, usuario, nombre, rol, debe_cambiar_clave, activo, protegido, intentos_fallidos, bloqueado_hasta, creado_en, creado_por, ultimo_acceso, correo';
+const COLUMNAS_PUBLICAS = 'id, usuario, nombre, rol, roles, debe_cambiar_clave, activo, protegido, intentos_fallidos, bloqueado_hasta, creado_en, creado_por, ultimo_acceso, correo';
 
-export const buscarPorUsuario = (db: Db, usuario: string) => una<Usuario>(db, 'SELECT * FROM usuarios WHERE usuario = ?', [usuario]);
-export const buscarPorId = (db: Db, id: number) => una<UsuarioPublico>(db, `SELECT ${COLUMNAS_PUBLICAS} FROM usuarios WHERE id = ?`, [id]);
-export const listarUsuarios = (db: Db) => todas<UsuarioPublico>(db, `SELECT ${COLUMNAS_PUBLICAS} FROM usuarios ORDER BY protegido DESC, rol, usuario`);
-export const contarAdminsActivos = async (db: Db) => Number((await una<{ n: number }>(db, "SELECT COUNT(*) n FROM usuarios WHERE rol = 'administrador' AND activo = 1"))?.n ?? 0);
+/** La base guarda los roles como texto ("editor,registros"); acá pasan a lista (las filas viejas usan `rol`). */
+const conRoles = <T extends { rol?: unknown; roles?: unknown }>(fila: T | undefined) => fila && ({ ...fila, roles: leerRoles(fila.roles, fila.rol) });
 
-export async function crearUsuario(db: Db, datos: { usuario: string; nombre?: string; rol: Rol; clave: string; debeCambiar: boolean; protegido?: boolean; creadoPor: string | null; correo?: string | null }) {
+export const buscarPorUsuario = async (db: Db, usuario: string) => conRoles(await una<Omit<Usuario, 'roles'> & { rol: string; roles: string | null }>(db, 'SELECT * FROM usuarios WHERE usuario = ?', [usuario])) as Usuario | undefined;
+export const buscarPorId = async (db: Db, id: number) => conRoles(await una<Omit<UsuarioPublico, 'roles'> & { roles: string | null }>(db, `SELECT ${COLUMNAS_PUBLICAS} FROM usuarios WHERE id = ?`, [id])) as UsuarioPublico | undefined;
+export const listarUsuarios = async (db: Db) =>
+  (await todas<Omit<UsuarioPublico, 'roles'> & { roles: string | null }>(db, `SELECT ${COLUMNAS_PUBLICAS} FROM usuarios ORDER BY protegido DESC, rol, usuario`)).map((f) => conRoles(f)) as UsuarioPublico[];
+/** Administradores activos (con el rol Administrador, solo o junto a otros). */
+export const contarAdminsActivos = async (db: Db) =>
+  Number((await una<{ n: number }>(db, "SELECT COUNT(*) n FROM usuarios WHERE (',' || COALESCE(roles, rol) || ',') LIKE '%,administrador,%' AND activo = 1"))?.n ?? 0);
+
+export async function crearUsuario(db: Db, datos: { usuario: string; nombre?: string; roles: Rol[]; clave: string; debeCambiar: boolean; protegido?: boolean; creadoPor: string | null; correo?: string | null }) {
   const hash = await hashClave(datos.clave);
   const correo = datos.correo ?? (datos.usuario.includes('@') ? datos.usuario.toLowerCase() : null);
-  const r = await ejecutar(db, 'INSERT INTO usuarios (usuario, nombre, rol, hash, debe_cambiar_clave, protegido, creado_en, creado_por, correo) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)', [
-    datos.usuario, datos.nombre || datos.usuario, datos.rol, hash, datos.debeCambiar ? 1 : 0, datos.protegido ? 1 : 0, ahora(), datos.creadoPor, correo,
+  const r = await ejecutar(db, 'INSERT INTO usuarios (usuario, nombre, rol, roles, hash, debe_cambiar_clave, protegido, creado_en, creado_por, correo) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [
+    datos.usuario, datos.nombre || datos.usuario, rolHeredado(datos.roles), guardarRoles(datos.roles), hash, datos.debeCambiar ? 1 : 0, datos.protegido ? 1 : 0, ahora(), datos.creadoPor, correo,
   ]);
   return r.id!;
 }
+
+/** Cambia los roles de la persona. */
+export const cambiarRoles = (db: Db, id: number, roles: Rol[]) =>
+  ejecutar(db, 'UPDATE usuarios SET rol = ?, roles = ? WHERE id = ?', [rolHeredado(roles), guardarRoles(roles), id]);
 
 export const cambiarCorreo = (db: Db, id: number, correo: string | null) => ejecutar(db, 'UPDATE usuarios SET correo = ? WHERE id = ?', [correo, id]);
 

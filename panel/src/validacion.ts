@@ -3,7 +3,7 @@ import type { DatosProducto } from './productos.ts';
 import { esEstado } from './productos.ts';
 import { esPlantilla, PLANTILLAS, type DatosNovedad } from './novedades.ts';
 import { esDiseno, esFoco, type Boton, type Diapositiva } from './banner.ts';
-import { esRol, type Rol } from './seguridad.ts';
+import { ROLES, type Rol } from './seguridad.ts';
 import { BASE } from './config.ts';
 import { fechaValida } from './fechas.ts';
 
@@ -58,15 +58,21 @@ const USUARIO = /^[a-z0-9._-]{3,40}$/;
 export const correoValido = (correo: string) => CORREO.test(correo) && correo.length <= 160;
 
 /** `correoObligatorio`: con la verificación por correo activa, toda cuenta necesita un correo (si el usuario ya es un correo, se usa ese). */
+/** Roles marcados en un formulario (casillas con el mismo nombre): solo los conocidos. */
+export function leerRolesForm(v: unknown): Rol[] {
+  const lista = (Array.isArray(v) ? v : [v]).filter((x): x is string => typeof x === 'string');
+  return (Object.keys(ROLES) as Rol[]).filter((rol) => lista.includes(rol));
+}
+
 export function validarUsuarioNuevo(b: Campos, correoObligatorio = false) {
   const errores: Record<string, string> = {};
   const usuario = texto(b.usuario, 120).toLowerCase();
-  const rol = texto(b.rol, 20);
+  const roles = leerRolesForm(b.roles);
   const correo = texto(b.correo, 160).toLowerCase() || (CORREO.test(usuario) ? usuario : null);
   if (!USUARIO.test(usuario) && !CORREO.test(usuario)) errores.usuario = 'Usuario de 3 a 40 caracteres (letras, números, . _ -) o un correo válido.';
-  if (!esRol(rol)) errores.rol = 'Elegí un rol.';
+  if (!roles.length) errores.roles = 'Elegí al menos un rol.';
   if (correo ? !correoValido(correo) : correoObligatorio) errores.correo = 'Escribí un correo válido: ahí le llega el código para ingresar.';
-  return { usuario, rol: rol as Rol, correo, errores };
+  return { usuario, roles, correo, errores };
 }
 
 /** Enlaces permitidos en novedades: rutas del sitio, https:// o WhatsApp. */

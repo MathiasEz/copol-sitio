@@ -651,3 +651,18 @@ details.card > summary { cursor: pointer; }
 .previa-aviso__burbuja p { font-size: .875rem; color: #3c4043; overflow-wrap: anywhere; }
 .previa-aviso__boton { justify-self: start; margin-top: 6px; font-size: .8125rem; font-weight: 700; color: #006633; }
 .agenda-avisos__mas { margin: 18px 0 0; font-size: .875rem; color: var(--muted-foreground); }
+
+/* Menú en secciones (Stock Bazar · Registros · Administración) */
+.nav__grupo { display: grid; gap: 2px; }
+.nav__grupo + .nav__grupo { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); }
+.nav__titulo { margin: 0; padding: 2px 10px 4px; font-size: .6875rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted-foreground); }
+
+/* Roles de una persona: casillas agrupadas por sección */
+.roles { border: 0; padding: 0; margin: 0; display: grid; gap: 10px; min-width: 0; }
+.roles__grupo { display: grid; gap: 6px; }
+.roles__titulo { margin: 0; font-size: .75rem; font-weight: 700; color: var(--muted-foreground); text-transform: uppercase; letter-spacing: .05em; }
+.check--rol { align-items: flex-start; padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--radius-sm); }
+.check--rol:has(input:checked) { border-color: var(--primary); background: var(--accent); }
+.check--rol input { margin-top: 3px; }
+.check--rol span { display: grid; gap: 1px; }
+.check--rol small { color: var(--muted-foreground); font-weight: 400; font-size: .8125rem; }

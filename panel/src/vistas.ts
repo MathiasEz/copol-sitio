@@ -21,8 +21,9 @@ import type { MensajeGuardado, ResumenConversacion, TarjetaGuardada } from './co
 import { describirEquipo } from './acceso.ts';
 import type { Conexion } from './oauth.ts';
 import { ESTADOS, miniatura, type Categoria, type EstadoStock, type Producto } from './productos.ts';
-import { ROLES, puede, type Rol } from './seguridad.ts';
+import { GRUPOS_ROL, nombresRoles, puede, ROLES, type Rol } from './seguridad.ts';
 import type { UsuarioPublico } from './usuarios.ts';
+import type { EstadoPlanilla, Registro } from './registros.ts';
 
 type H = HtmlEscapedString | Promise<HtmlEscapedString>;
 export interface Contexto {
@@ -79,6 +80,13 @@ const ICONOS: Record<string, string> = {
   celular: '<rect x="7" y="2" width="10" height="20" rx="2"/><path d="M11 18h2"/>',
   campana: '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>',
   calendario: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/>',
+  formulario: '<path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9Z"/><path d="M14 3v6h6M8 13h8M8 17h5"/>',
+  planilla: '<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18"/>',
+  microfono: '<rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0M12 17v5M8 22h8"/>',
+  clip: '<path d="m21.4 11.1-9.2 9.2a6 6 0 0 1-8.5-8.5l9.2-9.2a4 4 0 0 1 5.7 5.7l-9.2 9.2a2 2 0 0 1-2.8-2.8l8.5-8.5"/>',
+  camara: '<path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3Z"/><circle cx="12" cy="13" r="3"/>',
+  descargar: '<path d="M12 3v12M7 10l5 5 5-5M5 21h14"/>',
+  nuevo: '<path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/>',
 };
 export const icono = (n: string, t = 18) => raw(`<svg class="i" width="${t}" height="${t}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONOS[n] ?? ''}</svg>`);
 
@@ -97,7 +105,7 @@ function cabeza(titulo: string, extra: Recursos = {}) {
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
 <meta name="color-scheme" content="light dark">
-<title>${titulo} · Panel de stock COPOL</title>
+<title>${titulo} · Panel COPOL</title>
 <link rel="stylesheet" href="/panel-recursos/panel.css">
 <link rel="icon" href="/favicon.png">
 <script src="/panel-recursos/tema.js"></script>
@@ -116,30 +124,43 @@ const alerta = (a: Contexto['aviso']) =>
 
 export function layout(c: Contexto, titulo: string, cuerpo: H, acciones: H | '' = '', extra: Recursos = {}) {
   const u = c.usuario!;
-  const activo = (p: string) => (p === '/productos' ? c.ruta === r() || c.ruta.startsWith(r('/productos')) || c.ruta.startsWith(r('/?')) : p === '/banner' ? ['/banner', '/ofertas', '/creditos', '/novedades', '/notificaciones'].some((s) => c.ruta.startsWith(r(s))) : c.ruta.startsWith(r(p)));
+  const activo = (p: string) => (p === '/productos' ? c.ruta === r() || c.ruta.startsWith(r('/productos')) || c.ruta.startsWith(r('/?')) : p === '/banner' ? ['/banner', '/ofertas', '/creditos', '/novedades', '/notificaciones'].some((s) => c.ruta.startsWith(r(s))) : p === '/registros' ? c.ruta === r(p) || c.ruta.startsWith(`${r(p)}?`) : c.ruta === r(p) || c.ruta.startsWith(`${r(p)}/`) || c.ruta.startsWith(`${r(p)}?`));
   const item = (p: string, texto: string, ic: string) => html`<a href="${r(p === '/productos' ? '' : p)}" class="nav__item" ${si(activo(p), 'aria-current="page"')}>${icono(ic)}<span>${texto}</span></a>`;
+  // El menú se arma en tres secciones; cada una aparece solo si la persona tiene algo para hacer en ella.
+  const seccion = (titulo: string, items: (H | '')[]) => {
+    const visibles = items.filter(Boolean);
+    return visibles.length ? html`<div class="nav__grupo" role="group" aria-label="${titulo}"><p class="nav__titulo">${titulo}</p>${visibles}</div>` : '';
+  };
   return html`${cabeza(titulo, extra)}
 <body class="app">
 <a class="saltar" href="#contenido">Saltar al contenido</a>
 <aside class="sidebar" aria-label="Panel">
-  <div class="sidebar__marca"><img src="/panel-recursos/logo-copol.svg" alt="COPOL" width="78" height="32"><span>Stock Bazar</span></div>
+  <div class="sidebar__marca"><img src="/panel-recursos/logo-copol.svg" alt="COPOL" width="78" height="32"><span>Panel COPOL</span></div>
   <details class="sidebar__menu" data-menu open>
     <summary class="btn btn--ghost btn--icono" aria-label="Menú">${icono('menu', 20)}</summary>
     <nav class="nav">
-      ${item('/productos', 'Inventario', 'caja')}
-      ${puede(u.rol, 'productos') ? item('/nuevo', 'Agregar producto', 'mas') : ''}
-      ${puede(u.rol, 'novedades') ? item('/banner', 'Administración Página', 'pagina') : ''}
-      ${puede(u.rol, 'usuarios') ? item('/usuarios', 'Usuarios', 'usuarios') : ''}
-      ${puede(u.rol, 'auditoria') ? item('/estadisticas', 'Estadísticas', 'grafico') : ''}
-      ${puede(u.rol, 'auditoria') ? item('/registro', 'Registro', 'registro') : ''}
-      ${puede(u.rol, 'auditoria') ? item('/accesos', 'Accesos', 'escudo') : ''}
-      ${puede(u.rol, 'asistente') ? item('/asistente', 'Asistente', 'chispa') : ''}
-      ${item('/empleados', 'Información empleados', 'empleados')}
+      ${seccion('Stock Bazar', [
+        puede(u, 'ver') ? item('/productos', 'Inventario', 'caja') : '',
+        puede(u, 'productos') ? item('/nuevo', 'Agregar producto', 'mas') : '',
+        puede(u, 'asistente') ? item('/asistente', 'Asistente', 'chispa') : '',
+      ])}
+      ${seccion('Registros', [
+        puede(u, 'registros') ? item('/registros', 'Nuevo registro', 'formulario') : '',
+        puede(u, 'registros') ? item('/registros/planilla', 'Planilla', 'planilla') : '',
+      ])}
+      ${seccion('Administración', [
+        puede(u, 'novedades') ? item('/banner', 'Administración Página', 'pagina') : '',
+        item('/empleados', 'Información empleados', 'empleados'),
+        puede(u, 'auditoria') ? item('/estadisticas', 'Estadísticas', 'grafico') : '',
+        puede(u, 'usuarios') ? item('/usuarios', 'Usuarios', 'usuarios') : '',
+        puede(u, 'auditoria') ? item('/registro', 'Registro de cambios', 'registro') : '',
+        puede(u, 'auditoria') ? item('/accesos', 'Accesos', 'escudo') : '',
+      ])}
     </nav>
     <div class="sidebar__pie">
       <a href="${r('/perfil')}" class="perfil" ${si(c.ruta.startsWith(r('/perfil')), 'aria-current="page"')}>
         <span class="avatar" aria-hidden="true">${u.usuario.slice(0, 1).toUpperCase()}</span>
-        <span class="perfil__texto"><strong>${u.usuario}</strong><small>${ROLES[u.rol].nombre}</small></span>
+        <span class="perfil__texto"><strong>${u.usuario}</strong><small>${nombresRoles(u)}</small></span>
       </a>
       ${botonTema('btn btn--ghost btn--sm btn--bloque')}
       <form method="post" action="${r('/salir')}">${csrfCampo(c)}<button class="btn btn--ghost btn--sm btn--bloque" type="submit">${icono('salir', 16)}Cerrar sesión</button></form>
@@ -172,7 +193,7 @@ export const badgeEstado = (e: EstadoStock, cantidad: number | null = null) =>
 // ── Ingreso y contraseña ──
 export function vistaIngreso(c: Contexto, error: string | null, usuario = '') {
   return pantallaSimple(c, 'Ingresar', html`
-  <div><h1 class="titulo">Panel de stock</h1><p class="muted">Ingresá con tu usuario o correo.</p></div>
+  <div><h1 class="titulo">Panel COPOL</h1><p class="muted">Ingresá con tu usuario o correo.</p></div>
   ${error ? html`<div class="alert alert--error" role="alert">${icono('info')}<p>${error}</p></div>` : ''}
   <form method="post" action="${r('/ingresar')}" class="form">
     ${csrfCampo(c)}
@@ -206,7 +227,7 @@ export function vistaPerfil(c: Contexto, errores: ErroresPerfil, d: { conector: 
   return layout(c, 'Mi perfil', html`
 <div class="grid-2">
   <section class="card"><h2 class="card__titulo">Cuenta</h2>
-    <dl class="datos"><dt>Usuario</dt><dd>${u.usuario}</dd><dt>Rol</dt><dd>${ROLES[u.rol].nombre}</dd><dt>Correo</dt><dd>${u.correo ?? 'Sin correo'}</dd><dt>Último acceso</dt><dd>${fecha(u.ultimo_acceso)}</dd></dl>
+    <dl class="datos"><dt>Usuario</dt><dd>${u.usuario}</dd><dt>${u.roles.length > 1 ? 'Roles' : 'Rol'}</dt><dd>${nombresRoles(u)}</dd><dt>Correo</dt><dd>${u.correo ?? 'Sin correo'}</dd><dt>Último acceso</dt><dd>${fecha(u.ultimo_acceso)}</dd></dl>
   </section>
   <section class="card"><h2 class="card__titulo">Cambiar contraseña</h2>
     ${err('clave')}
@@ -222,7 +243,7 @@ export function vistaPerfil(c: Contexto, errores: ErroresPerfil, d: { conector: 
       <button class="btn btn--outline" type="submit">Guardar correo</button>
     </form>
   </section>
-  ${puede(u.rol, 'usuarios') ? html`<section class="card form" aria-labelledby="pin-titulo"><h2 class="card__titulo" id="pin-titulo">PIN de acceso al panel</h2>
+  ${puede(u, 'usuarios') ? html`<section class="card form" aria-labelledby="pin-titulo"><h2 class="card__titulo" id="pin-titulo">PIN de acceso al panel</h2>
     <p class="muted">Se pide antes del usuario y la contraseña en los equipos que no están recordados. Es uno solo para todo el equipo: al cambiarlo, compartilo de nuevo con quienes usan el panel.</p>
     ${err('pin')}
     <form method="post" action="${r('/perfil/pin')}" class="form">
@@ -305,7 +326,7 @@ export function vistaAutorizarClaude(c: Contexto, d: { id: string; cliente: stri
   return layout(c, 'Conectar Claude', html`
 <section class="card form autorizar">
   <h2 class="card__titulo">${d.cliente} quiere usar tu panel de stock</h2>
-  <p>Vas a conectar la app de Claude con tu usuario <strong>${u.usuario}</strong> (${ROLES[u.rol].nombre}). Después volvés a <strong>${d.destino}</strong>.</p>
+  <p>Vas a conectar la app de Claude con tu usuario <strong>${u.usuario}</strong> (${nombresRoles(u)}). Después volvés a <strong>${d.destino}</strong>.</p>
   <div class="grid-2">
     <div><h3 class="label">Podrá</h3><ul class="lista-permisos lista-permisos--si">
       <li>Buscar productos y ver su stock y cantidad</li>
@@ -335,7 +356,7 @@ export function vistaProductos(
   resumen: { total: number; 'con-stock': number; 'sin-stock': number; 'sin-dato': number },
   f: { q: string; categoria: string; estado: string },
 ) {
-  const editable = c.usuario ? puede(c.usuario.rol, 'stock') : false;
+  const editable = c.usuario ? puede(c.usuario, 'stock') : false;
   const qs = (cambios: Record<string, string>) => {
     const p = new URLSearchParams({ ...(f.q && { q: f.q }), ...(f.categoria && { categoria: f.categoria }), ...(f.estado && { estado: f.estado }), ...cambios });
     for (const [k, v] of [...p]) if (!v) p.delete(k);
@@ -375,7 +396,7 @@ ${datos.paginas > 1 ? html`<nav class="paginacion" aria-label="Páginas">
   ${datos.pagina > 1 ? html`<a class="btn btn--outline btn--sm" href="${qs({ pagina: String(datos.pagina - 1) })}">Anterior</a>` : ''}
   <span>Página ${datos.pagina} de ${datos.paginas}</span>
   ${datos.pagina < datos.paginas ? html`<a class="btn btn--outline btn--sm" href="${qs({ pagina: String(datos.pagina + 1) })}">Siguiente</a>` : ''}
-</nav>` : ''}`, c.usuario && puede(c.usuario.rol, 'productos') ? html`<a class="btn" href="${r('/nuevo')}">${icono('mas')}Agregar producto</a>` : '');
+</nav>` : ''}`, c.usuario && puede(c.usuario, 'productos') ? html`<a class="btn" href="${r('/nuevo')}">${icono('mas')}Agregar producto</a>` : '');
 }
 
 /** Cambio rápido: sí/no cuando la cantidad se desconoce, o una cantidad cuando se conoce. */
@@ -392,8 +413,8 @@ export const formStock = (c: Contexto, p: Producto) => html`<form class="stock" 
 
 // ── Alta y edición de productos ──
 export function vistaFormProducto(c: Contexto, modo: 'nuevo' | 'editar', p: Partial<Producto> & { version?: number }, categorias: Categoria[], errores: Record<string, string>, historial: Evento[] = []) {
-  const editable = c.usuario ? puede(c.usuario.rol, 'productos') : false;
-  const stockEditable = c.usuario ? puede(c.usuario.rol, 'stock') : false;
+  const editable = c.usuario ? puede(c.usuario, 'productos') : false;
+  const stockEditable = c.usuario ? puede(c.usuario, 'stock') : false;
   const err = (k: string) => (errores[k] ? html`<span class="error" id="err-${k}">${errores[k]}</span>` : '');
   const inv = (k: string) => (errores[k] ? raw(`aria-invalid="true" aria-describedby="err-${k}"`) : '');
   const des = si(!editable, 'disabled');
@@ -1009,15 +1030,23 @@ ${n.id && n.estado === 'programada' ? html`<form method="post" action="${r(`/not
 }
 
 // ── Usuarios ──
+/** Casillas de roles: se puede marcar más de uno (los permisos se suman). Agrupadas por sección del panel. */
+function selectorRoles(marcados: readonly string[], error: H | '') {
+  const grupos = (Object.keys(GRUPOS_ROL) as (keyof typeof GRUPOS_ROL)[]).map((g) => ({ g, roles: (Object.keys(ROLES) as Rol[]).filter((rr) => ROLES[rr].grupo === g) })).filter((x) => x.roles.length);
+  return html`<fieldset class="campo roles"><legend class="label">Roles <span class="opcional">(se puede elegir más de uno)</span></legend>
+    ${grupos.map(({ g, roles }) => html`<div class="roles__grupo"><p class="roles__titulo">${GRUPOS_ROL[g]}</p>${roles.map((rr) => html`<label class="check check--rol"><input type="checkbox" name="roles" value="${rr}" ${si(marcados.includes(rr), 'checked')}><span><strong>${ROLES[rr].nombre}</strong><small>${ROLES[rr].descripcion}</small></span></label>`)}</div>`)}
+    ${error}</fieldset>`;
+}
+
 export function vistaUsuarios(c: Contexto, usuarios: UsuarioPublico[], errores: Record<string, string> = {}, previo: Record<string, string> = {}) {
   const err = (k: string) => (errores[k] ? html`<span class="error">${errores[k]}</span>` : '');
   return layout(c, 'Usuarios', html`
 <div class="grid-usuarios">
 <div class="tabla-caja"><table class="tabla">
-<thead><tr><th scope="col">Usuario</th><th scope="col">Rol</th><th scope="col" class="ocultar-movil">Correo</th><th scope="col" class="ocultar-movil">Último acceso</th><th scope="col"><span class="sr">Acciones</span></th></tr></thead>
+<thead><tr><th scope="col">Usuario</th><th scope="col">Roles</th><th scope="col" class="ocultar-movil">Correo</th><th scope="col" class="ocultar-movil">Último acceso</th><th scope="col"><span class="sr">Acciones</span></th></tr></thead>
 <tbody>${usuarios.map((u) => html`<tr>
   <td><strong>${u.usuario}</strong>${!u.activo ? html` <span class="badge badge--sin-stock">Desactivado</span>` : ''}${u.debe_cambiar_clave ? html` <span class="badge badge--sin-dato">Clave temporal</span>` : ''}</td>
-  <td>${ROLES[u.rol].nombre}${u.protegido ? html` <span class="muted" title="Administrador principal">${icono('escudo', 14)}</span>` : ''}</td>
+  <td>${nombresRoles(u)}${u.protegido ? html` <span class="muted" title="Administrador principal">${icono('escudo', 14)}</span>` : ''}</td>
   <td class="ocultar-movil">${u.correo ?? html`<span class="badge badge--sin-dato">Sin correo</span>`}</td>
   <td class="ocultar-movil">${fecha(u.ultimo_acceso)}</td>
   <td class="derecha">${u.protegido || u.id === c.usuario?.id ? '' : html`<a class="btn btn--ghost btn--sm" href="${r(`/usuarios/${u.id}`)}">${icono('editar', 16)}Editar</a>`}</td>
@@ -1028,7 +1057,7 @@ export function vistaUsuarios(c: Contexto, usuarios: UsuarioPublico[], errores: 
     ${csrfCampo(c)}
     <label class="campo"><span class="label">Usuario o correo</span><input class="input" name="usuario" required maxlength="120" autocomplete="off" value="${previo.usuario ?? ''}">${err('usuario')}</label>
     <label class="campo"><span class="label">Correo <span class="opcional">(para el código de ingreso)</span></span><input class="input" type="email" name="correo" maxlength="160" autocomplete="off" value="${previo.correo ?? ''}"><span class="ayuda">Si el usuario ya es un correo, se usa ese.</span>${err('correo')}</label>
-    <label class="campo"><span class="label">Rol</span><select class="input" name="rol">${(Object.keys(ROLES) as Rol[]).map((rr) => html`<option value="${rr}" ${si(rr === (previo.rol ?? 'visualizador'), 'selected')}>${ROLES[rr].nombre}</option>`)}</select>${err('rol')}</label>
+    ${selectorRoles(previo.roles ? previo.roles.split(',') : ['visualizador'], err('roles'))}
     <label class="campo"><span class="label">Contraseña temporal</span><input class="input" type="password" name="clave" required minlength="10" maxlength="200" autocomplete="new-password">${err('clave')}</label>
     <button class="btn" type="submit">${icono('mas')}Agregar usuario</button>
   </form>
@@ -1040,10 +1069,10 @@ export function vistaEditarUsuario(c: Contexto, u: UsuarioPublico, errores: Reco
   const err = (k: string) => (errores[k] ? html`<span class="error">${errores[k]}</span>` : '');
   return layout(c, u.usuario, html`
 <div class="grid-2">
-<section class="card form"><h2 class="card__titulo">Rol y acceso</h2>
+<section class="card form"><h2 class="card__titulo">Roles y acceso</h2>
 <form method="post" action="${r(`/usuarios/${u.id}`)}" class="form">
   ${csrfCampo(c)}
-  <label class="campo"><span class="label">Rol</span><select class="input" name="rol">${(Object.keys(ROLES) as Rol[]).map((rr) => html`<option value="${rr}" ${si(rr === u.rol, 'selected')}>${ROLES[rr].nombre}</option>`)}</select>${err('rol')}</label>
+  ${selectorRoles(u.roles, err('roles'))}
   <label class="campo"><span class="label">Correo (para el código de ingreso)</span><input class="input" type="email" name="correo" maxlength="160" autocomplete="off" value="${u.correo ?? ''}">${err('correo')}</label>
   <label class="check"><input type="checkbox" name="activo" value="1" ${si(u.activo, 'checked')}><span>Cuenta activa</span></label>
   <button class="btn" type="submit">Guardar</button>
@@ -1083,7 +1112,7 @@ export function vistaAccesos(c: Contexto, d: { sesiones: AC.SesionAbierta[]; equ
 <div class="tabla-caja"><table class="tabla">
 <thead><tr><th scope="col">Usuario</th><th scope="col">IP y lugar</th><th scope="col" class="ocultar-movil">Equipo</th><th scope="col" class="ocultar-movil">Ingresó</th><th scope="col">Última actividad</th><th scope="col"><span class="sr">Acciones</span></th></tr></thead>
 <tbody>${d.sesiones.length ? d.sesiones.map((s) => html`<tr>
-  <td><strong>${s.usuario}</strong><span class="tabla__sub">${ROLES[s.rol as Rol]?.nombre ?? s.rol}</span></td>
+  <td><strong>${s.usuario}</strong><span class="tabla__sub">${nombresRoles(s.roles.split(',') as Rol[])}</span></td>
   <td>${ipLugar(s.ip, s.lugar)}</td>
   <td class="ocultar-movil">${describirEquipo(s.agente) ?? '—'}</td>
   <td class="ocultar-movil nowrap">${fecha(s.creada_en)}</td>
@@ -1384,3 +1413,100 @@ export function vistaError(c: Contexto, estado: number, titulo: string, texto: s
 }
 
 export { variante };
+
+// ── Registros ──
+const RECURSOS_REGISTROS: Recursos = { estilos: ['/panel-recursos/registros.css'], scripts: ['/panel-recursos/registros-direccion.js', '/panel-recursos/registros.js'] };
+
+const avisoPlanilla = (p: EstadoPlanilla) =>
+  p.aviso ? html`<div class="alert ${p.listo ? 'alert--aviso' : 'alert--error'}" role="status">${icono('info')}<p>${p.aviso}</p></div>` : '';
+
+export function vistaRegistros(c: Contexto, d: { planilla: EstadoPlanilla; ia: boolean }) {
+  const campo = (etiqueta: H | string, input: H) => html`<label class="campo"><span class="label">${etiqueta}</span>${input}</label>`;
+  return layout(c, 'Nuevo registro', html`
+${avisoPlanilla(d.planilla)}
+<div class="carga ${d.ia ? '' : 'carga--sola'}" data-registros data-csrf="${c.csrf}" data-usuario="${c.usuario?.usuario ?? ''}" data-ia="${d.ia ? '1' : '0'}">
+  ${d.ia ? html`<section class="card chat" aria-labelledby="t-chat">
+    <div class="chat__cabeza">
+      <h2 class="card__titulo chat__titulo" id="t-chat">${icono('chispa')}Asistente</h2>
+      <button type="button" class="btn btn--ghost btn--sm" data-nuevo-chat>${icono('nuevo', 16)}Nueva conversación</button>
+    </div>
+    <div class="asistente__registro" data-mensajes aria-live="polite"></div>
+    <form class="chat__entrada" data-chat>
+      <label class="sr" for="chat-texto">Mensaje para el asistente</label>
+      <div class="chat__caja">
+        <textarea id="chat-texto" class="input" name="texto" rows="3" maxlength="4000" placeholder="Pegá o escribí los datos como te llegaron…"></textarea>
+        <button type="button" class="microfono" data-microfono aria-pressed="false" title="Dictar los datos" aria-label="Dictar los datos con el micrófono" hidden>${icono('microfono', 18)}</button>
+      </div>
+      <div class="chat__adjuntos" data-adjuntos hidden aria-live="polite"></div>
+      <div class="chat__herramientas">
+        <button type="button" class="btn btn--outline btn--sm" data-camara title="Sacar una foto de un documento">${icono('camara', 16)}Foto</button>
+        <button type="button" class="btn btn--outline btn--sm" data-clip title="Adjuntar una foto, un PDF o un archivo de texto">${icono('clip', 16)}Adjuntar</button>
+        <input type="file" data-archivo-camara accept="image/*" capture="environment" hidden>
+        <input type="file" data-archivo-clip accept="image/*,application/pdf,text/plain,.txt" multiple hidden>
+      </div>
+      <div class="chat__acciones">
+        <span class="chat__ayuda" data-ayuda-chat>Enter envía · Shift+Enter hace un salto de línea</span>
+        <button class="btn" type="submit">${icono('enviar', 16)}Completar</button>
+      </div>
+    </form>
+  </section>` : ''}
+  <section class="card registro" aria-labelledby="t-form">
+    <h2 class="card__titulo" id="t-form">Datos del registro</h2>
+    <form class="form" data-registro novalidate autocomplete="off">
+      ${campo('Nombre', html`<input class="input" name="nombre" maxlength="120" required>`)}
+      <div class="fila-2">
+        ${campo('N° de socio', html`<input class="input" name="socio" inputmode="numeric" maxlength="12" required>`)}
+        ${campo('Cédula', html`<input class="input" name="cedula" inputmode="numeric" maxlength="14" placeholder="Solo números, ej.: 55605392" required>`)}
+      </div>
+      <div class="campo" data-direccion>
+        <label class="label" for="f-direccion">Dirección</label>
+        <div class="input-grupo">
+          <input class="input" id="f-direccion" name="direccion" maxlength="200" required autocomplete="off" aria-describedby="dir-ayuda" aria-controls="dir-resultados" enterkeyhint="search">
+          <button type="button" class="btn btn--outline" data-buscar-dir>Buscar</button>
+        </div>
+        <span id="dir-ayuda" class="ayuda">Escribí calle y número y elegí la ubicación de la lista: se guarda con un link a Google Maps.</span>
+        <div id="dir-resultados" class="dir-resultados" data-dir-resultados hidden aria-live="polite"></div>
+        <div data-dir-elegida></div>
+      </div>
+      ${campo('Producto', html`<input class="input" name="producto" maxlength="200" required>`)}
+      <div class="fila-2">
+        ${campo('Código interno', html`<input class="input" name="codigo" maxlength="40" required>`)}
+        <fieldset class="campo" data-flete><legend class="label">Flete</legend>
+          <div class="opciones-fila">
+            <label class="opcion"><input type="radio" name="flete" value="Sí">Sí</label>
+            <label class="opcion"><input type="radio" name="flete" value="No" checked>No</label>
+          </div>
+        </fieldset>
+      </div>
+      ${campo(html`Service <span class="opcional">(opcional)</span>`, html`<input class="input" name="service" maxlength="300" placeholder="Ej.: instalación, reparación en garantía">`)}
+      ${campo(html`Información adicional <span class="opcional">(opcional)</span>`, html`<textarea class="input" name="adicional" rows="3" maxlength="500" placeholder="Ej.: teléfono, horario de entrega, cómo llegar"></textarea>`)}
+      <div data-estado-registro></div>
+      <div class="registro__acciones">
+        <button class="btn btn--lg" type="submit">Guardar en la planilla</button>
+        <button class="btn btn--outline btn--lg" type="button" data-limpiar>Limpiar</button>
+      </div>
+    </form>
+  </section>
+</div>
+<noscript><div class="alert alert--error" role="alert">${icono('info')}<p>El formulario de registros necesita JavaScript.</p></div></noscript>`, '', RECURSOS_REGISTROS);
+}
+
+export function vistaPlanilla(c: Contexto, d: { planilla: EstadoPlanilla; registros: Registro[]; total: number }) {
+  const prueba = d.planilla.modo === 'prueba';
+  const esAdmin = Boolean(c.usuario && puede(c.usuario, 'usuarios'));
+  const td = (etiqueta: string, v: string | null, clase = '') => html`<td data-etiqueta="${etiqueta}" class="${clase}">${v || '—'}</td>`;
+  const acciones = prueba
+    ? html`<a class="btn" href="${r('/registros/planilla.xlsx')}" download>${icono('descargar', 16)}Descargar Excel (.xlsx)</a>
+      ${esAdmin && d.total ? html`<form method="post" action="${r('/registros/planilla/vaciar')}" data-confirmar="¿Borrar todas las filas de la planilla de prueba? Conviene descargarla antes en Excel.">${csrfCampo(c)}<button class="btn btn--outline" type="submit">${icono('basura', 16)}Vaciar</button></form>` : ''}`
+    : html`${d.planilla.enlace ? html`<a class="btn" href="${d.planilla.enlace}" target="_blank" rel="noopener noreferrer">${icono('flecha-externa', 16)}Abrir hoja de Google</a>` : ''}`;
+  return layout(c, prueba ? 'Planilla de prueba' : 'Planilla de registros', html`
+${avisoPlanilla(d.planilla)}
+${!prueba && d.planilla.listo ? html`<section class="card form"><h2 class="card__titulo">Hoja de Google Sheets</h2>
+  <dl class="datos"><dt>Archivo</dt><dd>${d.planilla.nombre ?? '—'}</dd><dt>Pestaña de este mes</dt><dd>${d.planilla.pestana ?? '—'} <span class="muted">(al cambiar el mes, los registros pasan solos a la pestaña nueva)</span></dd><dt>Cuenta</dt><dd>${d.planilla.cuenta ?? '—'}</dd></dl>
+  <p class="muted">Los datos completos de cada registro (cédula, dirección, service e información adicional) están solo en la hoja. Acá se ve un resumen de lo que se cargó desde el panel.</p>
+</section>` : ''}
+<p class="muted">${d.total ? `${d.total.toLocaleString('es-UY')} registro${d.total === 1 ? '' : 's'}${d.total > d.registros.length ? ` (se muestran los últimos ${d.registros.length})` : ''}. El más nuevo arriba.` : prueba ? 'La planilla de prueba está vacía.' : 'Todavía no se cargó ningún registro desde el panel.'}</p>
+${d.registros.length ? html`<div class="tabla-caja"><table class="tabla tabla--lista tabla--registros">
+  <thead><tr><th scope="col">Nombre</th><th scope="col">Fecha</th><th scope="col">Socio</th>${prueba ? html`<th scope="col">Cédula</th><th scope="col">Dirección</th>` : ''}<th scope="col">Producto</th><th scope="col">Código</th><th scope="col">Flete</th>${prueba ? html`<th scope="col">Service</th>` : ''}<th scope="col">Cargado por</th>${prueba ? html`<th scope="col">Información adicional</th>` : html`<th scope="col">Dónde quedó</th>`}</tr></thead>
+  <tbody>${d.registros.map((x) => html`<tr>${td('Nombre', x.nombre)}${td('Fecha', x.fecha, 'nowrap')}${td('Socio', x.socio)}${prueba ? html`${td('Cédula', x.cedula, 'nowrap')}${x.mapa ? html`<td data-etiqueta="Dirección"><a href="${x.mapa}" target="_blank" rel="noopener noreferrer">${x.direccion}</a></td>` : td('Dirección', x.direccion)}` : ''}${td('Producto', x.producto)}${td('Código', x.codigo)}${td('Flete', x.flete)}${prueba ? td('Service', x.service) : ''}${td('Cargado por', x.cargado_por)}${prueba ? td('Información adicional', x.adicional) : td('Dónde quedó', x.destino)}</tr>`)}</tbody></table></div>` : ''}`, acciones);
+}

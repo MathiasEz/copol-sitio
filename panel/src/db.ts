@@ -154,6 +154,18 @@ const MIGRACIONES: string[] = [
   CREATE TABLE dispositivos (token TEXT PRIMARY KEY, plataforma TEXT NOT NULL CHECK (plataforma IN ('android', 'ios')), categorias TEXT NOT NULL, creado_en TEXT NOT NULL, visto_en TEXT NOT NULL);
   CREATE TABLE envios_push (ticket TEXT PRIMARY KEY, token TEXT NOT NULL, notificacion_id INTEGER, enviado_en TEXT NOT NULL)
   `,
+  /* 10 · varios roles por persona (columna roles, separados por coma; rol queda como el rol de stock más fuerte,
+     solo por compatibilidad) y registros cargados desde el formulario de Registros. Los datos personales
+     (cédula, dirección, service, información adicional) solo se guardan acá cuando no hay hoja de Google conectada. */ `
+  ALTER TABLE usuarios ADD COLUMN roles TEXT;
+  UPDATE usuarios SET roles = rol;
+  CREATE TABLE registros (
+    id INTEGER PRIMARY KEY, fecha TEXT NOT NULL, nombre TEXT NOT NULL, socio TEXT NOT NULL, producto TEXT NOT NULL, codigo TEXT NOT NULL,
+    flete TEXT NOT NULL, cedula TEXT, direccion TEXT, mapa TEXT, service TEXT, adicional TEXT,
+    usuario_id INTEGER, cargado_por TEXT NOT NULL, destino TEXT NOT NULL
+  );
+  CREATE INDEX registros_fecha ON registros(id)
+  `,
 ];
 
 /** Versión del esquema en una tabla propia (PRAGMA user_version no se conserva igual en todos los destinos). */

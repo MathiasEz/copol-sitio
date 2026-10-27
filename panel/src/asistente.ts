@@ -188,16 +188,16 @@ const HERRAMIENTAS = [
 type Entrada = Record<string, unknown>;
 const fechaLocal = (iso: string) => new Date(iso).toLocaleString('es-UY', { dateStyle: 'short', timeStyle: 'short', timeZone: TZ });
 
-interface Contexto { db: Db; origen: string; pedir: typeof fetch; usuarioId: number; rol: Rol; propuesta: Propuesta | null }
+interface Contexto { db: Db; origen: string; pedir: typeof fetch; usuarioId: number; roles: Rol[]; propuesta: Propuesta | null }
 
 /** Herramientas disponibles para el rol: sin permiso de stock no hay propuestas de cambios. */
-const herramientasPara = (rol: Rol) => HERRAMIENTAS.filter((h) => !h.name.startsWith('proponer_') || puede(rol, 'stock'));
+const herramientasPara = (roles: Rol[]) => HERRAMIENTAS.filter((h) => !h.name.startsWith('proponer_') || puede(roles, 'stock'));
 
 async function ejecutarHerramienta(nombre: string, entrada: Entrada, x: Contexto): Promise<unknown> {
   const { db, origen, pedir } = x;
   switch (nombre) {
     case 'proponer_cambios': {
-      if (!puede(x.rol, 'stock')) return { error: 'Tu rol solo permite consultar: no podés proponer cambios.' };
+      if (!puede(x.roles, 'stock')) return { error: 'Tu rol solo permite consultar: no podés proponer cambios.' };
       const p = await preparar(db, x.usuarioId, entrada.cambios);
       if (p.items.length) x.propuesta = p;
       return {
@@ -207,7 +207,7 @@ async function ejecutarHerramienta(nombre: string, entrada: Entrada, x: Contexto
       };
     }
     case 'proponer_stock_grupo': {
-      if (!puede(x.rol, 'stock')) return { error: 'Tu rol solo permite consultar: no podés proponer cambios.' };
+      if (!puede(x.roles, 'stock')) return { error: 'Tu rol solo permite consultar: no podés proponer cambios.' };
       const p = await prepararGrupo(db, x.usuarioId, entrada);
       if (p.items.length) x.propuesta = p;
       // Resumen corto: la lista completa la ve la persona en la tarjeta.
@@ -221,7 +221,7 @@ async function ejecutarHerramienta(nombre: string, entrada: Entrada, x: Contexto
       };
     }
     case 'proponer_revertir': {
-      if (!puede(x.rol, 'stock')) return { error: 'Tu rol solo permite consultar: no podés proponer cambios.' };
+      if (!puede(x.roles, 'stock')) return { error: 'Tu rol solo permite consultar: no podés proponer cambios.' };
       const p = await prepararReversion(db, x.usuarioId, Number(entrada.atras) || 1);
       if (p.items.length) x.propuesta = p;
       return {
@@ -261,7 +261,7 @@ async function ejecutarHerramienta(nombre: string, entrada: Entrada, x: Contexto
     case 'ultimos_cambios': {
       const limite = Math.min(50, Math.max(1, Number(entrada.limite) || 20));
       // Sin permiso de registro (no administradores): solo cambios de stock y de productos.
-      const visible = (accion: string) => !accion.startsWith('asistente.') && (puede(x.rol, 'auditoria') || accion.startsWith('stock.') || accion.startsWith('producto.'));
+      const visible = (accion: string) => !accion.startsWith('asistente.') && (puede(x.roles, 'auditoria') || accion.startsWith('stock.') || accion.startsWith('producto.'));
       const eventos = (await listarEventos(db, { limite: limite + 60, sinSesiones: true })).filter((e) => visible(e.accion)).slice(0, limite);
       return eventos.map((e) => ({ fecha: fechaLocal(e.fecha), usuario: e.usuario, accion: ACCIONES[e.accion] ?? e.accion, detalle: e.detalle ? e.detalle.slice(0, 600) : null }));
     }
@@ -272,17 +272,17 @@ async function ejecutarHerramienta(nombre: string, entrada: Entrada, x: Contexto
   }
 }
 
-async function instrucciones(db: Db, origen: string, pedir: typeof fetch, rol: Rol): Promise<string> {
+async function instrucciones(db: Db, origen: string, pedir: typeof fetch, roles: Rol[]): Promise<string> {
   const [paginas, categorias] = await Promise.all([rutasDelSitio(origen, pedir), listarCategorias(db)]);
   const hoy = new Date().toLocaleDateString('es-UY', { dateStyle: 'full', timeZone: TZ });
-  return armarInstructivo({ rol, hoy, paginas, categorias });
+  return armarInstructivo({ roles, hoy, paginas, categorias });
 }
 
 /** Ejecuta una consulta: arma el contexto, deja que el modelo use las herramientas y devuelve la respuesta. */
-export async function consultar(opciones: { historial: Mensaje[]; modelo: Modelo; db: Db; origen: string; token: string; usuarioId: number; rol: Rol; fetch?: typeof fetch }): Promise<Resultado> {
+export async function consultar(opciones: { historial: Mensaje[]; modelo: Modelo; db: Db; origen: string; token: string; usuarioId: number; roles: Rol[]; fetch?: typeof fetch }): Promise<Resultado> {
   const pedir = opciones.fetch ?? fetch;
-  const x: Contexto = { db: opciones.db, origen: opciones.origen, pedir, usuarioId: opciones.usuarioId, rol: opciones.rol, propuesta: null };
-  const system = await instrucciones(opciones.db, opciones.origen, pedir, opciones.rol);
+  const x: Contexto = { db: opciones.db, origen: opciones.origen, pedir, usuarioId: opciones.usuarioId, roles: opciones.roles, propuesta: null };
+  const system = await instrucciones(opciones.db, opciones.origen, pedir, opciones.roles);
   const mensajes: { role: 'user' | 'assistant'; content: unknown }[] = opciones.historial.map((m) => ({ role: m.rol === 'usuario' ? 'user' : 'assistant', content: m.texto }));
   const usadas: string[] = [];
   const tokens = { entrada: 0, salida: 0 };
@@ -295,7 +295,7 @@ export async function consultar(opciones: { historial: Mensaje[]; modelo: Modelo
       const res = await pedir(GATEWAY, {
         method: 'POST',
         headers: { authorization: `Bearer ${opciones.token}`, 'content-type': 'application/json', 'anthropic-version': '2023-06-01' },
-        body: JSON.stringify({ model: MODELOS[opciones.modelo].id, max_tokens: 4000, temperature: 0.2, system, messages: mensajes, tools: herramientasPara(opciones.rol) }),
+        body: JSON.stringify({ model: MODELOS[opciones.modelo].id, max_tokens: 4000, temperature: 0.2, system, messages: mensajes, tools: herramientasPara(opciones.roles) }),
         signal: AbortSignal.timeout(25_000),
       });
       if (res.status !== 429 || intento >= 3) return res;

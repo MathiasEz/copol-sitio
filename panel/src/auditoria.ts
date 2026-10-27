@@ -104,6 +104,9 @@ export const ACCIONES: Record<string, string> = {
   'sistema.respaldo': 'Respaldo diario automático (cifrado)',
   'sistema.restauracion': 'Restauró un respaldo',
   'asistente.consulta': 'Consultó al asistente',
+  'registro.alta': 'Cargó un registro',
+  'registro.vaciar': 'Vació la planilla de prueba de registros',
+  'registro.asistente': 'Consultó al asistente de registros',
   'claude.conexion': 'Conectó Claude al panel',
   'claude.desconexion': 'Desconectó Claude del panel',
 };

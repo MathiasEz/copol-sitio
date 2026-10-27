@@ -1,4 +1,4 @@
-// Panel de stock del Bazar: rutas, autenticación, autorización, productos, novedades y usuarios.
+// Panel de COPOL (Stock Bazar, Registros y Administración): rutas, autenticación, autorización, productos, novedades, registros y usuarios.
 // Se monta en BASE (config.ts) del sitio (src/pages/<BASE>/[...ruta].ts) y funciona igual en desarrollo y en Vercel.
 import fs from 'node:fs/promises';
 import path from 'node:path';
@@ -23,11 +23,14 @@ import * as EN from './envio-notificaciones.ts';
 import * as ES from './estadisticas.ts';
 import { fechaValida, hoyUruguay } from './fechas.ts';
 import * as E from './empleados.ts';
+import * as RG from './registros.ts';
+import * as RA from './registros-asistente.ts';
+import { validarRegistro } from './registros-campos.ts';
 import * as P from './productos.ts';
 import * as PR from './propuestas.ts';
-import { hashFicticio, Limitador, problemaClave, puede, tokenAleatorio, verificarClave, type Permiso } from './seguridad.ts';
+import { esAdministrador, hashFicticio, Limitador, problemaClave, puede, tokenAleatorio, verificarClave, type Permiso } from './seguridad.ts';
 import * as U from './usuarios.ts';
-import { correoValido, leerCantidad, rutaInterna, texto, validarDiapositiva, validarNovedad, validarProducto, validarUsuarioNuevo, type Campos } from './validacion.ts';
+import { correoValido, leerCantidad, leerRolesForm, rutaInterna, texto, validarDiapositiva, validarNovedad, validarProducto, validarUsuarioNuevo, type Campos } from './validacion.ts';
 import * as V from './vistas.ts';
 
 type Vars = { usuario: U.UsuarioPublico | null; sesion: U.Sesion | null; csrf: string; ip: string | null; origen: AC.Origen; db: Db };
@@ -75,6 +78,8 @@ const AVISOS: Record<string, V.Contexto['aviso']> = {
   'notificacion-enviada': { tipo: 'ok', texto: 'Notificación enviada. Le llega a cada celular la próxima vez que la app se actualiza (en general, en menos de una hora).' },
   'notificacion-cancelada': { tipo: 'ok', texto: 'Notificación cancelada: no va a salir.' },
   'notificacion-eliminada': { tipo: 'ok', texto: 'Notificación eliminada del historial.' },
+  'planilla-vaciada': { tipo: 'ok', texto: 'Planilla de prueba vaciada.' },
+  'planilla-en-google': { tipo: 'error', texto: 'Los registros se guardan en la hoja de Google: abrila con el botón «Abrir hoja de Google». La descarga solo existe para la planilla de prueba.' },
   'notificaciones-ajustes': { tipo: 'ok', texto: 'Ajustes de notificaciones guardados.' },
 };
 
@@ -115,12 +120,14 @@ export function crearApp({ db: fuenteDb, config, almacen, asistente, correo, pus
     c.header('Referrer-Policy', 'same-origin'); // con "no-referrer" los POST llevarían Origin: null
     c.header('X-Frame-Options', 'DENY');
     c.header('Cross-Origin-Opener-Policy', 'same-origin');
-    c.header('Permissions-Policy', 'camera=(self), microphone=(), geolocation=(), payment=()');
+    c.header('Permissions-Policy', `camera=(self), microphone=${c.req.path === r('/registros') ? '(self)' : '()'}, geolocation=(), payment=()`); // el micrófono es para dictar en Registros
     c.header('X-Robots-Tag', 'noindex, nofollow');
     if (!c.req.path.startsWith(r('/media/'))) {
       // La pantalla de permiso para Claude redirige, al enviarse, a claude.ai / claude.com (o localhost en pruebas).
+      // El formulario de Registros busca direcciones en los mapas abiertos (OpenStreetMap): solo en esa página.
+      const conectar = c.req.path === r('/registros') || c.req.path === r('/registros/') ? "'self' https://photon.komoot.io https://nominatim.openstreetmap.org" : "'self'";
       const formAction = c.req.path.startsWith(r('/oauth/autorizar/')) ? "'self' https://claude.ai https://claude.com http://localhost:* http://127.0.0.1:*" : "'self'";
-      c.header('Content-Security-Policy', `default-src 'self'; img-src 'self' data: blob: https://*.public.blob.vercel-storage.com; media-src 'self' blob:; script-src 'self'; style-src 'self'; font-src 'self'; connect-src 'self'; form-action ${formAction}; frame-ancestors 'none'; base-uri 'none'; object-src 'none'`);
+      c.header('Content-Security-Policy', `default-src 'self'; img-src 'self' data: blob: https://*.public.blob.vercel-storage.com; media-src 'self' blob:; script-src 'self'; style-src 'self'; font-src 'self'; connect-src ${conectar}; form-action ${formAction}; frame-ancestors 'none'; base-uri 'none'; object-src 'none'`);
       c.header('Cache-Control', 'no-store');
     }
     if (segura(c)) c.header('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
@@ -138,7 +145,7 @@ export function crearApp({ db: fuenteDb, config, almacen, asistente, correo, pus
     csrf: c.get('csrf') ?? '',
     ruta: c.req.path + (new URL(c.req.url).search || ''),
     aviso: AVISOS[c.req.query('aviso') ?? ''] ?? null,
-    sistema: c.get('usuario')?.rol === 'administrador' && !enviarCorreo ? 'La verificación por correo está en pausa: falta configurar el envío de correos (RESEND_API_KEY en Vercel). Mientras tanto se ingresa con PIN, usuario y contraseña.' : null,
+    sistema: (c.get('usuario') ? esAdministrador(c.get('usuario')!) : false) && !enviarCorreo ? 'La verificación por correo está en pausa: falta configurar el envío de correos (RESEND_API_KEY en Vercel). Mientras tanto se ingresa con PIN, usuario y contraseña.' : null,
     ...extra,
   });
   const actor = (c: C): Actor => ({ id: c.get('usuario')?.id ?? null, usuario: c.get('usuario')?.usuario ?? null, ip: c.get('ip') });
@@ -218,8 +225,8 @@ export function crearApp({ db: fuenteDb, config, almacen, asistente, correo, pus
     if (!u) return c.req.method === 'GET' ? c.redirect(`${r('/ingresar')}?volver=${encodeURIComponent(c.req.path)}`) : c.redirect(`${r('/ingresar')}?aviso=sesion-vencida`);
     if (u.debe_cambiar_clave && !c.req.path.startsWith(r('/perfil/clave'))) return c.redirect(r('/perfil/clave'));
     // Mientras no exista el PIN de entrada, el primer administrador que ingresa tiene que crearlo.
-    if (u.rol === 'administrador' && c.req.path !== r('/pin/crear') && !(await AC.pinConfigurado(c.get('db')))) return c.redirect(r('/pin/crear'));
-    if (!puede(u.rol, permiso)) return c.html(V.vistaError(ctx(c), 403, 'Sin permiso', 'Tu rol no permite esta acción. Pedile acceso a un administrador.'), 403);
+    if (esAdministrador(u) && c.req.path !== r('/pin/crear') && !(await AC.pinConfigurado(c.get('db')))) return c.redirect(r('/pin/crear'));
+    if (!puede(u, permiso)) return c.html(V.vistaError(ctx(c), 403, 'Sin permiso', 'Tus roles no permiten esta acción. Pedile acceso a un administrador.'), 403);
     await next();
   };
 
@@ -472,7 +479,9 @@ export function crearApp({ db: fuenteDb, config, almacen, asistente, correo, pus
     ]);
     return c.html(V.vistaProductos(ctx(c), datos, categorias, resumen, { ...f, estado }));
   };
-  app.get('/', requiere('ver'), inventario);
+  // Quien no tiene acceso al stock (p. ej. solo Registros) entra directo a su sección.
+  const inicioDe = (u: U.UsuarioPublico) => (puede(u, 'ver') ? r() : puede(u, 'registros') ? r('/registros') : r('/empleados'));
+  app.get('/', async (c, next) => (c.get('usuario') && !puede(c.get('usuario')!, 'ver') ? c.redirect(inicioDe(c.get('usuario')!)) : next()), requiere('ver'), inventario);
   app.get('/productos', requiere('ver'), inventario);
 
   app.post('/productos/:id/stock', requiere('stock'), async (c) => {
@@ -526,7 +535,7 @@ export function crearApp({ db: fuenteDb, config, almacen, asistente, correo, pus
     const actual = await P.obtenerProducto(db, id);
     if (!actual) return c.notFound();
     const b = await cuerpo(c);
-    const soloStock = !puede(c.get('usuario')!.rol, 'productos');
+    const soloStock = !puede(c.get('usuario')!, 'productos');
     // Quien solo puede cambiar stock no puede alterar los demás campos aunque los envíe.
     const entrada = soloStock ? { ...b, codigo: actual.codigo ?? '', nombre: actual.nombre, marca: actual.marca ?? '', descripcion: actual.descripcion ?? '', categoria: actual.categoria_id, imagen: '' } : b;
     const { datos, errores } = await validarProducto(entrada, (cat) => P.existeCategoria(db, cat));
@@ -979,7 +988,7 @@ export function crearApp({ db: fuenteDb, config, almacen, asistente, correo, pus
   });
 
   // ── Información empleados: la ve todo el personal; la editan los administradores ──
-  app.get('/empleados', requiere('ver'), async (c) => c.html(V.vistaEmpleados(ctx(c), await E.obtenerPortal(c.get('db')), puede(c.get('usuario')!.rol, 'novedades'))));
+  app.get('/empleados', requiere('empleados'), async (c) => c.html(V.vistaEmpleados(ctx(c), await E.obtenerPortal(c.get('db')), puede(c.get('usuario')!, 'novedades'))));
   app.get('/empleados/editar', requiere('novedades'), async (c) => c.html(V.vistaFormEmpleados(ctx(c), await E.obtenerPortal(c.get('db')))));
   app.post('/empleados', requiere('novedades'), async (c) => {
     const db = c.get('db');
@@ -1031,9 +1040,9 @@ export function crearApp({ db: fuenteDb, config, almacen, asistente, correo, pus
     const errClave = problemaClave(clave, v.usuario.split('@')[0] || 'x');
     if (errClave) v.errores.clave = errClave;
     if (!v.errores.usuario && (await U.buscarPorUsuario(db, v.usuario))) v.errores.usuario = 'Ese usuario ya existe.';
-    if (Object.keys(v.errores).length) return c.html(V.vistaUsuarios(ctx(c), await U.listarUsuarios(db), v.errores, { usuario: v.usuario, rol: v.rol, correo: v.correo ?? '' }), 400);
-    const id = await U.crearUsuario(db, { usuario: v.usuario, rol: v.rol, clave, debeCambiar: true, creadoPor: c.get('usuario')!.usuario, correo: v.correo });
-    await registrar(db, actor(c), 'usuario.alta', 'usuario', String(id), { usuario: v.usuario, rol: v.rol, correo: v.correo ? AC.ocultarCorreo(v.correo) : null });
+    if (Object.keys(v.errores).length) return c.html(V.vistaUsuarios(ctx(c), await U.listarUsuarios(db), v.errores, { usuario: v.usuario, roles: v.roles.join(','), correo: v.correo ?? '' }), 400);
+    const id = await U.crearUsuario(db, { usuario: v.usuario, roles: v.roles, clave, debeCambiar: true, creadoPor: c.get('usuario')!.usuario, correo: v.correo });
+    await registrar(db, actor(c), 'usuario.alta', 'usuario', String(id), { usuario: v.usuario, roles: v.roles, correo: v.correo ? AC.ocultarCorreo(v.correo) : null });
     return c.redirect(`${r('/usuarios')}?aviso=usuario-creado`);
   });
   const objetivo = async (c: C) => {
@@ -1053,19 +1062,20 @@ export function crearApp({ db: fuenteDb, config, almacen, asistente, correo, pus
     if (!o.ok) return o.res;
     const u = o.u;
     const b = await cuerpo(c);
-    const rol = texto(b.rol, 20);
+    const roles = leerRolesForm(b.roles);
     const activo = b.activo === '1' ? 1 : 0;
     const correo = texto(b.correo, 160).toLowerCase() || null;
     const errores: Record<string, string> = {};
-    if (!['administrador', 'editor', 'visualizador'].includes(rol)) errores.rol = 'Rol inválido.';
+    if (!roles.length) errores.roles = 'Elegí al menos un rol.';
     if (correo ? !correoValido(correo) : enviarCorreo) errores.correo = 'Escribí un correo válido: ahí le llega el código para ingresar.';
-    if (u.rol === 'administrador' && (rol !== 'administrador' || !activo) && (await U.contarAdminsActivos(db)) <= 1) errores.rol = 'Tiene que quedar al menos un administrador activo.';
+    if (esAdministrador(u) && (!roles.includes('administrador') || !activo) && (await U.contarAdminsActivos(db)) <= 1) errores.roles = 'Tiene que quedar al menos un administrador activo.';
     if (Object.keys(errores).length) return c.html(V.vistaEditarUsuario(ctx(c), u, errores), 400);
-    await ejecutar(db, 'UPDATE usuarios SET rol = ?, activo = ?, correo = ? WHERE id = ?', [rol, activo, correo, u.id]);
-    if (!activo || rol !== u.rol) await U.cerrarSesionesDe(db, u.id);
+    await ejecutar(db, 'UPDATE usuarios SET activo = ?, correo = ? WHERE id = ?', [activo, correo, u.id]);
+    await U.cambiarRoles(db, u.id, roles);
+    if (!activo || roles.join() !== u.roles.join()) await U.cerrarSesionesDe(db, u.id);
     // Otro correo u otra situación de la cuenta: los equipos recordados vuelven a verificarse.
     if (!activo || correo !== u.correo) await AC.borrarPasesDe(db, u.id);
-    await registrar(db, actor(c), 'usuario.edicion', 'usuario', String(u.id), { usuario: u.usuario, cambios: { rol: [u.rol, rol], activo: [u.activo, activo], ...(correo !== u.correo ? { correo: [u.correo ? AC.ocultarCorreo(u.correo) : null, correo ? AC.ocultarCorreo(correo) : null] } : {}) } });
+    await registrar(db, actor(c), 'usuario.edicion', 'usuario', String(u.id), { usuario: u.usuario, cambios: { roles: [u.roles, roles], activo: [u.activo, activo], ...(correo !== u.correo ? { correo: [u.correo ? AC.ocultarCorreo(u.correo) : null, correo ? AC.ocultarCorreo(correo) : null] } : {}) } });
     return c.redirect(`${r('/usuarios')}?aviso=usuario-guardado`);
   });
   app.post('/usuarios/:id/clave', requiere('usuarios'), async (c) => {
@@ -1086,11 +1096,69 @@ export function crearApp({ db: fuenteDb, config, almacen, asistente, correo, pus
     const db = c.get('db');
     const o = await objetivo(c);
     if (!o.ok) return o.res;
-    if (o.u.rol === 'administrador' && o.u.activo && (await U.contarAdminsActivos(db)) <= 1) return c.html(V.vistaError(ctx(c), 400, 'No permitido', 'Tiene que quedar al menos un administrador activo.'), 400);
+    if (esAdministrador(o.u) && o.u.activo && (await U.contarAdminsActivos(db)) <= 1) return c.html(V.vistaError(ctx(c), 400, 'No permitido', 'Tiene que quedar al menos un administrador activo.'), 400);
     await db.batch(['sesiones', 'pases', 'verificaciones', 'propuestas', 'conversaciones'].map((t) => ({ sql: `DELETE FROM ${t} WHERE usuario_id = ?`, args: [o.u.id] })), 'write');
     await ejecutar(db, 'DELETE FROM usuarios WHERE id = ?', [o.u.id]);
-    await registrar(db, actor(c), 'usuario.baja', 'usuario', String(o.u.id), { usuario: o.u.usuario, rol: o.u.rol });
+    await registrar(db, actor(c), 'usuario.baja', 'usuario', String(o.u.id), { usuario: o.u.usuario, roles: o.u.roles });
     return c.redirect(`${r('/usuarios')}?aviso=usuario-eliminado`);
+  });
+
+  // ── Registros: formulario con asistente de IA, planilla y descarga ──
+  // El navegador manda y recibe JSON (public/panel-recursos/registros.js); el token CSRF viaja en el encabezado.
+  const iaRegistros = (c: C) => process.env.IA_APAGADA !== '1' && Boolean(tokenIA(c));
+  app.get('/registros', requiere('registros'), async (c) => c.html(V.vistaRegistros(ctx(c), { planilla: await RG.estado(), ia: iaRegistros(c) })));
+  app.post('/registros/guardar', requiere('registros'), async (c) => {
+    const { datos, errores } = validarRegistro(await c.req.json().catch(() => ({})));
+    if (errores) return c.json({ ok: false, error: 'Revisá los campos marcados.', errores }, 422);
+    const u = c.get('usuario')!;
+    try {
+      const guardado = await RG.agregar(c.get('db'), datos, { id: u.id, nombre: u.nombre || u.usuario });
+      await registrar(c.get('db'), actor(c), 'registro.alta', 'registro', String(guardado.id), { socio: datos.socio, producto: datos.producto, codigo: datos.codigo, flete: datos.flete, destino: guardado.destino });
+      return c.json({ ok: true, registro: { nombre: datos.nombre, producto: datos.producto }, fecha: guardado.fecha, destino: guardado.destino });
+    } catch (e) {
+      if (e instanceof RG.ErrorPlanilla) return c.json({ ok: false, error: e.message }, e.status as 409 | 502 | 503 | 504);
+      console.error('registros: no se pudo guardar:', e);
+      return c.json({ ok: false, error: 'No se pudo guardar. Probá de nuevo.' }, 500);
+    }
+  });
+  const consultasRegistrosHoy = async (c: C) => {
+    const inicio = new Date(`${new Date().toLocaleDateString('en-CA', { timeZone: 'America/Montevideo' })}T00:00:00-03:00`).toISOString();
+    return Number((await una<{ n: number }>(c.get('db'), "SELECT COUNT(*) n FROM auditoria WHERE usuario_id = ? AND accion = 'registro.asistente' AND fecha >= ?", [c.get('usuario')!.id, inicio]))?.n ?? 0);
+  };
+  app.post('/registros/asistente', requiere('registros'), async (c) => {
+    if (!iaRegistros(c)) return c.json({ ok: false, error: process.env.IA_APAGADA === '1' ? 'El asistente está apagado. Completá el formulario a mano.' : 'El asistente funciona en la web publicada en Vercel (usa Vercel AI Gateway). En este equipo no está configurado.' }, 503);
+    const b = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
+    const historial = RA.limpiarHistorial(b.mensajes);
+    if (!historial.length || historial.at(-1)!.texto.length < 2) return c.json({ ok: false, error: 'Escribí o dictá los datos del socio y del producto, o adjuntá una foto.' }, 400);
+    const { adjuntos = [], error: errorAdjuntos } = RA.limpiarAdjuntos(b.adjuntos);
+    if (errorAdjuntos) return c.json({ ok: false, error: errorAdjuntos }, 413);
+    if (historial.at(-1)!.texto.length >= RA.MAX_TEXTO) return c.json({ ok: false, error: `El mensaje es demasiado largo (máximo ${RA.MAX_TEXTO} caracteres).` }, 400);
+    const limite = Number(process.env.IA_LIMITE_DIA) || 150;
+    if ((await consultasRegistrosHoy(c)) >= limite) return c.json({ ok: false, error: 'Llegaste al límite de consultas al asistente de hoy. Completá el formulario a mano.' }, 429);
+    try {
+      const res = await RA.conversar({ historial, formulario: RA.limpiarFormulario(b.formulario), adjuntos, token: tokenIA(c)!, pedir: asistente?.fetch });
+      await registrar(c.get('db'), actor(c), 'registro.asistente', 'registro', null, { adjuntos: adjuntos.length, campos: Object.keys(res.campos) });
+      return c.json({ ok: true, ...res });
+    } catch (e) {
+      if (e instanceof RA.ErrorAsistente) return c.json({ ok: false, error: e.message }, e.status as 502 | 503);
+      console.error('registros: el asistente falló:', e);
+      return c.json({ ok: false, error: 'El asistente no respondió. Completá el formulario a mano.' }, 502);
+    }
+  });
+  app.get('/registros/planilla', requiere('registros'), async (c) => c.html(V.vistaPlanilla(ctx(c), { planilla: await RG.estado(), registros: await RG.listar(c.get('db')), total: await RG.contar(c.get('db')) })));
+  app.get('/registros/planilla.xlsx', requiere('registros'), async (c) => {
+    if (RG.modo() !== 'prueba') return c.redirect(`${r('/registros/planilla')}?aviso=planilla-en-google`);
+    const nombre = `Registros COPOL (prueba) ${hoyUruguay()}.xlsx`;
+    return c.body(new Uint8Array(RG.xlsxPrueba((await RG.listar(c.get('db'), RG.MAX_FILAS_PRUEBA)).reverse())), 200, {
+      'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'Content-Disposition': `attachment; filename="registros-copol-prueba.xlsx"; filename*=UTF-8''${encodeURIComponent(nombre)}`,
+    });
+  });
+  app.post('/registros/planilla/vaciar', requiere('usuarios'), async (c) => {
+    if (RG.modo() !== 'prueba') return c.redirect(r('/registros/planilla'));
+    await RG.vaciar(c.get('db'));
+    await registrar(c.get('db'), actor(c), 'registro.vaciar', 'registro', null, { destino: 'Planilla de prueba' });
+    return c.redirect(`${r('/registros/planilla')}?aviso=planilla-vaciada`);
   });
 
   // ── Asistente (solo administradores; los cambios se aplican solo al confirmarlos) ──
@@ -1111,7 +1179,7 @@ export function crearApp({ db: fuenteDb, config, almacen, asistente, correo, pus
     ]);
     return {
       disponible: Boolean(tokenIA(c)),
-      puedeCambiar: puede(c.get('usuario')!.rol, 'stock'),
+      puedeCambiar: puede(c.get('usuario')!, 'stock'),
       restantes: Math.max(0, config.asistenteLimiteDia - (await consultasHoy(c))),
       modelos: (Object.keys(A.MODELOS) as A.Modelo[]).map((m) => ({ valor: m, nombre: A.MODELOS[m].nombre })),
       modelo: 'rapido',
@@ -1154,7 +1222,7 @@ export function crearApp({ db: fuenteDb, config, almacen, asistente, correo, pus
     if ((await consultasHoy(c)) >= config.asistenteLimiteDia) return fallar(429, `Llegaste al límite de ${config.asistenteLimiteDia} consultas por día. Mañana podés seguir.`);
     let res: A.Resultado;
     try {
-      res = await A.consultar({ historial, modelo, db, origen: new URL(c.req.url).origin, token, usuarioId: uid, rol: c.get('usuario')!.rol, fetch: asistente?.fetch });
+      res = await A.consultar({ historial, modelo, db, origen: new URL(c.req.url).origin, token, usuarioId: uid, roles: c.get('usuario')!.roles, fetch: asistente?.fetch });
     } catch (e) {
       if (e instanceof A.ErrorAsistente) return fallar(502, e.message);
       if ((e as Error).name === 'TimeoutError') return fallar(502, 'El asistente tardó demasiado en responder. Probá con una pregunta más concreta.');
@@ -1207,8 +1275,8 @@ export function crearApp({ db: fuenteDb, config, almacen, asistente, correo, pus
       await PR.cancelar(db, id, u.id);
       return responder(200, true, 'Cambios cancelados: no se modificó nada.', { estadoTarjeta: 'cancelada' });
     }
-    if (!puede(u.rol, 'stock')) return responder(403, false, MOTIVOS['sin-permiso'][1]);
-    const r = await PR.aplicar(db, id, { ...actor(c), id: u.id, usuario: u.usuario }, puede(u.rol, 'productos'));
+    if (!puede(u, 'stock')) return responder(403, false, MOTIVOS['sin-permiso'][1]);
+    const r = await PR.aplicar(db, id, { ...actor(c), id: u.id, usuario: u.usuario }, puede(u, 'productos'));
     if (r.estado !== 'ok') return responder(MOTIVOS[r.estado][0], false, MOTIVOS[r.estado][1], r.estado === 'vencida' ? { estadoTarjeta: 'cancelada' } : {});
     const bien = r.resultados.filter((x) => x.ok);
     const mal = r.resultados.filter((x) => !x.ok);
@@ -1226,7 +1294,7 @@ export function crearApp({ db: fuenteDb, config, almacen, asistente, correo, pus
     const b = await cuerpo(c);
     const quiereJson = c.req.header('accept')?.includes('application/json');
     const cv = await conversacionDe(c, b.conversacion);
-    if (!puede(u.rol, 'stock')) {
+    if (!puede(u, 'stock')) {
       const error = MOTIVOS['sin-permiso'][1];
       return quiereJson ? c.json({ ok: false, mensaje: error }, 403) : verConversacion(c, cv, { error }, 403);
     }
@@ -1307,7 +1375,7 @@ export function crearApp({ db: fuenteDb, config, almacen, asistente, correo, pus
     const pedido = await pedidoDe(c);
     if (!pedido) return c.html(V.vistaError(ctx(c), 404, 'Pedido vencido', 'El pedido de conexión venció o ya se usó. Volvé a conectar desde Claude.'), 404);
     const cliente = await O.obtenerCliente(c.get('db'), pedido.cliente_id);
-    return c.html(V.vistaAutorizarClaude(ctx(c), { id: pedido.id, cliente: cliente?.nombre ?? 'Claude', destino: new URL(pedido.redirect_uri).host, puedeCambiar: puede(c.get('usuario')!.rol, 'stock') }));
+    return c.html(V.vistaAutorizarClaude(ctx(c), { id: pedido.id, cliente: cliente?.nombre ?? 'Claude', destino: new URL(pedido.redirect_uri).host, puedeCambiar: puede(c.get('usuario')!, 'stock') }));
   });
   app.post('/oauth/autorizar/:id', requiere('ver'), async (c) => {
     const db = c.get('db');
