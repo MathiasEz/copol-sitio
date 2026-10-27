@@ -127,8 +127,14 @@ const sumarDias = (fecha: string, n: number) => new Date(Date.parse(`${fecha}T12
 
 export async function resumen(db: Db, dias: number, hoy = hoyUruguay()): Promise<Resumen> {
   const desde = sumarDias(hoy, -(dias - 1));
+  return resumenRango(db, desde, hoy, sumarDias(desde, -dias), sumarDias(desde, -1));
+}
+
+/** Resumen de un rango de días (inclusive) y, para comparar, del rango anterior. */
+export async function resumenRango(db: Db, desde: string, hasta: string, antDesde: string, antHasta: string): Promise<Resumen> {
+  const dias = Math.round((Date.parse(`${hasta}T12:00:00Z`) - Date.parse(`${desde}T12:00:00Z`)) / 86_400_000) + 1;
   const filas = await todas<{ fecha: string; tipo: string; valor: number }>(db,
-    "SELECT fecha, tipo, SUM(valor) valor FROM estadisticas_dia WHERE fecha BETWEEN ? AND ? AND tipo IN ('vistas', 'visitantes', 'whatsapp') GROUP BY fecha, tipo", [desde, hoy]);
+    "SELECT fecha, tipo, SUM(valor) valor FROM estadisticas_dia WHERE fecha BETWEEN ? AND ? AND tipo IN ('vistas', 'visitantes', 'whatsapp') GROUP BY fecha, tipo", [desde, hasta]);
   const porDia = new Map<string, Resumen['dias'][number]>();
   for (let i = 0; i < dias; i++) { const f = sumarDias(desde, i); porDia.set(f, { fecha: f, vistas: 0, visitantes: 0, whatsapp: 0 }); }
   for (const f of filas) { const d = porDia.get(f.fecha); if (d) d[f.tipo as 'vistas'] = Number(f.valor); }
@@ -136,20 +142,82 @@ export async function resumen(db: Db, dias: number, hoy = hoyUruguay()): Promise
   const total = (k: 'vistas' | 'visitantes' | 'whatsapp') => lista.reduce((a, d) => a + d[k], 0);
 
   const prev = await todas<{ tipo: string; valor: number }>(db,
-    "SELECT tipo, SUM(valor) valor FROM estadisticas_dia WHERE fecha BETWEEN ? AND ? AND tipo IN ('vistas', 'visitantes', 'whatsapp') GROUP BY tipo", [sumarDias(desde, -dias), sumarDias(desde, -1)]);
+    "SELECT tipo, SUM(valor) valor FROM estadisticas_dia WHERE fecha BETWEEN ? AND ? AND tipo IN ('vistas', 'visitantes', 'whatsapp') GROUP BY tipo", [antDesde, antHasta]);
   const anterior = (k: string) => Number(prev.find((p) => p.tipo === k)?.valor ?? 0);
 
   const tops = await todas<{ tipo: string; clave: string; valor: number }>(db,
-    "SELECT tipo, clave, SUM(valor) valor FROM estadisticas_dia WHERE fecha BETWEEN ? AND ? AND tipo IN ('pagina', 'origen', 'whatsapp_pagina', 'producto', 'banner', 'visor', 'dispositivo') GROUP BY tipo, clave ORDER BY valor DESC", [desde, hoy]);
+    "SELECT tipo, clave, SUM(valor) valor FROM estadisticas_dia WHERE fecha BETWEEN ? AND ? AND tipo IN ('pagina', 'origen', 'whatsapp_pagina', 'producto', 'banner', 'visor', 'dispositivo') GROUP BY tipo, clave ORDER BY valor DESC", [desde, hasta]);
   const ranking = Object.fromEntries((['pagina', 'origen', 'whatsapp_pagina', 'producto', 'banner', 'visor'] as const)
     .map((t) => [t, tops.filter((x) => x.tipo === t).slice(0, 12).map((x) => ({ clave: x.clave, valor: Number(x.valor) }))])) as Resumen['ranking'];
   const disp = (k: string) => Number(tops.find((x) => x.tipo === 'dispositivo' && x.clave === k)?.valor ?? 0);
   return {
-    desde, hasta: hoy, dias: lista,
+    desde, hasta, dias: lista,
     totales: { vistas: total('vistas'), visitantes: total('visitantes'), whatsapp: total('whatsapp'), celular: disp('celular'), computadora: disp('computadora') },
     anteriores: { vistas: anterior('vistas'), visitantes: anterior('visitantes'), whatsapp: anterior('whatsapp') },
     ranking,
   };
+}
+
+// ── Archivo mes a mes ──
+// Cada mes cerrado queda guardado con su resumen completo (días, totales, rankings y comparación con el mes
+// anterior): así se puede ver mes a mes aunque cambie la forma de contar o se limpien datos viejos.
+const RE_MES = /^\d{4}-(0[1-9]|1[0-2])$/;
+export const mesValido = (m: unknown): m is string => typeof m === 'string' && RE_MES.test(m);
+const MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'setiembre', 'octubre', 'noviembre', 'diciembre'];
+export const nombreMes = (m: string) => `${MESES[Number(m.slice(5, 7)) - 1][0].toUpperCase()}${MESES[Number(m.slice(5, 7)) - 1].slice(1)} de ${m.slice(0, 4)}`;
+const mesAnterior = (m: string) => { const [a, n] = m.split('-').map(Number); return n === 1 ? `${a - 1}-12` : `${a}-${String(n - 1).padStart(2, '0')}`; };
+const finDeMes = (m: string) => { const [a, n] = m.split('-').map(Number); return new Date(Date.UTC(a, n, 0)).toISOString().slice(0, 10); };
+
+/** Resumen de un mes calendario (comparado con el mes anterior). Hasta `hoy` si el mes está en curso. */
+export const resumenMes = (db: Db, mes: string, hoy = hoyUruguay()) => {
+  const prev = mesAnterior(mes);
+  const fin = finDeMes(mes);
+  return resumenRango(db, `${mes}-01`, fin < hoy ? fin : hoy, `${prev}-01`, finDeMes(prev));
+};
+
+export interface MesArchivado { mes: string; resumen: Resumen; archivadoEn: string }
+
+/**
+ * Guarda el resumen de cada mes ya terminado que todavía no está archivado. Es seguro repetirlo: no pisa los
+ * guardados. Lo llama el Cron del día 1 y, por si el Cron falla, también la pantalla de Estadísticas.
+ */
+export async function archivarMeses(db: Db, hoy = hoyUruguay()): Promise<string[]> {
+  const actual = hoy.slice(0, 7);
+  const conDatos = await todas<{ mes: string }>(db, "SELECT DISTINCT substr(fecha, 1, 7) mes FROM estadisticas_dia WHERE tipo = 'vistas' AND substr(fecha, 1, 7) < ?", [actual]);
+  const hechos = new Set((await todas<{ mes: string }>(db, 'SELECT mes FROM estadisticas_mes')).map((f) => f.mes));
+  const nuevos: string[] = [];
+  for (const { mes } of conDatos) {
+    if (hechos.has(mes) || !mesValido(mes)) continue;
+    const r = await resumenMes(db, mes, hoy);
+    await ejecutar(db, 'INSERT INTO estadisticas_mes (mes, resumen, archivado_en) VALUES (?, ?, ?) ON CONFLICT (mes) DO NOTHING', [mes, JSON.stringify(r), new Date().toISOString()]);
+    nuevos.push(mes);
+  }
+  return nuevos;
+}
+
+export async function listarMeses(db: Db): Promise<MesArchivado[]> {
+  const filas = await todas<{ mes: string; resumen: string; archivado_en: string }>(db, 'SELECT mes, resumen, archivado_en FROM estadisticas_mes ORDER BY mes DESC');
+  return filas.flatMap((f) => { try { return [{ mes: f.mes, resumen: JSON.parse(f.resumen) as Resumen, archivadoEn: f.archivado_en }]; } catch { return []; } });
+}
+
+export async function mesArchivado(db: Db, mes: string): Promise<MesArchivado | null> {
+  const f = await una<{ mes: string; resumen: string; archivado_en: string }>(db, 'SELECT mes, resumen, archivado_en FROM estadisticas_mes WHERE mes = ?', [mes]);
+  if (!f) return null;
+  try { return { mes: f.mes, resumen: JSON.parse(f.resumen) as Resumen, archivadoEn: f.archivado_en }; } catch { return null; }
+}
+
+/** CSV de un mes (días y rankings), con coma y comillas, para abrir en Excel o Google Sheets. */
+export function csvMes(mes: string, r: Resumen): string {
+  const q = (v: string | number) => (/[",\n;]/.test(String(v)) ? `"${String(v).replace(/"/g, '""')}"` : String(v));
+  const fila = (...c: (string | number)[]) => c.map(q).join(',');
+  const lineas = [fila(`Estadísticas de la web · ${nombreMes(mes)}`), '', fila('Día', 'Vistas', 'Visitantes', 'Clics a WhatsApp'), ...r.dias.map((d) => fila(d.fecha, d.vistas, d.visitantes, d.whatsapp)),
+    fila('Total', r.totales.vistas, r.totales.visitantes, r.totales.whatsapp), '', fila('Vistas desde celular', r.totales.celular), fila('Vistas desde computadora', r.totales.computadora)];
+  const nombres: Record<string, string> = { pagina: 'Páginas más vistas', origen: 'De dónde llegan', producto: 'Productos más consultados por WhatsApp', whatsapp_pagina: 'Páginas desde donde escriben por WhatsApp', banner: 'Clics en el banner de Inicio', visor: 'Imágenes ampliadas' };
+  for (const [k, titulo] of Object.entries(nombres)) {
+    lineas.push('', fila(titulo, 'Cantidad'));
+    for (const x of r.ranking[k as keyof Resumen['ranking']]) lineas.push(fila(k === 'pagina' || k === 'whatsapp_pagina' || k === 'visor' ? nombreRuta(x.clave) : x.clave, x.valor));
+  }
+  return `\ufeff${lineas.join('\r\n')}\r\n`;
 }
 
 /** Nombre legible de una sección del sitio. */

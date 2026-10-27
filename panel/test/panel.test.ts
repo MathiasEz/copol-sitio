@@ -1674,3 +1674,45 @@ describe('mantener la sesión iniciada', () => {
     assert.equal((await b.pedir(`${RUTA}/productos`)).status, 302, 'la común vence por inactividad');
   });
 });
+
+describe('estadísticas: archivo mes a mes', () => {
+  it('guarda cada mes terminado sin pisarlo, lo muestra mes a mes y lo descarga en CSV', async () => {
+    const dia = (f: string, tipo: string, clave: string, valor: number) => db.execute({ sql: 'INSERT INTO estadisticas_dia (fecha, tipo, clave, valor) VALUES (?, ?, ?, ?)', args: [f, tipo, clave, valor] });
+    for (const [f, v, vis, w] of [['2026-08-10', 5, 3, 1], ['2026-09-03', 40, 20, 4], ['2026-09-20', 60, 30, 6]] as const) {
+      await dia(f, 'vistas', '', v); await dia(f, 'visitantes', '', vis); await dia(f, 'whatsapp', '', w); await dia(f, 'pagina', '/hipermercado/bazar/', v); await dia(f, 'dispositivo', 'celular', v);
+    }
+    const nuevos = await ES.archivarMeses(db, '2026-10-05');
+    assert.deepEqual(nuevos.sort(), ['2026-08', '2026-09']);
+    assert.deepEqual(await ES.archivarMeses(db, '2026-10-05'), [], 'repetirlo no vuelve a guardar');
+    const sep = (await ES.mesArchivado(db, '2026-09'))!;
+    assert.equal(sep.resumen.totales.vistas, 100);
+    assert.equal(sep.resumen.dias.length, 30);
+    assert.equal(sep.resumen.anteriores.vistas, 5, 'se compara con el mes anterior');
+    // Lo guardado no cambia aunque después se limpien los contadores del día.
+    await db.execute("DELETE FROM estadisticas_dia WHERE fecha LIKE '2026-09-%'");
+    assert.equal((await ES.mesArchivado(db, '2026-09'))!.resumen.totales.vistas, 100);
+
+    const n = new Navegador();
+    await n.ingresar('principal');
+    const lista = await (await n.pedir(`${RUTA}/estadisticas/meses`)).text();
+    assert.match(lista, /Septiembre|Setiembre de 2026/);
+    assert.match(lista, /Agosto de 2026/);
+    assert.match(lista, /En curso/);
+    const detalle = await n.pedir(`${RUTA}/estadisticas/meses/2026-09`);
+    assert.equal(detalle.status, 200);
+    const html = await detalle.text();
+    assert.match(html, /Registro de Setiembre de 2026/);
+    assert.match(html, /no cambia más/);
+    const csv = await n.pedir(`${RUTA}/estadisticas/meses/2026-09.csv`);
+    assert.match(csv.headers.get('content-type') ?? '', /text\/csv/);
+    const texto = await csv.text();
+    assert.match(texto, /2026-09-03,40,20,4/);
+    assert.match(texto, /Bazar,100/);
+    assert.equal((await n.pedir(`${RUTA}/estadisticas/meses/2026-05`)).status, 404);
+    assert.equal((await n.pedir(`${RUTA}/estadisticas/meses/9999-99`)).status, 404);
+    assert.match(await (await n.pedir(`${RUTA}/estadisticas`)).text(), /Mes a mes/);
+    const editor = new Navegador();
+    await editor.ingresar('editor');
+    assert.equal((await editor.pedir(`${RUTA}/estadisticas/meses`)).status, 403);
+  });
+});

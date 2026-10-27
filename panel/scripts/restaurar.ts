@@ -24,6 +24,8 @@ if (Array.isArray(respaldo.tablas.ajustes)) ORDEN.push('ajustes');
 if (Array.isArray(respaldo.tablas.notificaciones)) ORDEN.push('notificaciones');
 // Desde Registros: la planilla de prueba (con hoja de Google conectada solo trae el resumen).
 if (Array.isArray(respaldo.tablas.registros)) ORDEN.push('registros');
+// Desde el archivo mensual de estadísticas.
+if (Array.isArray(respaldo.tablas.estadisticas_mes)) ORDEN.push('estadisticas_mes');
 console.log(`Respaldo del ${respaldo.exportado}: ${ORDEN.map((t) => `${t} ${respaldo.tablas[t].length}`).join(' · ')}`);
 if (!values.confirmar) {
   console.log('Revisión sin cambios. Para restaurar de verdad, repetí el comando con --confirmar.');

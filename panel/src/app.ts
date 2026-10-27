@@ -690,7 +690,31 @@ export function crearApp({ db: fuenteDb, config, almacen, asistente, correo, pus
   // ── Estadísticas de la web (sin cookies ni datos personales; ver estadisticas.ts) ──
   app.get('/estadisticas', requiere('auditoria'), async (c) => {
     const dias = [7, 30, 90].includes(Number(c.req.query('dias'))) ? Number(c.req.query('dias')) : 30;
+    await ES.archivarMeses(c.get('db')); // por si el Cron del día 1 no corrió
     return c.html(V.vistaEstadisticas(ctx(c), await ES.resumen(c.get('db'), dias), dias));
+  });
+  // Archivo mes a mes: el mes en curso se calcula al momento; los terminados salen de lo guardado.
+  app.get('/estadisticas/meses', requiere('auditoria'), async (c) => {
+    const db = c.get('db');
+    await ES.archivarMeses(db);
+    const mes = hoyUruguay().slice(0, 7);
+    return c.html(V.vistaEstadisticasMeses(ctx(c), { enCurso: { mes, resumen: await ES.resumenMes(db, mes) }, meses: await ES.listarMeses(db) }));
+  });
+  const datosMes = async (c: C, mes: string) => {
+    const db = c.get('db');
+    if (!ES.mesValido(mes)) return null;
+    if (mes === hoyUruguay().slice(0, 7)) return { resumen: await ES.resumenMes(db, mes), archivado: null };
+    await ES.archivarMeses(db);
+    const guardado = await ES.mesArchivado(db, mes);
+    return guardado ? { resumen: guardado.resumen, archivado: guardado.archivadoEn } : null;
+  };
+  // /estadisticas/meses/2026-09 (pantalla) y /estadisticas/meses/2026-09.csv (descarga)
+  app.get('/estadisticas/meses/:archivo', requiere('auditoria'), async (c) => {
+    const [, mes, csv] = c.req.param('archivo').match(/^(\d{4}-\d{2})(\.csv)?$/) ?? [];
+    const d = mes ? await datosMes(c, mes) : null;
+    if (!mes || !d) return c.notFound();
+    if (csv) return c.body(ES.csvMes(mes, d.resumen), 200, { 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': `attachment; filename="estadisticas-${mes}.csv"` });
+    return c.html(V.vistaEstadisticas(ctx(c), d.resumen, d.resumen.dias.length, { id: mes, archivado: d.archivado }));
   });
 
   // ── Administración Página: ofertas del supermercado (Promociones) ──
