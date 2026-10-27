@@ -128,7 +128,7 @@ async function llamar(nombre: string, a: Record<string, unknown>, x: ContextoMcp
       return texto(eventos.map((e) => `- ${e.fecha} · ${e.usuario ?? 'sistema'} · ${e.accion}${e.detalle ? ` · ${e.detalle}` : ''}`).join('\n') || 'Sin cambios registrados.', { eventos });
     }
     case 'cambiar_stock': {
-      if (!puede(x.usuario.rol, 'stock')) return texto('Tu usuario del panel solo puede consultar: no tiene permiso para cambiar stock.', undefined, true);
+      if (!puede(x.usuario, 'stock')) return texto('Tu usuario del panel solo puede consultar: no tiene permiso para cambiar stock.', undefined, true);
       const pedidos = Array.isArray(a.cambios) ? a.cambios : [];
       if (!pedidos.length || pedidos.length > MAX_CAMBIOS) return texto(`Indicá entre 1 y ${MAX_CAMBIOS} cambios.`, undefined, true);
       const resultados: { codigo: string; ok: boolean; nombre?: string; antes?: string; despues?: string; error?: string }[] = [];

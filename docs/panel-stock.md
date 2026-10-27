@@ -1,6 +1,8 @@
-# Panel de stock del Bazar
+# Panel COPOL: Stock Bazar, Registros y Administración
 
-Panel para que el personal autorizado consulte y actualice el inventario del Bazar, agregue productos y publique novedades en la portada. El código vive en `panel/` y se publica en la ruta **`/panel`** del mismo despliegue de Vercel. No está enlazado desde el sitio, pero eso **no es una medida de seguridad**: todas sus páginas exigen usuario y contraseña, y cada acción se autoriza en el servidor según el rol.
+> El panel se llamaba «panel de stock»: desde que se le sumó **Registros** (antes un panel aparte, `copol-registros`) tiene tres secciones en el menú. Este documento conserva el nombre de archivo por los enlaces existentes.
+
+Panel para que el personal autorizado consulte y actualice el inventario del Bazar, agregue productos, cargue registros de socios y publique novedades en la portada. El código vive en `panel/` y se publica en la ruta **`/panel`** del mismo despliegue de Vercel. No está enlazado desde el sitio, pero eso **no es una medida de seguridad**: todas sus páginas exigen usuario y contraseña, y cada acción se autoriza en el servidor según el rol.
 
 > Ningún sistema conectado a Internet es "imposible de hackear". El panel aplica medidas razonables (abajo); su seguridad depende también de usar contraseñas fuertes y mantener las dependencias actualizadas.
 
@@ -23,6 +25,16 @@ Panel          ──escribe──►  Base de datos (Turso / libSQL)  ◄──
   - Si la base no respondiera, la web no muestra un stock viejo: todas las tarjetas pasan a "Consultar disponibilidad" con un aviso.
 - Los textos e imágenes del catálogo importado siguen guardados en el proyecto (`src/data/catalogo/`, `src/assets/catalogo/`); en cada build se generan sus variantes web de 240 y 400 px en `public/catalogo/`.
 
+## Menú: tres secciones
+
+| Sección | Páginas |
+|---|---|
+| **Stock Bazar** | Inventario · Agregar producto · Asistente (el del stock) |
+| **Registros** | Nuevo registro (formulario con asistente de IA) · Planilla |
+| **Administración** | Administración Página · Información empleados · Estadísticas · Usuarios · Registro de cambios · Accesos |
+
+Cada sección aparece solo si la persona tiene algo para hacer en ella; quien solo tiene Registros entra directo a **Nuevo registro** y no ve el stock. Sumar una sección nueva en el futuro es agregar un grupo en `layout()` de `panel/src/vistas.ts` y los permisos correspondientes en `panel/src/seguridad.ts`.
+
 ## Funciones
 
 | Sección | Qué permite |
@@ -34,9 +46,11 @@ Panel          ──escribe──►  Base de datos (Turso / libSQL)  ◄──
 | **Administración Página → Ofertas** | Piezas del supermercado de Promociones (única sección con precios, excepción aprobada): subir varias a la vez (el navegador las envía de a una), describir cada una (producto y precio), ordenar, quitar, título, período y "válidas hasta" (al vencer, la sección se retira sola). JSON en `ajustes` (clave `ofertas_supermercado`); sin guardar, se muestran las de octubre de 2026 (`public/ofertas/`). |
 | **Administración Página → Créditos** | Fechas de apertura de créditos (Inicio, Beneficios, Hacete socio y Acceso web): agregar, marcar confirmada / a confirmar, quitar. Las pasadas se ocultan solas cada día. JSON en `ajustes` (clave `aperturas_credito`). |
 | **Administración Página → Novedades** | Con fechas opcionales desde/hasta (se publican y retiran solas). Crear, editar, publicar, despublicar, eliminar y ordenar (subir/bajar). Imagen, título, texto, plantilla (imagen a la izquierda y texto a la derecha · imagen completa · título y texto) y botón opcional. Inicio muestra solo las publicadas, en ese orden. |
-| **Usuarios** | Alta con usuario o correo, rol y contraseña temporal; cambio de rol, desactivación, restablecimiento de contraseña y baja. |
+| **Registros → Nuevo registro** | Formulario del socio y el producto (nombre, N° de socio, cédula con dígito verificador, dirección con ubicación en Google Maps, producto, código interno, flete, service e información adicional) con un **asistente de IA**: se escribe, pega o **dicta** el mensaje, o se adjunta una **foto, PDF o captura** (se leen y no se guardan) y la IA completa el formulario; cada respuesta se puede **deshacer**. La IA nunca guarda: la persona revisa y guarda. Código en `panel/src/registros*.ts` y `public/panel-recursos/registros*.js`. |
+| **Registros → Planilla** | Cada registro va a la **hoja de Google Sheets** (una pestaña por mes: «Octubre 2026»…) y deja constancia en la base (quién, cuándo, dónde quedó). Sin hoja conectada, la base hace de **planilla de prueba** (se ve en el panel y se descarga como `.xlsx`; un administrador puede vaciarla). Con la hoja conectada, la base guarda solo un resumen: **la cédula, la dirección, el service y la información adicional viven únicamente en la hoja**. |
+| **Usuarios** | Alta con usuario o correo, uno o **varios roles** y contraseña temporal; cambio de roles, desactivación, restablecimiento de contraseña y baja. |
 | **Mi perfil** | Cada persona cambia su propia contraseña. |
-| **Registro** | Ingresos, cambios de stock (antes → después), productos, imágenes, novedades y usuarios, con fecha, usuario e IP. |
+| **Registro de cambios** | Ingresos, cambios de stock (antes → después), productos, imágenes, novedades y usuarios, con fecha, usuario e IP. |
 | **Asistente** | Chat con IA (Gemini 2.5 Flash) para preguntas sobre la web pública, el inventario y el uso del panel, y para **preparar cambios de productos** que se aplican solo al confirmarlos. Todos los roles: el visualizador solo consulta. |
 | **Información empleados** | Página interna para todo el personal (cualquier rol): Acoso laboral (QR al protocolo de RR.HH.), ¿Cómo te sentís hoy? (QR a la encuesta), Reglamento Interno del Personal (QR al documento), Tu cooperativa (carrusel de fotos), Ciudad del Plata abre pronto, Pinecoop Chuy (en obras) y Tus recibos. **Se publica también en la web** en `/portal-empleados/` (Acceso web → Portal de empleados), con caché en la CDN que se renueva al guardar. Los **administradores** cambian los enlaces y las fotos en "Editar"; los QR se generan solos a partir de cada enlace (`panel/src/empleados.ts`, guardado en la tabla `ajustes`). Las fotos se achican en el navegador antes de subirlas (Vercel no acepta envíos de más de ~4,5 MB). |
 | **Modo claro / oscuro** | Botón "Modo oscuro" / "Modo claro" en la barra lateral (y arriba a la derecha en la pantalla de ingreso). Sin elección, sigue el modo del sistema; la elección queda guardada en ese navegador (`public/panel-recursos/tema.js`). |
@@ -60,6 +74,8 @@ Panel          ──escribe──►  Base de datos (Turso / libSQL)  ◄──
 - Si no hay cámara, no se concede el permiso o la conexión no es segura (HTTPS), avisa y el campo sigue disponible para escribir el código a mano.
 
 ## Acceso al panel
+
+**Mantener la sesión iniciada:** el ingreso trae una casilla (marcada por defecto) para no tener que ingresar a cada rato: la sesión no se cierra mientras se use, vence tras 30 días sin entrar y, como tope, a los 90 días (`PANEL_SESION_LARGA_INACTIVIDAD_DIAS`, `PANEL_SESION_LARGA_MAX_DIAS`). Sin marcarla, la sesión es la común (30 minutos sin actividad, 8 horas como máximo). Cambiar la contraseña, desactivar la cuenta o «cerrar sesión» en Accesos la invalida. Aparte, «Recordar este equipo» (en el código por correo) evita pedir el PIN y el código durante 30 días.
 
 | Paso | Qué se pide | Detalle |
 |---|---|---|
@@ -94,16 +110,21 @@ El panel funciona como **conector personalizado (MCP)** de la app de Claude: se 
 
 ## Roles
 
-| Permiso | Administrador | Editor de stock | Visualizador de stock |
-|---|:-:|:-:|:-:|
-| Consultar el inventario | ✓ | ✓ | ✓ |
-| Cambiar stock y cantidades | ✓ | ✓ | — |
-| Agregar y editar productos e imágenes | ✓ | ✓ | — |
-| Administración Página (banner y novedades) | ✓ | — | — |
-| Usuarios y registro de cambios | ✓ | — | — |
-| Asistente (Claude) | ✓ | ✓ (prepara y confirma cambios) | ✓ (solo consulta) |
+Cada persona puede tener **uno o varios roles**; sus permisos se **suman** (por ejemplo, *Editor de stock* + *Carga de registros* ve y edita el stock y además carga registros). Se eligen con casillas en Usuarios.
 
-El **administrador principal** (creado con `npm run panel:admin`) es una cuenta protegida: nadie más puede cambiarla ni eliminarla, y siempre queda al menos un administrador activo. Los permisos se definen en `panel/src/seguridad.ts`.
+| Permiso | Administrador | Editor de stock | Visualizador de stock | Carga de registros |
+|---|:-:|:-:|:-:|:-:|
+| Consultar el inventario | ✓ | ✓ | ✓ | — |
+| Cambiar stock y cantidades | ✓ | ✓ | — | — |
+| Agregar y editar productos e imágenes | ✓ | ✓ | — | — |
+| Asistente del stock (Claude) | ✓ | ✓ (prepara y confirma cambios) | ✓ (solo consulta) | — |
+| Registros: formulario, asistente y planilla | ✓ | — | — | ✓ |
+| Información empleados | ✓ | ✓ | ✓ | ✓ |
+| Administración Página (banner y novedades) | ✓ | — | — | — |
+| Usuarios, estadísticas, accesos y registro de cambios | ✓ | — | — | — |
+| Vaciar la planilla de prueba | ✓ | — | — | — |
+
+Los usuarios que ya existían conservan su rol (se migran solos). En la base, `usuarios.roles` guarda la lista («editor,registros») y `usuarios.rol` queda solo por compatibilidad. El **administrador principal** (creado con `npm run panel:admin`) es una cuenta protegida: nadie más puede cambiarla ni eliminarla, y siempre queda al menos un administrador activo. Los permisos se definen en `panel/src/seguridad.ts`.
 
 ## Medidas de seguridad
 
@@ -124,6 +145,7 @@ El **administrador principal** (creado con `npm run panel:admin`) es una cuenta 
 | Qué | Dónde |
 |---|---|
 | Stock, productos agregados, novedades, usuarios (hash), sesiones, registro | Base **Turso** (producción) · `panel/datos/copol.db` (desarrollo) |
+| Registros cargados | Hoja de **Google Sheets** (datos completos) + tabla `registros` en Turso (resumen; completo solo en modo de prueba) |
 | Imágenes subidas en el panel | **Vercel Blob** (producción) · `panel/datos/imagenes/` (desarrollo) |
 | Catálogo importado (textos e imágenes originales) | Repositorio: `src/data/catalogo/` y `src/assets/catalogo/bazar/` |
 | Imágenes de las novedades iniciales | Repositorio: `public/novedades/` |
@@ -156,3 +178,15 @@ Sitio en http://localhost:4321 y panel en http://localhost:4321/<dirección del 
 
 - `npm run panel:test` — 22 pruebas: acceso sin sesión, contraseñas incorrectas, CSRF, cookie segura, contraseña temporal, bloqueo, permisos por rol, administrador protegido, guardado de stock verificado (con y sin JavaScript), cantidad ↔ estado, ediciones simultáneas, etiqueta "Código interno COPOL", validación de productos e imágenes, novedades (crear, publicar, ordenar, despublicar), alta de usuarios por correo, cambio de contraseña en el perfil, ausencia de contraseñas en texto plano, interfaz sin rubros futuros y cabeceras.
 - `npm run qa:panel` (con `npm run dev` en marcha) — prueba de punta a punta en Edge: cambio real de stock en el panel → la tarjeta pública pasa a "Sin stock" gris y vuelve a "Con stock" verde; escaneo con cámara simulada que muestra un EAN-13 y caso sin permiso; alta y cambio de contraseña de un usuario; novedad creada, publicada (aparece en Inicio) y despublicada (desaparece). Usa un usuario temporal y deja los datos como estaban.
+
+## Registros: conectar la hoja de Google (una sola vez)
+
+Se hace con las mismas variables que usaba el panel de registros aparte (`copol-registros`), cargadas en el proyecto de Vercel `copol`:
+
+1. Copiar `GOOGLE_CREDENCIALES` (el JSON de la cuenta de servicio, en una línea) y `GOOGLE_HOJA` (el enlace de la hoja) desde *Project Settings → Environment Variables* de `copol-registros` a las del proyecto `copol` (Production).
+2. La hoja ya está compartida con la cuenta de servicio como *Editor*; no hay que tocarla. El panel crea solo la pestaña del mes con su cabecera.
+3. Redeploy. En **Registros → Planilla** aparece «Abrir hoja de Google» y el aviso de «modo de prueba» desaparece.
+
+Opcionales: `IA_MODELO` (por defecto `google/gemini-2.5-flash`), `IA_LIMITE_DIA` (150 consultas por persona y día) e `IA_APAGADA=1`. El asistente usa el mismo AI Gateway que el del stock (sin clave en Vercel).
+
+No se portó la conexión con Excel de Microsoft del panel anterior (nunca se usó: los registros van a Google Sheets). Los usuarios, el PIN y los accesos del panel de registros viejo **no se migran**: en el panel único se usan los usuarios, el PIN y los códigos por correo del panel de stock.

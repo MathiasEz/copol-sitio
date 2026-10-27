@@ -1,0 +1,107 @@
+/* Registros: lo propio (chat del asistente, micrófono, formulario, tablas). La base es panel.css,
+   el mismo sistema visual del panel de stock (con modo oscuro). */
+.titulo-chico { font-size: 1.125rem; }
+.pantalla-texto { display: grid; gap: 6px; }
+
+/* ── Pantalla Formulario: chat a la izquierda, formulario a la derecha ── */
+.carga { display: grid; gap: 16px; align-items: start; }
+@media (min-width: 1100px) { .carga { grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr); } }
+.chat { display: grid; gap: 12px; min-width: 0; }
+@media (min-width: 1100px) { .chat { position: sticky; top: 16px; } }
+.chat__cabeza { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.chat__titulo { display: inline-flex; align-items: center; gap: 8px; }
+.chat__titulo .i { color: var(--marca); }
+.chat .asistente__registro { min-height: 220px; max-height: min(52vh, 560px); }
+.chat__vacio { display: grid; gap: 10px; padding: 8px 2px; color: var(--muted-foreground); font-size: .875rem; }
+.chat__vacio strong { color: var(--foreground); }
+.chat__ejemplo { padding: 10px 12px; border: 1px dashed var(--border); border-radius: var(--radius); font-style: italic; }
+.msj__cambios { list-style: none; margin: 2px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.msj__cambios li { padding: 2px 9px; border-radius: 999px; background: var(--ok-bg); border: 1px solid var(--ok-borde); color: var(--ok); font-size: .75rem; font-weight: 600; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.msj__faltan { font-size: .75rem; color: var(--aviso); font-weight: 600; }
+.msj--nota { justify-self: center; }
+.msj--nota .msj__texto { background: var(--ok-bg); color: var(--ok); font-weight: 600; font-size: .8125rem; padding: 6px 12px; border-radius: 999px; }
+.msj--error .msj__texto { background: var(--error-bg); color: var(--destructive); }
+.msj--deshecho .msj__cambios li { text-decoration: line-through; opacity: .7; }
+
+.chat__entrada { display: grid; gap: 8px; border-top: 1px solid var(--border); padding-top: 12px; }
+.chat__caja { position: relative; }
+.chat__caja textarea { min-height: 76px; padding-right: 52px; }
+.chat__acciones { display: flex; gap: 8px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+.chat__ayuda { font-size: .75rem; color: var(--muted-foreground); }
+.microfono {
+  position: absolute; right: 8px; bottom: 8px; display: grid; place-items: center; width: 38px; height: 38px;
+  border-radius: 50%; border: 1px solid var(--input); background: var(--card); color: var(--foreground); cursor: pointer;
+  transition: background-color .15s, color .15s, border-color .15s, transform .12s;
+}
+.microfono:hover { border-color: var(--marca); color: var(--marca); }
+.microfono:active { transform: scale(.95); }
+.microfono[aria-pressed="true"] { background: var(--peligro); border-color: var(--peligro); color: #fff; animation: escuchando 1.2s ease-in-out infinite; }
+@keyframes escuchando { 0%, 100% { box-shadow: 0 0 0 0 rgb(200 53 44 / .45); } 50% { box-shadow: 0 0 0 8px rgb(200 53 44 / 0); } }
+@media (prefers-reduced-motion: reduce) { .microfono[aria-pressed="true"] { animation: none; } }
+.chat__escuchando { font-size: .8125rem; font-weight: 600; color: var(--peligro); }
+
+/* Formulario */
+.registro .fila-2 { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr)); }
+.input.completado { background: var(--aviso-bg); border-color: var(--aviso-borde); }
+.opciones-fila { display: flex; gap: 8px; }
+.opcion {
+  display: inline-flex; align-items: center; gap: 8px; min-height: 38px; padding: 7px 16px; border: 1px solid var(--input);
+  border-radius: var(--radius-sm); background: var(--card); cursor: pointer; font-weight: 600;
+}
+.opcion input { accent-color: var(--primary); width: 17px; height: 17px; margin: 0; }
+.opcion:has(input:checked) { border-color: var(--primary); background: var(--accent); color: var(--accent-foreground); }
+.opcion:has(input:focus-visible) { outline: 2px solid var(--ring); outline-offset: 2px; }
+.completado .opcion:has(input:checked) { background: var(--aviso-bg); border-color: var(--aviso-borde); color: var(--foreground); }
+.registro__acciones { display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* Avisos de estado dentro de tarjetas */
+.estado { padding: 9px 12px; border-radius: var(--radius-sm); font-weight: 600; font-size: .875rem; background: var(--muted); }
+.estado--ok { background: var(--ok-bg); color: var(--ok); }
+.estado--error { background: var(--error-bg); color: var(--destructive); }
+.alert--aviso { background: var(--aviso-bg); border-color: var(--aviso-borde); color: var(--aviso); }
+.alert p { margin: 0; }
+.alert__accion { margin-left: auto; }
+
+/* Tablas de este panel: en el celular cada fila es una tarjeta con etiquetas */
+.tabla--registros td, .tabla--usuarios td, .tabla--accesos td { vertical-align: top; }
+@media (max-width: 760px) {
+  .tabla--lista tr { grid-template-columns: 1fr; gap: 2px; }
+  .tabla--lista td[data-etiqueta]::before { content: attr(data-etiqueta) ': '; color: var(--muted-foreground); font-weight: 600; }
+  .tabla--lista td:first-child { font-weight: 700; }
+}
+.cabecera-tarjeta { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
+.botones { display: flex; flex-wrap: wrap; gap: 8px; }
+.badge--ok { background: var(--ok-bg); color: var(--ok); border-color: var(--ok-borde); }
+.badge--gris { background: var(--gris-bg); color: var(--gris); border-color: var(--gris-borde); }
+.badge--aviso { background: var(--aviso-bg); color: var(--aviso); border-color: var(--aviso-borde); }
+.usuario-fila { font-weight: 600; text-decoration: none; }
+.usuario-fila:hover { text-decoration: underline; }
+.secreto { font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace; letter-spacing: .02em; }
+
+/* Dirección con buscador */
+.dir-resultados { border: 1px solid var(--border); border-radius: var(--radius); background: var(--card); box-shadow: var(--sombra); overflow: hidden; }
+.dir-estado { margin: 0; padding: 10px 12px; color: var(--muted-foreground); font-size: .875rem; }
+.dir-estado--error { color: var(--destructive); }
+.dir-lista { list-style: none; margin: 0; padding: 0; max-height: 280px; overflow-y: auto; overscroll-behavior: contain; }
+.dir-lista li + li { border-top: 1px solid var(--border); }
+.dir-opcion { display: grid; gap: 1px; width: 100%; padding: 9px 12px; border: 0; background: none; font: inherit; color: inherit; text-align: left; cursor: pointer; }
+.dir-opcion:hover, .dir-opcion:focus-visible { background: var(--muted); outline: none; }
+.dir-opcion span { font-size: .8125rem; color: var(--muted-foreground); }
+.dir-precision { font-style: normal; font-size: .6875rem; font-weight: 700; justify-self: start; padding: 0 7px; border-radius: 999px; border: 1px solid currentColor; }
+.dir-precision--exacta { color: var(--ok); }
+.dir-precision--calle { color: var(--aviso); }
+.dir-precision--zona { color: var(--gris); }
+.dir-resultados > .btn { margin: 4px 8px 8px; }
+.dir-elegida { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; margin: 2px 0 0; padding: 8px 12px; border-radius: var(--radius-sm); background: var(--ok-bg); border: 1px solid var(--ok-borde); color: var(--ok); font-weight: 600; font-size: .875rem; }
+.dir-elegida > span { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.dir-elegida a { color: var(--marca); display: inline-flex; align-items: center; gap: 4px; }
+.tabla--registros td a { color: var(--marca); }
+
+/* Adjuntos del chat */
+.chat__herramientas { display: flex; flex-wrap: wrap; gap: 8px; }
+.chat__adjuntos { display: flex; flex-wrap: wrap; gap: 6px; }
+.adjunto { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; padding: 3px 4px 3px 10px; border-radius: 999px; border: 1px solid var(--border); background: var(--muted); font-size: .8125rem; font-weight: 600; }
+.adjunto > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 220px; }
+.adjunto button { width: 22px; height: 22px; border: 0; border-radius: 50%; background: transparent; color: var(--muted-foreground); font-size: 1.1rem; line-height: 1; cursor: pointer; }
+.adjunto button:hover { background: var(--suave); color: var(--destructive); }
+.carga--sola { grid-template-columns: 1fr !important; }

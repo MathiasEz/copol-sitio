@@ -16,6 +16,9 @@ export interface Config {
   confiarProxy: boolean;
   sesionInactividadMin: number;
   sesionMaxHoras: number;
+  /** Sesión «mantener iniciada»: días sin actividad antes de cerrarse y tope total. */
+  sesionLargaInactividadDias: number;
+  sesionLargaMaxDias: number;
   maxImagenMB: number;
   /** Consultas al asistente por usuario y por día (hora de Uruguay). */
   asistenteLimiteDia: number;
@@ -33,6 +36,8 @@ export function cargarConfig(env: NodeJS.ProcessEnv = process.env): Config {
     confiarProxy: Boolean(env.VERCEL) || env.PANEL_CONFIAR_PROXY === '1',
     sesionInactividadMin: Number(env.PANEL_SESION_INACTIVIDAD_MIN ?? 30),
     sesionMaxHoras: Number(env.PANEL_SESION_MAX_HORAS ?? 8),
+    sesionLargaInactividadDias: Number(env.PANEL_SESION_LARGA_INACTIVIDAD_DIAS ?? 30),
+    sesionLargaMaxDias: Number(env.PANEL_SESION_LARGA_MAX_DIAS ?? 90),
     maxImagenMB: Number(env.PANEL_MAX_IMAGEN_MB ?? 5),
     asistenteLimiteDia: Number(env.PANEL_ASISTENTE_LIMITE_DIA ?? 80),
     conectorClaude: env.PANEL_CONECTOR_CLAUDE === '1',

@@ -22,6 +22,8 @@ for (const t of ORDEN) if (!Array.isArray(respaldo.tablas[t])) throw new Error(`
 if (Array.isArray(respaldo.tablas.ajustes)) ORDEN.push('ajustes');
 // Desde las notificaciones de la app: también traen las programadas y enviadas.
 if (Array.isArray(respaldo.tablas.notificaciones)) ORDEN.push('notificaciones');
+// Desde Registros: la planilla de prueba (con hoja de Google conectada solo trae el resumen).
+if (Array.isArray(respaldo.tablas.registros)) ORDEN.push('registros');
 console.log(`Respaldo del ${respaldo.exportado}: ${ORDEN.map((t) => `${t} ${respaldo.tablas[t].length}`).join(' · ')}`);
 if (!values.confirmar) {
   console.log('Revisión sin cambios. Para restaurar de verdad, repetí el comando con --confirmar.');

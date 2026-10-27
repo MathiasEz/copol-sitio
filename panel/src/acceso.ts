@@ -139,9 +139,9 @@ export function correoResend(clave: string, remitente: string, f: typeof fetch =
 const esc = (s: string) => s.replace(/[&<>"']/g, (ch) => `&#${ch.charCodeAt(0)};`);
 export function correoCodigo(codigo: string, usuario: string, o: Origen) {
   const desde = [o.lugar, o.ip, describirEquipo(o.agente)].filter(Boolean).join(' · ');
-  const texto = `Tu código para ingresar al panel de stock de COPOL es: ${codigo}\n\nVence en 10 minutos. Usuario: ${usuario}. Pedido desde: ${desde || 'sin datos'}.\n\nSi no fuiste vos, alguien conoce tu contraseña: cambiala desde "Mi perfil" y avisá al administrador. No compartas este código con nadie.`;
+  const texto = `Tu código para ingresar al Panel de Administración de COPOL es: ${codigo}\n\nVence en 10 minutos. Usuario: ${usuario}. Pedido desde: ${desde || 'sin datos'}.\n\nSi no fuiste vos, alguien conoce tu contraseña: cambiala desde "Mi perfil" y avisá al administrador. No compartas este código con nadie.`;
   const html = `<div style="font-family:Segoe UI,Arial,sans-serif;font-size:15px;color:#18181b;max-width:480px">
-<p>Tu código para ingresar al <strong>panel de stock de COPOL</strong> es:</p>
+<p>Tu código para ingresar al <strong>Panel de Administración de COPOL</strong> es:</p>
 <p style="font-size:30px;font-weight:700;letter-spacing:6px;margin:12px 0;color:#006633">${codigo}</p>
 <p>Vence en 10 minutos. Usuario: <strong>${esc(usuario)}</strong>.<br>Pedido desde: ${esc(desde || 'sin datos')}.</p>
 <p style="color:#63636b;font-size:13px">Si no fuiste vos, alguien conoce tu contraseña: cambiala desde «Mi perfil» y avisá al administrador. No compartas este código con nadie.</p></div>`;
@@ -173,10 +173,10 @@ export function lugarDe(cabecera: (n: string) => string | undefined) {
 }
 
 // ── Para la sección Accesos ──
-export interface SesionAbierta { id_hash: string; usuario: string; rol: string; ip: string | null; agente: string | null; lugar: string | null; creada_en: string; ultima_actividad: string }
-export const sesionesAbiertas = (db: Db, inactividadMin: number) => todas<SesionAbierta>(db,
-  'SELECT s.id_hash, u.usuario, u.rol, s.ip, s.agente, s.lugar, s.creada_en, s.ultima_actividad FROM sesiones s JOIN usuarios u ON u.id = s.usuario_id WHERE s.expira_en > ? AND s.ultima_actividad > ? ORDER BY s.ultima_actividad DESC',
-  [ahora(), new Date(Date.now() - inactividadMin * 60_000).toISOString()]);
+export interface SesionAbierta { id_hash: string; usuario: string; roles: string; ip: string | null; agente: string | null; lugar: string | null; creada_en: string; ultima_actividad: string; larga: number }
+export const sesionesAbiertas = (db: Db, inactividadMin: number, inactividadLargaMin = inactividadMin) => todas<SesionAbierta>(db,
+  'SELECT s.id_hash, u.usuario, COALESCE(u.roles, u.rol) AS roles, s.ip, s.agente, s.lugar, s.creada_en, s.ultima_actividad, s.larga FROM sesiones s JOIN usuarios u ON u.id = s.usuario_id WHERE s.expira_en > ? AND s.ultima_actividad > CASE WHEN s.larga = 1 THEN ? ELSE ? END ORDER BY s.ultima_actividad DESC',
+  [ahora(), new Date(Date.now() - inactividadLargaMin * 60_000).toISOString(), new Date(Date.now() - inactividadMin * 60_000).toISOString()]);
 export interface EquipoRecordado { token_hash: string; usuario: string; ip: string | null; agente: string | null; lugar: string | null; creado_en: string; expira_en: string; ultimo_uso: string | null }
 export const equiposRecordados = (db: Db) => todas<EquipoRecordado>(db,
   "SELECT p.token_hash, u.usuario, p.ip, p.agente, p.lugar, p.creado_en, p.expira_en, p.ultimo_uso FROM pases p JOIN usuarios u ON u.id = p.usuario_id WHERE p.tipo = 'equipo' AND p.expira_en > ? ORDER BY p.ultimo_uso DESC",

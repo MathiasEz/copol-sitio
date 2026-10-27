@@ -1,6 +1,6 @@
-# COPOL · Cooperativa Policial — Sitio web y panel de stock
+# COPOL · Cooperativa Policial — Sitio web y panel
 
-Sitio institucional y comercial de la Cooperativa Policial, construido con [Astro](https://astro.build) y preparado para publicarse en **Vercel**. Incluye el **panel de stock del Bazar** en `/panel` (inventario, productos, novedades de la portada y usuarios).
+Sitio institucional y comercial de la Cooperativa Policial, construido con [Astro](https://astro.build) y preparado para publicarse en **Vercel**. Incluye el **panel de COPOL** (Stock Bazar, Registros y Administración: inventario, productos, formulario de registros con IA, novedades de la portada y usuarios con varios roles).
 
 - Páginas institucionales: estáticas (rápidas, sin servidor).
 - Bazar y las partes dinámicas de Inicio: se generan en el servidor leyendo la base de datos y la CDN de Vercel guarda una copia; el panel la borra al guardar un cambio, así el stock y las novedades publicadas se ven en la visita siguiente (docs/panel-stock.md). El panel se genera en cada visita.
@@ -39,7 +39,7 @@ Sitio en http://localhost:4321 · panel en http://localhost:4321/<dirección del
 | `npm run verificar` | `check` + `build` + `test` + pruebas del panel. |
 | `npm run qa` | Pruebas en Edge contra `npm run dev`: filtros del Bazar, banners, carrusel, recortes, desborde y accesibilidad (axe). |
 | `npm run qa:panel` | Prueba de punta a punta contra `npm run dev`: stock panel → web, escaneo con cámara, usuarios y novedades. |
-| `npm run panel:test` | 22 pruebas de seguridad y funcionamiento del panel. |
+| `npm run panel:test` | Pruebas de seguridad y funcionamiento del panel (roles, stock, registros, acceso). |
 | `npm run panel:sembrar` | Carga el catálogo importado y las novedades iniciales en la base configurada (no pisa cambios). |
 | `npm run panel:admin -- --usuario <u>` | Crea el administrador principal (pide la contraseña por teclado; no queda en ningún archivo). |
 | `npm run panel:respaldo` / `panel:restaurar` | Respaldo y recuperación de la base y las imágenes subidas. |

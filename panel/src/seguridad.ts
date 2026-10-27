@@ -41,28 +41,60 @@ export function problemaClave(clave: string, usuario: string): string | null {
 }
 
 // ── Roles y permisos (autorización del lado del servidor) ──
-export type Rol = 'administrador' | 'editor' | 'visualizador';
-export type Permiso = 'ver' | 'stock' | 'productos' | 'novedades' | 'usuarios' | 'auditoria' | 'asistente';
+// Cada persona puede tener VARIOS roles (p. ej. Editor de stock + Carga de registros): sus permisos son la unión.
+export type Rol = 'administrador' | 'editor' | 'visualizador' | 'registros';
+export type Permiso = 'ver' | 'stock' | 'productos' | 'novedades' | 'usuarios' | 'auditoria' | 'asistente' | 'registros' | 'empleados';
 
-export const ROLES: Record<Rol, { nombre: string; descripcion: string; permisos: Permiso[] }> = {
+/** Sección del panel a la que pertenece un rol (para agruparlos al elegirlos). */
+export type GrupoRol = 'stock' | 'registros' | 'administracion';
+
+export const ROLES: Record<Rol, { nombre: string; descripcion: string; permisos: Permiso[]; grupo: GrupoRol }> = {
   administrador: {
     nombre: 'Administrador',
-    descripcion: 'Acceso total: stock, productos, Administración Página (banner de Inicio y novedades), usuarios, registro de cambios y asistente.',
-    permisos: ['ver', 'stock', 'productos', 'novedades', 'usuarios', 'auditoria', 'asistente'],
+    descripcion: 'Acceso total: Stock Bazar, Registros y Administración (página, usuarios, estadísticas, accesos y registro de cambios).',
+    permisos: ['ver', 'stock', 'productos', 'novedades', 'usuarios', 'auditoria', 'asistente', 'registros', 'empleados'],
+    grupo: 'administracion',
   },
   editor: {
     nombre: 'Editor de stock',
-    descripcion: 'Consulta el inventario, cambia el stock, agrega o edita productos e imágenes y usa el asistente.',
-    permisos: ['ver', 'stock', 'productos', 'asistente'],
+    descripcion: 'Stock Bazar: consulta el inventario, cambia el stock, agrega o edita productos e imágenes y usa el asistente.',
+    permisos: ['ver', 'stock', 'productos', 'asistente', 'empleados'],
+    grupo: 'stock',
   },
   visualizador: {
     nombre: 'Visualizador de stock',
-    descripcion: 'Solo consulta el inventario (también con el asistente). No puede modificar nada.',
-    permisos: ['ver', 'asistente'],
+    descripcion: 'Stock Bazar: solo consulta el inventario (también con el asistente). No puede modificar nada.',
+    permisos: ['ver', 'asistente', 'empleados'],
+    grupo: 'stock',
+  },
+  registros: {
+    nombre: 'Carga de registros',
+    descripcion: 'Registros: carga el formulario (con el asistente de IA) y ve o descarga la planilla de registros. No accede al stock. Todos los roles ven Información empleados.',
+    permisos: ['registros', 'empleados'],
+    grupo: 'registros',
   },
 };
-export const esRol = (r: unknown): r is Rol => typeof r === 'string' && r in ROLES;
-export const puede = (rol: Rol, permiso: Permiso) => ROLES[rol].permisos.includes(permiso);
+export const GRUPOS_ROL: Record<GrupoRol, string> = { stock: 'Stock Bazar', registros: 'Registros', administracion: 'Administración' };
+export const esRol = (r: unknown): r is Rol => typeof r === 'string' && Object.hasOwn(ROLES, r);
+
+/** Quien tiene roles: una persona o la lista de sus roles. */
+export type ConRoles = { roles: readonly Rol[] } | readonly Rol[];
+const rolesDe = (x: ConRoles): readonly Rol[] => (Array.isArray(x) ? x : (x as { roles: readonly Rol[] }).roles);
+export const puede = (x: ConRoles, permiso: Permiso) => rolesDe(x).some((rol) => ROLES[rol]?.permisos.includes(permiso));
+export const esAdministrador = (x: ConRoles) => rolesDe(x).includes('administrador');
+/** Nombres de los roles de una persona, para mostrar. */
+export const nombresRoles = (x: ConRoles) => rolesDe(x).map((rol) => ROLES[rol]?.nombre ?? rol).join(' · ');
+
+/** Lee la lista guardada en la base ("editor,registros"): solo roles conocidos, sin repetir, en el orden de ROLES. */
+export function leerRoles(guardado: unknown, respaldo?: unknown): Rol[] {
+  const lista = String(guardado ?? respaldo ?? '').split(',').map((x) => x.trim());
+  return (Object.keys(ROLES) as Rol[]).filter((rol) => lista.includes(rol));
+}
+/** Valor para la columna `roles`. */
+export const guardarRoles = (roles: readonly Rol[]) => (Object.keys(ROLES) as Rol[]).filter((rol) => roles.includes(rol)).join(',');
+/** Valor de la columna heredada `rol` (solo admite los tres roles de stock): el más fuerte que tenga. */
+export const rolHeredado = (roles: readonly Rol[]): 'administrador' | 'editor' | 'visualizador' =>
+  roles.includes('administrador') ? 'administrador' : roles.includes('editor') ? 'editor' : 'visualizador';
 
 // ── Límite de intentos en memoria (por IP). El bloqueo por usuario se guarda en la base. ──
 export class Limitador {

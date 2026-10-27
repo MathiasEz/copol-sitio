@@ -36,6 +36,7 @@ const fila = <T>(sql: string, args: (string | number)[] = []) => una<T>(db, sql,
 
 /** Cliente mínimo que conserva cookies y extrae el token CSRF de los formularios. */
 class Navegador {
+  usuario = '';
   cookies = new Map<string, string>();
   csrf = '';
   /** `pinAutomatico`: si el panel pide el PIN, lo ingresa y repite el pedido (como haría la persona). */
@@ -75,11 +76,17 @@ class Navegador {
     }
     return res;
   }
-  async post(ruta: string, campos: Record<string, string | Blob>, extra: RequestInit & { origen?: string | null } = {}) {
+  async post(ruta: string, campos: Record<string, string | string[] | Blob>, extra: RequestInit & { origen?: string | null } = {}) {
     const fd = new FormData();
     if (!('_csrf' in campos)) fd.set('_csrf', this.csrf);
-    for (const [k, v] of Object.entries(campos)) fd.set(k, v);
+    for (const [k, v] of Object.entries(campos)) {
+      if (Array.isArray(v)) for (const x of v) fd.append(k, x); else fd.set(k, v);
+    }
     return this.pedir(ruta, { method: 'POST', body: fd, ...extra });
+  }
+  /** POST en JSON con el token CSRF en el encabezado (así habla registros.js con el servidor). */
+  async postJson(ruta: string, datos: unknown, extra: RequestInit = {}) {
+    return this.pedir(ruta, { method: 'POST', body: JSON.stringify(datos), headers: { 'content-type': 'application/json', accept: 'application/json', 'x-csrf-token': this.csrf }, ...extra });
   }
   async ingresar(usuario: string, clave = CLAVE) {
     await this.pedir(`${RUTA}/ingresar`);
@@ -99,11 +106,11 @@ before(async () => {
     { sql: "INSERT INTO productos (id, rubro_id, codigo, nombre, categoria_id, imagen, stock_estado, origen, creado_en, actualizado_en) VALUES ('parlante-1', 'bazar', '100001', 'PARLANTE PRUEBA', 'audio', 'bazar/parlante-1.webp', 'con-stock', 'importado', ?, ?)", args: [t, t] },
     { sql: "INSERT INTO productos (id, rubro_id, codigo, nombre, categoria_id, imagen, stock_estado, origen, creado_en, actualizado_en) VALUES ('estufa-2', 'bazar', '100002', 'ESTUFA PRUEBA', 'hogar', NULL, 'sin-stock', 'importado', ?, ?)", args: [t, t] },
   ], 'write');
-  await crearUsuario(db, { usuario: 'principal', rol: 'administrador', clave: CLAVE, debeCambiar: false, protegido: true, creadoPor: null });
-  await crearUsuario(db, { usuario: 'admin2', rol: 'administrador', clave: CLAVE, debeCambiar: false, creadoPor: null });
-  await crearUsuario(db, { usuario: 'editor', rol: 'editor', clave: CLAVE, debeCambiar: false, creadoPor: null });
-  await crearUsuario(db, { usuario: 'lector', rol: 'visualizador', clave: CLAVE, debeCambiar: false, creadoPor: null });
-  await crearUsuario(db, { usuario: 'nuevo', rol: 'editor', clave: CLAVE, debeCambiar: true, creadoPor: null });
+  await crearUsuario(db, { usuario: 'principal', roles: ['administrador'], clave: CLAVE, debeCambiar: false, protegido: true, creadoPor: null });
+  await crearUsuario(db, { usuario: 'admin2', roles: ['administrador'], clave: CLAVE, debeCambiar: false, creadoPor: null });
+  await crearUsuario(db, { usuario: 'editor', roles: ['editor'], clave: CLAVE, debeCambiar: false, creadoPor: null });
+  await crearUsuario(db, { usuario: 'lector', roles: ['visualizador'], clave: CLAVE, debeCambiar: false, creadoPor: null });
+  await crearUsuario(db, { usuario: 'nuevo', roles: ['editor'], clave: CLAVE, debeCambiar: true, creadoPor: null });
   await db.execute("UPDATE usuarios SET correo = usuario || '@copol.test'");
   await guardarPin(db, PIN);
 });
@@ -157,7 +164,7 @@ describe('autenticación', () => {
     assert.equal((await n.pedir(`${RUTA}/productos`)).status, 200);
   });
   it('bloquea la cuenta tras 5 intentos fallidos', async () => {
-    await crearUsuario(db, { usuario: 'victima', rol: 'visualizador', clave: CLAVE, debeCambiar: false, creadoPor: null });
+    await crearUsuario(db, { usuario: 'victima', roles: ['visualizador'], clave: CLAVE, debeCambiar: false, creadoPor: null });
     for (let i = 0; i < 5; i++) await new Navegador().ingresar('victima', 'mal-' + i);
     const r = await new Navegador().ingresar('victima', CLAVE);
     assert.equal(r.status, 401);
@@ -179,7 +186,7 @@ describe('autorización por rol (del lado del servidor)', () => {
     await n.ingresar('editor');
     for (const ruta of [`${RUTA}/usuarios`, `${RUTA}/registro`, `${RUTA}/novedades`, `${RUTA}/banner`, `${RUTA}/banner/nueva`, `${RUTA}/ofertas`, `${RUTA}/creditos`]) assert.equal((await n.pedir(ruta)).status, 403, ruta);
     await n.pedir(`${RUTA}/productos`);
-    assert.equal((await n.post(`${RUTA}/usuarios`, { usuario: 'xx-1', rol: 'administrador', clave: 'Clave-Larga-123!' })).status, 403);
+    assert.equal((await n.post(`${RUTA}/usuarios`, { usuario: 'xx-1', roles: ['administrador'], clave: 'Clave-Larga-123!' })).status, 403);
   });
   it('nadie más que el propio administrador principal puede modificarlo o eliminarlo', async () => {
     const n = new Navegador();
@@ -187,7 +194,7 @@ describe('autorización por rol (del lado del servidor)', () => {
     const p = (await fila<{ id: number }>("SELECT id FROM usuarios WHERE usuario = 'principal'"))!;
     await n.pedir(`${RUTA}/usuarios`);
     assert.equal((await n.post(`${RUTA}/usuarios/${p.id}/eliminar`, {})).status, 403);
-    assert.equal((await n.post(`${RUTA}/usuarios/${p.id}`, { rol: 'visualizador' })).status, 403);
+    assert.equal((await n.post(`${RUTA}/usuarios/${p.id}`, { roles: ['visualizador'] })).status, 403);
     assert.equal((await n.post(`${RUTA}/usuarios/${p.id}/clave`, { clave: 'Clave-Nueva-12345!' })).status, 403);
   });
 });
@@ -592,17 +599,18 @@ describe('usuarios', () => {
     const form = await (await n.pedir(`${RUTA}/usuarios`)).text();
     assert.match(form, /Usuario o correo/);
     assert.doesNotMatch(form, /name="nombre"/);
-    assert.equal((await n.post(`${RUTA}/usuarios`, { usuario: 'ana@copol.com.uy', rol: 'visualizador', clave: 'corta' })).status, 400);
-    assert.equal((await n.post(`${RUTA}/usuarios`, { usuario: 'Ana@Copol.com.uy', rol: 'visualizador', clave: 'Temporal-Segura-1' })).status, 302);
+    assert.equal((await n.post(`${RUTA}/usuarios`, { usuario: 'ana@copol.com.uy', roles: ['visualizador'], clave: 'corta' })).status, 400);
+    assert.equal((await n.post(`${RUTA}/usuarios`, { usuario: 'Ana@Copol.com.uy', roles: ['visualizador'], clave: 'Temporal-Segura-1' })).status, 302);
     const ana = (await fila<{ id: number; rol: string; debe_cambiar_clave: number; hash: string }>("SELECT * FROM usuarios WHERE usuario = 'ana@copol.com.uy'"))!;
     assert.equal(ana.rol, 'visualizador');
+    assert.equal((await fila<{ roles: string }>("SELECT roles FROM usuarios WHERE id = ?", [ana.id]))!.roles, 'visualizador');
     assert.equal(ana.debe_cambiar_clave, 1);
     assert.match(ana.hash, /^scrypt\$/);
     assert.ok(!ana.hash.includes('Temporal-Segura-1'));
     const ingreso = await new Navegador().ingresar('ana@copol.com.uy', 'Temporal-Segura-1');
     assert.equal(ingreso.headers.get('location'), `${RUTA}/perfil/clave`);
     await n.pedir(`${RUTA}/usuarios/${ana.id}`);
-    assert.equal((await n.post(`${RUTA}/usuarios/${ana.id}`, { rol: 'editor', activo: '1' })).status, 302);
+    assert.equal((await n.post(`${RUTA}/usuarios/${ana.id}`, { roles: ['editor'], activo: '1' })).status, 302);
     assert.equal((await fila<{ rol: string }>('SELECT rol FROM usuarios WHERE id = ?', [ana.id]))!.rol, 'editor');
     assert.equal((await n.post(`${RUTA}/usuarios/${ana.id}/eliminar`, {})).status, 302);
     assert.equal(await fila('SELECT 1 FROM usuarios WHERE id = ?', [ana.id]), undefined);
@@ -1199,7 +1207,7 @@ describe('acceso: PIN, código por correo, equipos recordados y Accesos', () => 
   });
   it('sin correo asignado no deja ingresar si la verificación está activa', async () => {
     await limpiarLimites();
-    await crearUsuario(db, { usuario: 'sincorreo', rol: 'visualizador', clave: CLAVE, debeCambiar: false, creadoPor: null });
+    await crearUsuario(db, { usuario: 'sincorreo', roles: ['visualizador'], clave: CLAVE, debeCambiar: false, creadoPor: null });
     const r = await conClave(new Navegador(conCorreo), 'sincorreo');
     assert.equal(r.status, 403);
     assert.match(await r.text(), /no tiene un correo/);
@@ -1238,7 +1246,7 @@ describe('acceso: PIN, código por correo, equipos recordados y Accesos', () => 
   it('sin PIN creado, el primer administrador tiene que crearlo', async () => {
     const otra = await conectar(`file:${path.join(dir, 'sin-pin.db').replace(/\\/g, '/')}`);
     try {
-      await crearUsuario(otra, { usuario: 'jefe', rol: 'administrador', clave: CLAVE, debeCambiar: false, creadoPor: null });
+      await crearUsuario(otra, { usuario: 'jefe', roles: ['administrador'], clave: CLAVE, debeCambiar: false, creadoPor: null });
       const app3 = crearApp({ db: otra, config, correo: null });
       const n = new Navegador(app3, false);
       assert.equal((await n.pedir(`${RUTA}/ingresar`)).status, 200, 'sin PIN no hay pantalla de PIN');
@@ -1373,5 +1381,296 @@ describe('notificaciones de la app', () => {
     await n.pedir(`${RUTA}/novedades/${nov.id}`);
     await n.post(`${RUTA}/novedades/${nov.id}`, { titulo: 'Nueva sucursal en Rivera', texto: 'Abrimos en el centro (editada).', plantilla: 'texto', publicado: '1' });
     assert.equal((await NT.listarNotificaciones(db)).filter((x) => x.origen === `auto:novedad:${nov.id}`).length, 1, 'editar no vuelve a avisar');
+  });
+});
+
+describe('varios roles por persona y menú por secciones', () => {
+  const menu = async (n: Navegador, ruta = `${RUTA}/empleados`) => {
+    const html = await (await n.pedir(ruta)).text();
+    return { html, tiene: (texto: string) => new RegExp(`class="nav__item"[^>]*>(?:<svg[\\s\\S]*?</svg>)?<span>${texto}</span>`).test(html) || html.includes(`<span>${texto}</span>`), grupos: [...html.matchAll(/<p class="nav__titulo">([^<]+)<\/p>/g)].map((m) => m[1]) };
+  };
+  before(async () => {
+    await crearUsuario(db, { usuario: 'lector-2', roles: ['visualizador'], clave: CLAVE, debeCambiar: false, creadoPor: null });
+    await crearUsuario(db, { usuario: 'cargador', roles: ['registros'], clave: CLAVE, debeCambiar: false, creadoPor: null });
+    await crearUsuario(db, { usuario: 'mixto', roles: ['editor', 'registros'], clave: CLAVE, debeCambiar: false, creadoPor: null });
+    await db.execute("UPDATE usuarios SET correo = usuario || '@copol.test' WHERE correo IS NULL");
+  });
+
+  it('cada rol conserva sus permisos y el menú se arma en tres secciones', async () => {
+    const admin = new Navegador();
+    await admin.ingresar('principal');
+    const a = await menu(admin, `${RUTA}/productos`);
+    assert.deepEqual(a.grupos, ['Stock Bazar', 'Registros', 'Administración']);
+    for (const t of ['Inventario', 'Agregar producto', 'Asistente', 'Nuevo registro', 'Planilla', 'Administración Página', 'Información empleados', 'Estadísticas', 'Usuarios', 'Registro de cambios', 'Accesos']) assert.ok(a.tiene(t), t);
+    const lector = new Navegador();
+    await lector.ingresar('lector-2');
+    const l = await menu(lector, `${RUTA}/productos`);
+    assert.deepEqual(l.grupos, ['Stock Bazar', 'Administración']);
+    assert.ok(l.tiene('Inventario') && !l.tiene('Nuevo registro') && !l.tiene('Usuarios'));
+    assert.equal((await lector.pedir(`${RUTA}/registros`)).status, 403);
+    assert.equal((await lector.pedir(`${RUTA}/registros/planilla`)).status, 403);
+  });
+
+  it('Carga de registros entra directo a Registros y no ve el stock', async () => {
+    const n = new Navegador();
+    await n.ingresar('cargador');
+    const inicio = await n.pedir(`${RUTA}/`);
+    assert.equal(inicio.status, 302);
+    assert.equal(inicio.headers.get('location'), `${RUTA}/registros`);
+    const m = await menu(n, `${RUTA}/registros`);
+    assert.deepEqual(m.grupos, ['Registros', 'Administración']);
+    assert.ok(m.tiene('Nuevo registro') && m.tiene('Planilla') && m.tiene('Información empleados') && !m.tiene('Inventario'));
+    for (const ruta of [`${RUTA}/productos`, `${RUTA}/nuevo`, `${RUTA}/asistente`, `${RUTA}/usuarios`, `${RUTA}/registro`, `${RUTA}/banner`]) assert.equal((await n.pedir(ruta)).status, 403, ruta);
+    assert.equal((await n.pedir(`${RUTA}/empleados`)).status, 200);
+    assert.equal((await n.post(`${RUTA}/productos/parlante-1/stock`, { estado: 'sin-stock' })).status, 403);
+  });
+
+  it('los permisos de varios roles se suman (Editor de stock + Carga de registros)', async () => {
+    const n = new Navegador();
+    await n.ingresar('mixto');
+    assert.equal((await n.pedir(`${RUTA}/`)).status, 200);
+    assert.equal((await n.pedir(`${RUTA}/nuevo`)).status, 200);
+    assert.equal((await n.pedir(`${RUTA}/registros`)).status, 200);
+    assert.equal((await n.pedir(`${RUTA}/usuarios`)).status, 403);
+    assert.match(await (await n.pedir(`${RUTA}/perfil`)).text(), /Editor de stock · Carga de registros/);
+  });
+
+  it('un administrador asigna varios roles, se exige al menos uno y siempre queda un administrador', async () => {
+    const n = new Navegador();
+    await n.ingresar('principal');
+    const form = await (await n.pedir(`${RUTA}/usuarios`)).text();
+    assert.match(form, /name="roles" value="registros"/);
+    assert.match(form, /<p class="roles__titulo">Registros<\/p>/);
+    assert.equal((await n.post(`${RUTA}/usuarios`, { usuario: 'sin-rol-1', clave: 'Temporal-Segura-1' })).status, 400);
+    assert.equal((await n.post(`${RUTA}/usuarios`, { usuario: 'doble-1', roles: ['visualizador', 'registros'], clave: 'Temporal-Segura-1' })).status, 302);
+    const u = (await fila<{ id: number; rol: string; roles: string }>("SELECT id, rol, roles FROM usuarios WHERE usuario = 'doble-1'"))!;
+    assert.equal(u.roles, 'visualizador,registros');
+    assert.equal(u.rol, 'visualizador');
+    assert.equal((await n.post(`${RUTA}/usuarios/${u.id}`, { activo: '1' })).status, 400, 'sin roles no se guarda');
+    assert.equal((await n.post(`${RUTA}/usuarios/${u.id}`, { roles: ['editor', 'registros', 'inventado'], activo: '1' })).status, 302);
+    assert.equal((await fila<{ roles: string }>('SELECT roles FROM usuarios WHERE id = ?', [u.id]))!.roles, 'editor,registros');
+    // Un administrador con otros roles también cuenta como administrador: el último no se puede bajar.
+    await crearUsuario(db, { usuario: 'solo-admin', roles: ['administrador', 'registros'], clave: CLAVE, debeCambiar: false, creadoPor: null });
+    await db.execute("UPDATE usuarios SET activo = 0 WHERE usuario IN ('admin2', 'jefe-x')");
+    const ultimo = (await fila<{ id: number }>("SELECT id FROM usuarios WHERE usuario = 'solo-admin'"))!;
+    const vistoPorPrincipal = await n.post(`${RUTA}/usuarios/${ultimo.id}`, { roles: ['registros'], activo: '1' });
+    assert.equal(vistoPorPrincipal.status, 302, 'principal sigue siendo administrador: se puede');
+    await db.execute("UPDATE usuarios SET activo = 1 WHERE usuario = 'admin2'");
+  });
+
+  it('las cuentas anteriores (solo la columna rol) siguen funcionando con su rol', async () => {
+    await db.execute("INSERT INTO usuarios (usuario, nombre, rol, hash, debe_cambiar_clave, creado_en, correo) SELECT 'vieja', 'vieja', 'editor', hash, 0, creado_en, 'vieja@copol.test' FROM usuarios WHERE usuario = 'editor'");
+    assert.equal((await fila<{ roles: string | null }>("SELECT roles FROM usuarios WHERE usuario = 'vieja'"))!.roles, null);
+    const n = new Navegador();
+    assert.equal((await n.ingresar('vieja')).status, 302);
+    assert.equal((await n.pedir(`${RUTA}/nuevo`)).status, 200);
+    assert.equal((await n.pedir(`${RUTA}/usuarios`)).status, 403);
+  });
+});
+
+describe('registros: formulario, asistente y planilla', () => {
+  const VALIDO = { nombre: 'María Rodríguez', socio: '48213', cedula: '55605392', direccion: 'Bv. Artigas 1520 apto 503, Montevideo', producto: 'Lavarropas Samsung 8 kg', codigo: '467972', flete: 'Sí', service: '', adicional: 'Llamar antes', mapa: 'https://www.google.com/maps/search/?api=1&query=-34.900000%2C-56.180000' };
+  const entrar = async (usuario: string) => {
+    const n = new Navegador();
+    await n.ingresar(usuario);
+    await n.pedir(`${RUTA}/registros`);
+    return n;
+  };
+  const cantidad = async () => Number((await fila<{ n: number }>('SELECT COUNT(*) n FROM registros'))!.n);
+  // Gateway de IA simulado: devuelve campos fijos y deja los pedidos para revisarlos.
+  const pedidosIA: { cuerpo: { messages: { content: unknown }[] } }[] = [];
+  const falsoGateway: typeof fetch = async (entrada, init) => {
+    assert.ok(String(entrada).startsWith('https://ai-gateway.vercel.sh/'));
+    pedidosIA.push({ cuerpo: JSON.parse(String(init!.body)) });
+    return new Response(JSON.stringify({ content: [{ type: 'tool_use', id: 'x', name: 'completar_formulario', input: { respuesta: 'Listo.', nombre: 'maría rodríguez', cedula: '5.560.539-2', socio: '48.213', flete: 'si' } }], stop_reason: 'tool_use' }), { status: 200, headers: { 'content-type': 'application/json' } });
+  };
+  let original: typeof app;
+  before(() => {
+    original = app;
+    app = crearApp({ db, config, almacen: almacenConfigurado(config.dirImagenes, `${RUTA}/media`), correo: null, asistente: { fetch: falsoGateway, token: 'token-de-prueba' } });
+  });
+  after(() => { app = original; });
+
+  it('valida en el servidor (cédula, socio, dirección y enlace del mapa) y no guarda si hay errores', async () => {
+    const n = await entrar('cargador');
+    const antes = await cantidad();
+    const mal = await n.postJson(`${RUTA}/registros/guardar`, { ...VALIDO, cedula: '12345678', socio: 'abc', mapa: 'https://malo.example/x' });
+    assert.equal(mal.status, 422);
+    const cuerpo = await mal.json() as { errores: Record<string, string> };
+    assert.deepEqual(Object.keys(cuerpo.errores).sort(), ['cedula', 'direccion', 'socio']);
+    assert.equal((await n.postJson(`${RUTA}/registros/guardar`, { ...VALIDO, nombre: '', flete: 'quizás' })).status, 422);
+    assert.equal(await cantidad(), antes);
+  });
+
+  it('exige sesión, permiso, mismo origen y token CSRF', async () => {
+    assert.equal((await new Navegador().postJson(`${RUTA}/registros/guardar`, VALIDO)).status, 403, 'sin sesión no hay token CSRF válido');
+    const l = new Navegador();
+    await l.ingresar('lector-2');
+    await l.pedir(`${RUTA}/productos`);
+    assert.equal((await l.postJson(`${RUTA}/registros/guardar`, VALIDO)).status, 403);
+    assert.equal((await l.postJson(`${RUTA}/registros/asistente`, { mensajes: [{ rol: 'usuario', texto: 'hola' }] })).status, 403);
+    const n = await entrar('cargador');
+    assert.equal((await n.pedir(`${RUTA}/registros/guardar`, { method: 'POST', body: JSON.stringify(VALIDO), headers: { 'content-type': 'application/json', accept: 'application/json' } })).status, 403, 'sin token CSRF');
+    assert.equal((await n.postJson(`${RUTA}/registros/guardar`, VALIDO, { origen: 'https://otro.example' } as RequestInit)).status, 403, 'otro origen');
+  });
+
+  it('sin hoja de Google la planilla de prueba vive en la base: guarda, lista y descarga el Excel', async () => {
+    await db.execute('DELETE FROM registros');
+    const n = await entrar('cargador');
+    const pagina = await (await n.pedir(`${RUTA}/registros`)).text();
+    assert.match(pagina, /Modo de prueba/);
+    assert.match(pagina, /data-ia="1"/);
+    assert.match(pagina, /name="cedula"/);
+    const ok = await n.postJson(`${RUTA}/registros/guardar`, VALIDO);
+    assert.equal(ok.status, 200);
+    assert.match(((await ok.json()) as { destino: string }).destino, /Planilla de prueba/);
+    const fila1 = (await fila<Record<string, string | number | null>>('SELECT * FROM registros'))!;
+    assert.equal(fila1.cedula, '55605392');
+    assert.equal(fila1.cargado_por, 'cargador');
+    assert.equal(fila1.mapa, VALIDO.mapa);
+    assert.match(String(fila1.fecha), /^\d{4}-\d\d-\d\d \d\d:\d\d$/);
+    const aud = (await fila<{ detalle: string; usuario: string }>("SELECT detalle, usuario FROM auditoria WHERE accion = 'registro.alta' ORDER BY id DESC"))!;
+    assert.equal(aud.usuario, 'cargador');
+    assert.ok(!aud.detalle.includes('55605392') && !aud.detalle.includes('Artigas'), 'la auditoría no lleva cédula ni dirección');
+    const lista = await (await n.pedir(`${RUTA}/registros/planilla`)).text();
+    assert.match(lista, /María Rodríguez/);
+    assert.match(lista, /href="https:\/\/www\.google\.com\/maps\/search\/\?api=1&amp;query=/);
+    const xlsx = await n.pedir(`${RUTA}/registros/planilla.xlsx`);
+    assert.equal(xlsx.status, 200);
+    assert.match(xlsx.headers.get('content-disposition') ?? '', /attachment; filename="registros-copol-prueba\.xlsx"/);
+    const bytes = new Uint8Array(await xlsx.arrayBuffer());
+    assert.equal(String.fromCharCode(bytes[0], bytes[1]), 'PK');
+  });
+
+  it('solo un administrador vacía la planilla de prueba y queda en el registro de cambios', async () => {
+    const n = await entrar('cargador');
+    assert.equal((await n.post(`${RUTA}/registros/planilla/vaciar`, {})).status, 403);
+    assert.ok(await cantidad() > 0);
+    const admin = new Navegador();
+    await admin.ingresar('principal');
+    await admin.pedir(`${RUTA}/registros/planilla`);
+    assert.equal((await admin.post(`${RUTA}/registros/planilla/vaciar`, {})).status, 302);
+    assert.equal(await cantidad(), 0);
+    assert.ok(await fila("SELECT 1 FROM auditoria WHERE accion = 'registro.vaciar'"));
+  });
+
+  it('el asistente completa el formulario con campos limpios, recibe fotos y nunca guarda', async () => {
+    const n = await entrar('mixto');
+    const antes = await cantidad();
+    const foto = Buffer.from(await (await png(40, 30)).arrayBuffer()).toString('base64');
+    const r = await n.postJson(`${RUTA}/registros/asistente`, { mensajes: [{ rol: 'usuario', texto: 'María Rodríguez socia 48213 cédula 5.560.539-2' }], formulario: { flete: 'No' }, adjuntos: [{ tipo: 'imagen', datos: foto, nombre: 'cedula.png' }] });
+    assert.equal(r.status, 200);
+    const cuerpo = await r.json() as { ok: boolean; campos: Record<string, string>; faltan: string[] };
+    assert.deepEqual(cuerpo.campos, { nombre: 'maría rodríguez', socio: '48213', cedula: '55605392', flete: 'Sí' });
+    assert.ok(cuerpo.faltan.includes('Producto'));
+    const enviado = pedidosIA.at(-1)!.cuerpo.messages.at(-1)!.content as { type: string }[];
+    assert.equal(enviado[0].type, 'image');
+    assert.equal(await cantidad(), antes);
+    // Solo fotos y PDF reales: un archivo que dice ser imagen no pasa.
+    const falso = await n.postJson(`${RUTA}/registros/asistente`, { mensajes: [{ rol: 'usuario', texto: 'hola' }], adjuntos: [{ tipo: 'imagen', datos: Buffer.from('<?php echo 1;').toString('base64'), nombre: 'x.png' }] });
+    assert.equal(falso.status, 413);
+    assert.equal((await n.postJson(`${RUTA}/registros/asistente`, { mensajes: [] })).status, 400);
+    assert.ok(await fila("SELECT 1 FROM auditoria WHERE accion = 'registro.asistente'"));
+  });
+
+  it('el asistente tiene límite por día y se puede apagar', async () => {
+    const n = await entrar('mixto');
+    process.env.IA_LIMITE_DIA = '1';
+    try {
+      assert.equal((await n.postJson(`${RUTA}/registros/asistente`, { mensajes: [{ rol: 'usuario', texto: 'otro mensaje' }] })).status, 429);
+    } finally {
+      delete process.env.IA_LIMITE_DIA;
+    }
+    process.env.IA_APAGADA = '1';
+    try {
+      assert.equal((await n.postJson(`${RUTA}/registros/asistente`, { mensajes: [{ rol: 'usuario', texto: 'hola' }] })).status, 503);
+      assert.match(await (await n.pedir(`${RUTA}/registros`)).text(), /data-ia="0"/);
+    } finally {
+      delete process.env.IA_APAGADA;
+    }
+  });
+
+  it('con la hoja de Google conectada escribe en la pestaña del mes y la base guarda solo un resumen', async () => {
+    const { privateKey } = crypto.generateKeyPairSync('rsa', { modulusLength: 2048 });
+    process.env.GOOGLE_CREDENCIALES = JSON.stringify({ client_email: 'registros@prueba.iam.gserviceaccount.com', private_key: privateKey.export({ type: 'pkcs8', format: 'pem' }) });
+    process.env.GOOGLE_HOJA = 'https://docs.google.com/spreadsheets/d/1AbCdEfGhIjKlMnOpQrStUvWxYz0123456789/edit';
+    const google = await import('../src/registros-google.ts');
+    const { nombreMes, COLUMNAS } = await import('../src/registros-campos.ts');
+    const llamadas: { url: string; metodo: string; cuerpo: any }[] = [];
+    google.usarFetch(async (entrada, init) => {
+      const url = String(entrada);
+      const cuerpo = init?.body && typeof init.body === 'string' && init.body.startsWith('{') ? JSON.parse(init.body) : null;
+      llamadas.push({ url, metodo: init?.method ?? 'GET', cuerpo });
+      const json = (o: unknown) => new Response(JSON.stringify(o), { status: 200, headers: { 'content-type': 'application/json' } });
+      if (url.startsWith('https://oauth2.googleapis.com/token')) return json({ access_token: 'tk', expires_in: 3600 });
+      if (url.includes('fields=properties')) return json({ properties: { title: 'Registros COPOL', locale: 'es_UY' }, sheets: [{ properties: { sheetId: 7, title: nombreMes() } }] });
+      if (url.includes('/values/') && !url.includes(':append')) return json({ values: [COLUMNAS] });
+      return json({});
+    });
+    try {
+      const n = await entrar('cargador');
+      assert.doesNotMatch(await (await n.pedir(`${RUTA}/registros`)).text(), /Modo de prueba/);
+      const ok = await n.postJson(`${RUTA}/registros/guardar`, VALIDO);
+      assert.equal(ok.status, 200, await ok.clone().text());
+      assert.match(((await ok.json()) as { destino: string }).destino, new RegExp(`Google Sheets · ${nombreMes()}`));
+      const append = llamadas.find((x) => x.url.includes(':append'))!;
+      assert.ok(decodeURIComponent(append.url).includes(`'${nombreMes()}'!A:K`));
+      const valores = append.cuerpo.values[0] as string[];
+      assert.equal(valores[1], 'María Rodríguez');
+      assert.equal(valores[3], '55605392');
+      assert.match(valores[4], /^=HYPERLINK\("https:\/\/www\.google\.com\/maps\/search\//);
+      assert.equal(valores[9], 'cargador');
+      const r = (await fila<Record<string, string | null>>('SELECT * FROM registros ORDER BY id DESC'))!;
+      assert.equal(r.nombre, 'María Rodríguez');
+      assert.equal(r.cedula, null);
+      assert.equal(r.direccion, null);
+      assert.equal(r.adicional, null);
+      assert.match(r.destino!, /Google Sheets/);
+      const pagina = await (await n.pedir(`${RUTA}/registros/planilla`)).text();
+      assert.match(pagina, /Abrir hoja de Google/);
+      assert.doesNotMatch(pagina, /55605392|Artigas/);
+      assert.equal((await n.pedir(`${RUTA}/registros/planilla.xlsx`)).status, 302);
+      // Si Google falla, no queda ninguna constancia: la persona ve el error y puede reintentar.
+      const antes = await cantidad();
+      google.usarFetch(async (entrada) => (String(entrada).startsWith('https://oauth2.googleapis.com/') ? new Response(JSON.stringify({ access_token: 'tk', expires_in: 3600 }), { status: 200 }) : new Response('{"error":{"status":"PERMISSION_DENIED"}}', { status: 403 })));
+      const falla = await n.postJson(`${RUTA}/registros/guardar`, VALIDO);
+      assert.equal(falla.status, 503);
+      assert.match(((await falla.json()) as { error: string }).error, /Compartila con registros@prueba\.iam\.gserviceaccount\.com/);
+      assert.equal(await cantidad(), antes);
+    } finally {
+      delete process.env.GOOGLE_CREDENCIALES;
+      delete process.env.GOOGLE_HOJA;
+      google.usarFetch(fetch);
+    }
+  });
+});
+
+describe('mantener la sesión iniciada', () => {
+  const sesion = async (n: Navegador) => (await fila<{ larga: number; expira_en: string; creada_en: string; ultima_actividad: string; id_hash: string }>('SELECT s.* FROM sesiones s JOIN usuarios u ON u.id = s.usuario_id WHERE u.usuario = ? ORDER BY s.creada_en DESC', [n.usuario]))!;
+  it('el ingreso ofrece la casilla y, marcada, la sesión dura semanas; sin marcar, queda la sesión corta', async () => {
+    const a = new Navegador();
+    const pagina = await (await a.pedir(`${RUTA}/ingresar`)).text();
+    assert.match(pagina, /name="mantener"/);
+    a.usuario = 'editor';
+    assert.equal((await a.post(`${RUTA}/ingresar`, { usuario: 'editor', clave: CLAVE, mantener: '1' })).status, 302);
+    const larga = await sesion(a);
+    assert.equal(larga.larga, 1);
+    const dias = (Date.parse(larga.expira_en) - Date.parse(larga.creada_en)) / 86_400_000;
+    assert.ok(dias > 89 && dias <= 90, `tope de 90 días (${dias})`);
+    // Pasadas 2 horas sin usarla sigue abierta (la común se cierra a los 30 minutos).
+    await db.execute('UPDATE sesiones SET ultima_actividad = ? WHERE id_hash = ?', [new Date(Date.now() - 2 * 3600_000).toISOString(), larga.id_hash]);
+    assert.equal((await a.pedir(`${RUTA}/productos`)).status, 200);
+    // Y se cierra tras 30 días sin usarla.
+    await db.execute('UPDATE sesiones SET ultima_actividad = ? WHERE id_hash = ?', [new Date(Date.now() - 31 * 86_400_000).toISOString(), larga.id_hash]);
+    assert.equal((await a.pedir(`${RUTA}/productos`)).status, 302);
+
+    const b = new Navegador();
+    b.usuario = 'editor';
+    await b.pedir(`${RUTA}/ingresar`);
+    assert.equal((await b.post(`${RUTA}/ingresar`, { usuario: 'editor', clave: CLAVE })).status, 302);
+    const corta = await sesion(b);
+    assert.equal(corta.larga, 0);
+    await db.execute('UPDATE sesiones SET ultima_actividad = ? WHERE id_hash = ?', [new Date(Date.now() - 2 * 3600_000).toISOString(), corta.id_hash]);
+    assert.equal((await b.pedir(`${RUTA}/productos`)).status, 302, 'la común vence por inactividad');
   });
 });
