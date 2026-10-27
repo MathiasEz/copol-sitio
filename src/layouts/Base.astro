@@ -13,9 +13,11 @@ interface Props {
   noIndexar?: boolean;
   /** Sin el botón flotante de WhatsApp (p. ej. en el Bazar, que tiene su propio botón flotante). */
   sinWhatsappFlotante?: boolean;
+  /** Página a todo el ancho de la pantalla, sin márgenes laterales de contenido (Inicio). */
+  anchoCompleto?: boolean;
 }
 
-const { titulo, descripcion = SITIO.descripcion, imagen = '/og-copol.jpg', noIndexar: noIndexarPagina = false, sinWhatsappFlotante = false } = Astro.props;
+const { titulo, descripcion = SITIO.descripcion, imagen = '/og-copol.jpg', noIndexar: noIndexarPagina = false, sinWhatsappFlotante = false, anchoCompleto = false } = Astro.props;
 // Copias de prueba (vista previa de Vercel o SITIO_DE_PRUEBA=1 al compilar): que los buscadores no las indexen.
 const noIndexar = noIndexarPagina || process.env.VERCEL_ENV === 'preview' || process.env.SITIO_DE_PRUEBA === '1';
 const tituloCompleto = Astro.url.pathname === '/' ? `${SITIO.nombre} · ${SITIO.nombreCompleto} — ${SITIO.lema}` : `${titulo} · ${SITIO.nombre} Cooperativa Policial`;
@@ -70,7 +72,7 @@ const organizacion = {
     if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) document.documentElement.classList.add('js-animar');
   </script>
 </head>
-<body>
+<body class:list={{ 'ancho-completo': anchoCompleto }}>
   <a class="saltar" href="#contenido">Saltar al contenido</a>
   <Encabezado />
   <main id="contenido" tabindex="-1">

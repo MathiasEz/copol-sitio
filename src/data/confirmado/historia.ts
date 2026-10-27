@@ -54,15 +54,6 @@ export const HITOS: Hito[] = [
     fuente: 'Sitio anterior, Nuestra historia',
   },
   {
-    id: 'identidad',
-    anio: '2026',
-    titulo: 'Nueva identidad de marca',
-    texto: 'El Manual de marca COPOL 2026 reúne la identidad visual de la cooperativa: colores, tipografía, ilustraciones y la trama de íconos.',
-    imagen: 'ilustracion',
-    alt: 'Ilustración institucional: personas reunidas alrededor de dos árboles, símbolo del cooperativismo',
-    fuente: 'Manual de marca COPOL 2026',
-  },
-  {
     id: 'hoy',
     anio: 'Hoy',
     titulo: 'Presencia en todo el país',

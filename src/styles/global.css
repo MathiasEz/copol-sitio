@@ -108,6 +108,12 @@
   body::after { right: 0; background-position: top left; }
 }
 
+/* Páginas a todo el ancho (Inicio): el contenido llega de borde a borde, con un margen interno chico, y no
+   hay textura lateral porque no sobra espacio a los costados. */
+.ancho-completo { --ancho: 100vw; --gutter: clamp(16px, 2.6vw, 44px); }
+.ancho-completo::before,
+.ancho-completo::after { display: none !important; }
+
 [hidden] {
   display: none !important;
 }

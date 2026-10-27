@@ -1,0 +1,47 @@
+---
+// Novedades publicadas desde el panel (las mismas que antes se veían al final de Inicio), en formato compacto
+// para el desplegable de la campana del encabezado. Server island: se genera en el servidor y la CDN lo guarda
+// hasta el próximo cambio en el panel (src/lib/cache-publica.ts).
+import Icono from './Icono.astro';
+import { obtenerNovedades, type Novedad } from '../lib/inventario';
+import { cachearEnCdn, ETIQUETAS_WEB, sinCache } from '../lib/cache-publica';
+
+const leidas = await obtenerNovedades();
+if (leidas) cachearEnCdn(Astro.response.headers, ETIQUETAS_WEB.novedades);
+else sinCache(Astro.response.headers);
+const novedades = leidas ?? [];
+const variante = (url: string, ancho: number) => url.replace(/-\d+\.webp$/, `-${ancho}.webp`);
+const externo = (url: string | null) => Boolean(url && /^https?:/.test(url));
+---
+{novedades.length > 0 ? (
+  <ul class="nc-lista">
+    {novedades.map((n: Novedad) => (
+      <li class:list={['nc-item', { 'nc-item--con-imagen': Boolean(n.imagen) && n.plantilla !== 'texto' }]}>
+        {n.imagen && n.plantilla !== 'texto' && (
+          <img class="nc-item__imagen" src={variante(n.imagen, 800)} alt={n.imagen_alt ?? ''} loading="lazy" decoding="async" />
+        )}
+        <div class="nc-item__cuerpo">
+          <strong>{n.titulo}</strong>
+          {n.texto && <p>{n.texto}</p>}
+          {n.enlace_url && n.enlace_texto && (
+            <a href={n.enlace_url} class="enlace-flecha" rel={externo(n.enlace_url) ? 'noopener' : undefined}>{n.enlace_texto} <Icono nombre="flecha" tamano={16} /></a>
+          )}
+        </div>
+      </li>
+    ))}
+  </ul>
+) : (
+  <p class="nc-vacio">Por ahora no hay novedades publicadas. Mirá las <a href="/hipermercado/promociones/">promociones vigentes</a>.</p>
+)}
+
+<style is:global>
+  .nc-lista { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+  .nc-item { display: grid; gap: 0; border-radius: var(--radio-lg); background: var(--card); box-shadow: var(--anillo); overflow: hidden; transition: box-shadow 250ms var(--ease-out-quart), transform 400ms var(--resorte); }
+  .nc-item:hover { box-shadow: var(--anillo-fuerte), var(--sombra-suave); }
+  .nc-item__imagen { display: block; width: 100%; height: auto; max-height: 190px; object-fit: cover; background: var(--muted); }
+  .nc-item__cuerpo { display: grid; gap: 6px; justify-items: start; padding: 12px 14px 14px; }
+  .nc-item__cuerpo strong { color: var(--verde-oscuro); font-size: 1rem; line-height: 1.25; }
+  .nc-item__cuerpo p { margin: 0; font-size: 0.875rem; color: var(--muted-foreground); }
+  .nc-item__cuerpo .enlace-flecha { font-size: 0.875rem; }
+  .nc-vacio { margin: 0; padding: 8px 4px; color: var(--muted-foreground); font-size: 0.9375rem; }
+</style>

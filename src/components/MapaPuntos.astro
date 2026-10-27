@@ -218,28 +218,52 @@ const datos = puntos.map((p) => [p.id, +p.lat.toFixed(5), +p.lng.toFixed(5), p.t
       // Con "reducir movimiento" en el sistema: acercamiento directo y más corto (sin el arco de alejarse
       // y volver), pero igual suave; nunca un salto, que desorienta más que la animación.
       if (reducir.matches) m.easeTo({ center: [p.lng, p.lat], zoom, duration: 900, easing: suave, essential: true });
-      else m.flyTo({ center: [p.lng, p.lat], zoom, speed: desdeTarjeta ? 0.9 : 1.2, curve: 1.42, maxDuration: 2800, essential: true });
+      else m.flyTo({ center: [p.lng, p.lat], zoom, speed: desdeTarjeta ? 0.6 : 1.2, curve: desdeTarjeta ? 1.55 : 1.42, maxDuration: desdeTarjeta ? 4200 : 2800, essential: true });
     }
 
     const enVista = () => {
       const r = raiz.getBoundingClientRect();
-      return r.top >= 0 && r.bottom <= innerHeight;
+      return r.top >= 70 && r.bottom <= innerHeight;
     };
-    const esperarDesplazamiento = () =>
+    // Desplazamiento propio (no depende del "scroll-behavior" del navegador): lento, con arranque y frenado
+    // suaves, y se cancela si la persona toca o gira la rueda. Con "reducir movimiento" dura menos.
+    let cancelaDesplazamiento = () => {};
+    const desplazarHasta = (destino: number) =>
       new Promise<void>((ok) => {
-        let listo = false;
-        const fin = () => { if (!listo) { listo = true; ok(); } };
-        if ('onscrollend' in window) addEventListener('scrollend', fin, { once: true });
-        setTimeout(fin, 900);
+        const y0 = scrollY;
+        const distancia = destino - y0;
+        if (Math.abs(distancia) < 6) { ok(); return; }
+        const ms = reducir.matches ? 450 : Math.min(2400, Math.max(1100, Math.abs(distancia) * 0.9));
+        const t0 = performance.now();
+        const curva = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+        let activo = true;
+        const parar = () => { if (activo) { activo = false; quitar(); ok(); } };
+        const quitar = () => { removeEventListener('wheel', parar); removeEventListener('touchstart', parar); removeEventListener('keydown', parar); };
+        addEventListener('wheel', parar, { passive: true });
+        addEventListener('touchstart', parar, { passive: true });
+        addEventListener('keydown', parar);
+        cancelaDesplazamiento = parar;
+        const paso = (t: number) => {
+          if (!activo) return;
+          const k = Math.min(1, (t - t0) / ms);
+          scrollTo({ top: y0 + distancia * curva(k), behavior: 'instant' as ScrollBehavior });
+          if (k < 1) requestAnimationFrame(paso); else { activo = false; quitar(); ok(); }
+        };
+        requestAnimationFrame(paso);
       });
+    const pausa = (ms: number) => new Promise<void>((ok) => setTimeout(ok, ms));
 
+    // Paso 1: desplazamiento lento hasta el mapa. Paso 2: el mapa vuela hasta el local (flyTo).
     document.addEventListener('copol:mapa-enfocar', async (e) => {
       const p = porId.get((e as CustomEvent<{ id: string }>).detail.id);
       if (!p) return;
-      const carga = cargar();
+      cancelaDesplazamiento();
+      const carga = cargar(); // el mapa se carga mientras la página baja
       if (!enVista()) {
-        raiz.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        await esperarDesplazamiento();
+        const r = raiz.getBoundingClientRect();
+        const margenArriba = Math.max(100, (innerHeight - r.height) / 2);
+        await desplazarHasta(Math.max(0, r.top + scrollY - margenArriba));
+        await pausa(reducir.matches ? 0 : 280);
       }
       await carga;
       enfocarEnMapa(p, true);

@@ -3,10 +3,10 @@ import Base from '../layouts/Base.astro';
 import EncabezadoPagina from '../components/EncabezadoPagina.astro';
 import Icono from '../components/Icono.astro';
 import Button from '../components/ui/Button.astro';
-import Card from '../components/ui/Card.astro';
 import Alert from '../components/ui/Alert.astro';
 import Campo from '../components/ui/Campo.astro';
 import { CONTACTO, HORARIOS, whatsapp } from '../data/confirmado/sitio';
+import { LOCALES } from '../lib/datos';
 
 // El envío requiere un endpoint configurado (PUBLIC_FORM_ENDPOINT). Sin él, el formulario funciona en
 // "modo demostración": valida los datos pero NO los envía, y lo dice claramente. Ver docs/produccion.md.
@@ -14,10 +14,10 @@ const endpoint = import.meta.env.PUBLIC_FORM_ENDPOINT ?? '';
 const configurado = Boolean(endpoint);
 
 const canales = [
-  { icono: 'whatsapp', titulo: 'WhatsApp', dato: CONTACTO.whatsappGeneral.texto, detalle: 'Escribinos cuando quieras, te respondemos a la brevedad.', href: whatsapp(CONTACTO.whatsappGeneral.numero, 'Hola, quiero info de Copol'), accion: 'Escribinos' },
-  { icono: 'telefono', titulo: 'Teléfono', dato: CONTACTO.telefono.texto, detalle: `También: ${CONTACTO.whatsappSocios.texto} (socios).`, href: CONTACTO.telefono.href, accion: 'Llamar' },
-  { icono: 'correo', titulo: 'Correo electrónico', dato: CONTACTO.email, detalle: 'Escribinos tu consulta por correo.', href: `mailto:${CONTACTO.email}`, accion: 'Enviar correo' },
-  { icono: 'ubicacion', titulo: 'Casa Central', dato: CONTACTO.casaCentral.direccion, detalle: `${CONTACTO.casaCentral.ciudad}. ${CONTACTO.casaCentral.accesoAlternativo}`, href: CONTACTO.casaCentral.mapa, accion: 'Cómo llegar' },
+  { icono: 'whatsapp', titulo: 'WhatsApp', dato: CONTACTO.whatsappGeneral.texto, detalle: 'Escribinos cuando quieras, te respondemos a la brevedad.', href: whatsapp(CONTACTO.whatsappGeneral.numero, 'Hola, quiero info de Copol'), accion: 'Escribinos', tono: 'verde' },
+  { icono: 'telefono', titulo: 'Teléfono', dato: CONTACTO.telefono.texto, detalle: `También: ${CONTACTO.whatsappSocios.texto} (socios).`, href: CONTACTO.telefono.href, accion: 'Llamar', tono: 'amarillo' },
+  { icono: 'correo', titulo: 'Correo electrónico', dato: CONTACTO.email, detalle: 'Escribinos tu consulta por correo.', href: `mailto:${CONTACTO.email}`, accion: 'Enviar correo', tono: 'blanco' },
+  { icono: 'ubicacion', titulo: 'Casa Central', dato: CONTACTO.casaCentral.direccion, detalle: `${CONTACTO.casaCentral.ciudad}. ${CONTACTO.casaCentral.accesoAlternativo}`, href: CONTACTO.casaCentral.mapa, accion: 'Cómo llegar', tono: 'oscuro' },
 ] as const;
 ---
 <Base titulo="Contacto" descripcion="Contactá a COPOL por WhatsApp, teléfono 0800 1804, correo o en Casa Central (Av. Libertador 1856, Montevideo). Horarios de atención.">
@@ -32,30 +32,19 @@ const canales = [
     <h2 id="canales-titulo"><span class="mascara"><span>Elegí tu canal</span></span></h2>
     <ul class="canales escalonar">
       {canales.map((c) => (
-        <li class="card canal">
-          <span class="card__icono"><Icono nombre={c.icono} tamano={24} /></span>
-          <h3>{c.titulo}</h3>
-          <p class="canal__dato">{c.dato}</p>
-          <p class="canal__detalle">{c.detalle}</p>
-          <Button href={c.href} variant="secondary" size="sm" class="canal__accion">{c.accion}<span class="visualmente-oculto"> — {c.titulo}</span></Button>
+        <li class={`canal canal--${c.tono} canal--${c.icono}`}>
+          <a href={c.href} class="canal__enlace" rel={c.href.startsWith('http') ? 'noopener' : undefined}>
+            <span class="canal__icono"><Icono nombre={c.icono} tamano={c.icono === 'whatsapp' ? 34 : 26} /></span>
+            <span class="canal__texto">
+              <span class="canal__titulo">{c.titulo}</span>
+              <strong class="canal__dato">{c.dato}</strong>
+              <span class="canal__detalle">{c.detalle}</span>
+            </span>
+            <span class="canal__accion">{c.accion}<span class="visualmente-oculto"> — {c.titulo}</span> <Icono nombre="flecha" tamano={18} /></span>
+          </a>
         </li>
       ))}
     </ul>
-  </section>
-
-  <section class="seccion seccion--suave" aria-labelledby="horarios-titulo">
-    <div class="contenedor horarios">
-      <h2 id="horarios-titulo">Horarios de atención</h2>
-      <Card class="horarios__grupo">
-        <h3>Casa Central</h3>
-        <dl>{HORARIOS.casaCentral.map((h) => <div><dt>{h.dias}</dt><dd>{h.horas}</dd></div>)}</dl>
-      </Card>
-      <Card class="horarios__grupo">
-        <h3>Atención telefónica</h3>
-        <dl>{HORARIOS.telefonica.map((h) => <div><dt>{h.dias}</dt><dd>{h.horas}</dd></div>)}</dl>
-      </Card>
-      <Button href="/sobre-nosotros/locales/" variant="outline">Ver los 19 locales <Icono nombre="flecha" tamano={18} /></Button>
-    </div>
   </section>
 
   <section class="contenedor seccion formulario-seccion" aria-labelledby="form-titulo">
@@ -67,6 +56,18 @@ const canales = [
           El envío todavía no está configurado y los datos no se envían. Mientras tanto, usá WhatsApp o correo.
         </Alert>
       )}
+      <div class="horarios" aria-labelledby="horarios-titulo">
+        <h3 id="horarios-titulo" class="horarios__titulo"><span class="horarios__icono"><Icono nombre="reloj" tamano={20} /></span> Horarios de atención</h3>
+        <div class="horarios__grupo">
+          <h4>Casa Central</h4>
+          <dl>{HORARIOS.casaCentral.map((h) => <div><dt>{h.dias}</dt><dd>{h.horas}</dd></div>)}</dl>
+        </div>
+        <div class="horarios__grupo">
+          <h4>Atención telefónica</h4>
+          <dl>{HORARIOS.telefonica.map((h) => <div><dt>{h.dias}</dt><dd>{h.horas}</dd></div>)}</dl>
+        </div>
+        <Button href="/sobre-nosotros/locales/" variant="outline">Ver los {LOCALES.length} locales <Icono nombre="flecha" tamano={18} /></Button>
+      </div>
     </div>
 
     <form class="card formulario" method="post" action={configurado ? endpoint : undefined} data-formulario data-configurado={String(configurado)} novalidate aria-describedby={configurado ? undefined : 'aviso-demo'}>
@@ -166,15 +167,61 @@ const canales = [
 </script>
 
 <style>
-  .canales { list-style: none; margin: 24px 0 0; padding: 0; display: grid; gap: 16px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 250px), 1fr)); }
-  .canal { gap: 8px; align-items: flex-start; }
-  .canal__dato { font-weight: 800; font-size: 1.125rem; color: var(--verde-oscuro) !important; word-break: break-word; }
-  .canal__detalle { font-size: 0.9375rem; }
-  .canal :global(.canal__accion) { margin-top: auto; }
+  /* Canales: mosaico con un tratamiento distinto por canal (WhatsApp destacado) */
+  .canales { list-style: none; margin: 24px 0 0; padding: 0; display: grid; gap: 14px; grid-template-columns: 1fr; }
+  @media (min-width: 640px) { .canales { grid-template-columns: repeat(2, minmax(0, 1fr)); } .canal--whatsapp { grid-column: 1 / -1; } }
+  @media (min-width: 1000px) {
+    .canales { grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 18px; }
+    .canal--whatsapp { grid-column: span 7; grid-row: span 2; }
+    .canal--telefono, .canal--correo { grid-column: span 5; }
+    .canal--ubicacion { grid-column: 1 / -1; }
+  }
+  .canal__enlace {
+    position: relative; display: grid; gap: 14px; align-content: space-between; height: 100%; min-height: 170px; padding: clamp(20px, 2.6vw, 32px);
+    border-radius: var(--radio-xl); text-decoration: none; overflow: hidden; isolation: isolate; box-shadow: var(--anillo);
+    background-size: 160% 160%; background-position: 0% 50%;
+    transition: transform 450ms var(--resorte), box-shadow 300ms var(--ease-out-quart), background-position 700ms var(--ease-out-quart);
+  }
+  .canal__enlace::after {
+    content: ''; position: absolute; inset: 0; z-index: -1; background: linear-gradient(110deg, transparent 35%, rgb(255 255 255 / 0.25) 50%, transparent 65%);
+    transform: translateX(-120%); transition: transform 800ms var(--ease-out-quart);
+  }
+  .canal__enlace:hover { transform: translateY(-5px); box-shadow: var(--sombra); background-position: 100% 50%; }
+  .canal__enlace:hover::after { transform: translateX(120%); }
+  .canal__enlace:active { transform: translateY(-1px) scale(0.99); }
+  .canal__icono { width: 56px; height: 56px; border-radius: 18px; display: grid; place-items: center; transition: transform 500ms var(--resorte); }
+  .canal--whatsapp .canal__icono { width: 72px; height: 72px; border-radius: 22px; }
+  .canal__enlace:hover .canal__icono { transform: rotate(-8deg) scale(1.08); }
+  .canal__texto { display: grid; gap: 4px; }
+  .canal__titulo { font-size: 0.8125rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; }
+  .canal__dato { font-size: clamp(1.25rem, 2vw, 1.625rem); line-height: 1.15; word-break: break-word; }
+  .canal--whatsapp .canal__dato { font-size: clamp(1.75rem, 3.4vw, 2.75rem); }
+  .canal__detalle { font-size: 0.9375rem; max-width: 46ch; }
+  .canal__accion { display: inline-flex; align-items: center; gap: 8px; font-weight: 800; justify-self: start; padding: 8px 16px; border-radius: var(--radio-pill); transition: gap 300ms var(--resorte); }
+  .canal__enlace:hover .canal__accion { gap: 14px; }
 
-  .horarios { display: grid; gap: 20px; align-items: start; }
-  @media (min-width: 900px) { .horarios { grid-template-columns: 1fr 1fr 1fr auto; align-items: end; } }
-  .horarios :global(.horarios__grupo) { gap: 8px; padding: 20px 24px; }
+  .canal--verde .canal__enlace { background-image: linear-gradient(135deg, var(--verde-oscuro), var(--verde-copol), var(--verde-oscuro)); color: var(--sobre-verde); }
+  .canal--verde .canal__icono { background: var(--amarillo-copol); color: var(--tinta); }
+  .canal--verde .canal__accion { background: var(--amarillo-copol); color: var(--tinta); }
+  .canal--amarillo .canal__enlace { background-image: linear-gradient(135deg, var(--amarillo-copol), #f6ec5a, var(--amarillo-copol)); color: var(--tinta); }
+  .canal--amarillo .canal__icono { background: var(--verde-oscuro); color: var(--amarillo-copol); }
+  .canal--amarillo .canal__accion { background: var(--verde-oscuro); color: var(--blanco); }
+  .canal--blanco .canal__enlace { background-color: var(--card); color: var(--tinta); }
+  .canal--blanco .canal__icono { background: var(--muted); color: var(--verde-oscuro); }
+  .canal--blanco .canal__detalle { color: var(--muted-foreground); }
+  .canal--blanco .canal__accion { background: var(--muted); color: var(--verde-oscuro); }
+  .canal--oscuro .canal__enlace { background-image: linear-gradient(135deg, #0b3d22, var(--verde-oscuro), #0b3d22); color: var(--sobre-verde); }
+  .canal--oscuro .canal__icono { background: rgb(255 255 255 / 0.14); color: var(--amarillo-copol); }
+  .canal--oscuro .canal__accion { background: rgb(255 255 255 / 0.14); color: var(--blanco); }
+  @media (min-width: 1000px) { .canal--ubicacion .canal__enlace { grid-template-columns: auto 1fr auto; align-items: center; min-height: 0; gap: 24px; } }
+
+  /* Horarios: dentro de la columna del formulario */
+  .horarios { display: grid; gap: 12px; width: 100%; margin-top: 10px; }
+  .horarios__titulo { display: flex; align-items: center; gap: 10px; font-size: 1.25rem; color: var(--verde-oscuro); }
+  .horarios__icono { width: 38px; height: 38px; border-radius: 12px; display: grid; place-items: center; background: var(--accent); color: var(--tinta); }
+  .horarios__grupo { display: grid; gap: 6px; padding: 16px 20px; border-radius: var(--radio-lg); background: var(--card); box-shadow: var(--anillo); transition: transform 400ms var(--resorte), box-shadow 250ms var(--ease-out-quart); }
+  .horarios__grupo:hover { transform: translateY(-2px); box-shadow: var(--anillo-fuerte), var(--sombra-suave); }
+  .horarios__grupo h4 { font-size: 1rem; color: var(--verde-oscuro); }
   .horarios dl { margin: 0; display: grid; gap: 6px; }
   .horarios dl div { display: flex; justify-content: space-between; gap: 16px; }
   .horarios dt { color: var(--muted-foreground); }

@@ -51,28 +51,64 @@ const faqLd = {
     </ul>
   </section>
 
+  <!-- Asistente para socios: una pregunta, tres respuestas y los pasos a seguir (sin JavaScript se ven todas las respuestas) -->
   <section class="seccion seccion--suave" id="como-funciona" aria-labelledby="caminos-titulo">
-    <div class="contenedor">
-      <div class="encabezado-seccion">
-        <div>
-          <span class="eyebrow">¿Cómo funciona?</span>
-          <h2 id="caminos-titulo">Dos caminos para asociarte</h2>
-          <p class="lead">Sea cual sea tu situación, hay un camino para que formes parte de COPOL.</p>
+    <div class="contenedor guia" data-guia>
+      <div class="guia__intro">
+        <span class="eyebrow">¿Cómo funciona?</span>
+        <h2 id="caminos-titulo">Descubrí tu camino para asociarte</h2>
+        <p class="lead">Sea cual sea tu situación, hay un camino para que formes parte de COPOL. Respondé una pregunta y te mostramos cómo seguir.</p>
+        <div class="guia__pregunta" role="group" aria-labelledby="guia-pregunta">
+          <p id="guia-pregunta" class="guia__enunciado"><span class="guia__paso" aria-hidden="true">1</span> ¿Tu empresa o institución tiene convenio con COPOL?</p>
+          <div class="guia__opciones">
+            <button type="button" class="guia__opcion" data-opcion="si" aria-pressed="false"><Icono nombre="check" tamano={22} /><strong>Sí, tiene convenio</strong><span>Me asocio directamente</span></button>
+            <button type="button" class="guia__opcion" data-opcion="no" aria-pressed="false"><Icono nombre="usuarios" tamano={22} /><strong>No tiene convenio</strong><span>Quiero crearlo</span></button>
+            <button type="button" class="guia__opcion" data-opcion="nose" aria-pressed="false"><Icono nombre="buscar" tamano={22} /><strong>No sé si tiene</strong><span>Quiero averiguarlo</span></button>
+          </div>
         </div>
       </div>
-      <div class="caminos escalonar">
-        <Card as="article" class="camino">
+
+      <div class="guia__resultados" aria-live="polite" data-guia-resultados>
+        <p class="guia__vacio" data-guia-vacio hidden><Icono nombre="flecha" tamano={22} /> Elegí una opción para ver tus pasos.</p>
+
+        <article class="resultado resultado--si" data-resultado="si">
+          <span class="guia__paso" aria-hidden="true">2</span>
           <Badge variant="default">¿Tenés convenio? Sí</Badge>
           <h3>Te asociás directamente</h3>
-          <p>Tu institución o empresa ya tiene convenio con COPOL. Comunicate con nosotros, verificamos tu situación y te damos de alta.</p>
-          <Button href={ws('Hola, quiero info para asociarme (tengo convenio)')}>Asociate ahora <Icono nombre="flecha" tamano={18} /></Button>
-        </Card>
-        <Card as="article" class="camino">
+          <ol class="resultado__pasos">
+            <li>Tu institución o empresa ya tiene convenio con COPOL.</li>
+            <li>Comunicate con nosotros.</li>
+            <li>Verificamos tu situación y te damos de alta.</li>
+          </ol>
+          <Button href={ws('Hola, quiero info para asociarme (tengo convenio)')} size="lg"><Icono nombre="whatsapp" tamano={18} /> Asociate ahora <Icono nombre="flecha" tamano={18} /></Button>
+        </article>
+
+        <article class="resultado resultado--no" data-resultado="no">
+          <span class="guia__paso" aria-hidden="true">2</span>
           <Badge variant="accent">¿Tenés convenio? No</Badge>
           <h3>Creá el convenio</h3>
-          <p>Si tu institución no tiene convenio con COPOL, pueden crearlo: reúnan 6 o más personas de la misma empresa o institución y nosotros nos encargamos del resto.</p>
-          <Button href={ws('Hola, quiero info para crear un convenio')} variant="outline">Creá tu convenio <Icono nombre="flecha" tamano={18} /></Button>
-        </Card>
+          <ol class="resultado__pasos">
+            <li>Reúnan 6 o más personas de la misma empresa o institución.</li>
+            <li>Escribinos por WhatsApp.</li>
+            <li>Nosotros nos encargamos del resto.</li>
+          </ol>
+          <Button href={ws('Hola, quiero info para crear un convenio')} variant="accent" size="lg"><Icono nombre="whatsapp" tamano={18} /> Creá tu convenio <Icono nombre="flecha" tamano={18} /></Button>
+        </article>
+
+        <article class="resultado resultado--nose" data-resultado="nose">
+          <span class="guia__paso" aria-hidden="true">2</span>
+          <Badge variant="outline">¿Tenés convenio? Averiguá</Badge>
+          <h3>Buscá tu empresa o institución</h3>
+          <ol class="resultado__pasos">
+            <li>Buscá tu empresa o institución en el listado de convenios.</li>
+            <li>Si figura, te asociás directamente.</li>
+            <li>Si no figura, pueden crear el convenio con 6 o más personas.</li>
+          </ol>
+          <div class="resultado__acciones">
+            <Button href="/beneficios/convenios/" size="lg">Ver convenios <Icono nombre="flecha" tamano={18} /></Button>
+            <Button href={ws('Hola, quiero saber si mi empresa tiene convenio con COPOL')} variant="outline" size="lg"><Icono nombre="whatsapp" tamano={18} /> Consultanos</Button>
+          </div>
+        </article>
       </div>
     </div>
   </section>
@@ -104,14 +140,85 @@ const faqLd = {
   <script type="application/ld+json" set:html={JSON.stringify(faqLd)} />
 </Base>
 
+<script>
+  // Asistente para socios: muestra los pasos de la opción elegida (sin JavaScript se ven todas).
+  const guia = document.querySelector<HTMLElement>('[data-guia]');
+  if (guia) {
+    guia.classList.add('guia--activa');
+    const opciones = [...guia.querySelectorAll<HTMLButtonElement>('[data-opcion]')];
+    const resultados = [...guia.querySelectorAll<HTMLElement>('[data-resultado]')];
+    const vacio = guia.querySelector<HTMLElement>('[data-guia-vacio]')!;
+    vacio.hidden = false;
+    resultados.forEach((r) => (r.hidden = true));
+    const elegir = (id: string) => {
+      opciones.forEach((o) => o.setAttribute('aria-pressed', String(o.dataset.opcion === id)));
+      vacio.hidden = true;
+      resultados.forEach((r) => {
+        const activo = r.dataset.resultado === id;
+        r.hidden = !activo;
+        if (activo) { r.classList.remove('resultado--entra'); void r.offsetWidth; r.classList.add('resultado--entra'); }
+      });
+      if (matchMedia('(max-width: 899px)').matches) guia.querySelector('[data-guia-resultados]')!.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    };
+    opciones.forEach((o) => o.addEventListener('click', () => elegir(o.dataset.opcion!)));
+  }
+</script>
+
 <style>
   .ventajas { list-style: none; margin: 24px 0 0; padding: 0; display: grid; gap: 16px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr)); }
   .ventajas > li { display: flex; }
-  .ventajas :global(.ventaja) { flex: 1; gap: 8px; }
+  .ventajas :global(.ventaja) { flex: 1; gap: 8px; transition: transform 450ms var(--resorte), box-shadow 300ms var(--ease-out-quart), background-color 300ms; }
+  .ventajas > li:nth-child(4n + 1) :global(.ventaja) { background: linear-gradient(135deg, var(--verde-oscuro), var(--verde-copol)); color: var(--sobre-verde); }
+  .ventajas > li:nth-child(4n + 1) :global(.ventaja h3) { color: var(--blanco); }
+  .ventajas > li:nth-child(4n + 1) :global(.ventaja p) { color: var(--sobre-verde); }
+  .ventajas > li:nth-child(4n + 3) :global(.ventaja) { background: var(--accent); }
+  .ventajas > li:nth-child(4n + 3) :global(.ventaja p) { color: var(--tinta); }
+  .ventajas > li:nth-child(4n + 3) :global(.ventaja .card__icono) { background: var(--verde-oscuro); color: var(--amarillo-copol); }
 
-  .caminos { display: grid; gap: 20px; }
-  @media (min-width: 860px) { .caminos { grid-template-columns: 1fr 1fr; } }
-  .caminos :global(.camino) { align-items: flex-start; padding: clamp(24px, 3vw, 36px); border-radius: var(--radio-xl); overflow: hidden; }
+  /* Asistente para socios */
+  .guia { display: grid; gap: clamp(24px, 4vw, 48px); align-items: start; }
+  @media (min-width: 900px) { .guia { grid-template-columns: 1fr 1fr; } }
+  .guia__intro { display: grid; gap: 14px; }
+  .guia__pregunta { display: grid; gap: 14px; margin-top: 8px; padding: clamp(18px, 2.4vw, 26px); border-radius: var(--radio-xl); background: var(--card); box-shadow: var(--anillo), var(--sombra-suave); }
+  .guia__enunciado { display: flex; gap: 12px; align-items: center; margin: 0; font-weight: 800; font-size: 1.1875rem; color: var(--verde-oscuro); }
+  .guia__paso { flex: none; width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; background: var(--verde-oscuro); color: var(--amarillo-copol); font-weight: 800; }
+  .guia__opciones { display: grid; gap: 10px; }
+  .guia__opcion {
+    display: grid; grid-template-columns: auto 1fr; column-gap: 14px; align-items: center; text-align: left; font: inherit; cursor: pointer;
+    padding: 14px 18px; border-radius: var(--radio-lg); border: 2px solid var(--borde); background: var(--background); color: var(--foreground);
+    transition: transform 350ms var(--resorte), border-color var(--transicion), background-color var(--transicion), box-shadow 250ms var(--ease-out-quart);
+  }
+  .guia__opcion :global(svg) { grid-row: span 2; width: 44px; height: 44px; padding: 11px; border-radius: 14px; background: var(--muted); color: var(--verde-oscuro); transition: background-color var(--transicion), color var(--transicion); }
+  .guia__opcion strong { font-size: 1.0625rem; }
+  .guia__opcion span { color: var(--muted-foreground); font-size: 0.9375rem; }
+  .guia__opcion:hover { transform: translateX(4px); border-color: var(--borde-fuerte); box-shadow: var(--sombra-suave); }
+  .guia__opcion[aria-pressed='true'] { border-color: var(--verde-oscuro); background: var(--verde-oscuro); color: var(--sobre-verde); box-shadow: var(--sombra); transform: translateX(6px); }
+  .guia__opcion[aria-pressed='true'] span { color: var(--sobre-verde); }
+  .guia__opcion[aria-pressed='true'] :global(svg) { background: var(--amarillo-copol); color: var(--tinta); }
+  .guia__resultados { display: grid; gap: 16px; align-content: start; min-height: 320px; }
+  .guia__vacio { display: flex; gap: 12px; align-items: center; justify-content: center; min-height: 320px; margin: 0; padding: 24px; border-radius: var(--radio-xl); border: 2px dashed var(--borde-fuerte); color: var(--verde-oscuro); font-weight: 700; text-align: center; }
+  .resultado {
+    position: relative; display: grid; gap: 14px; justify-items: start; padding: clamp(24px, 3.4vw, 40px); border-radius: var(--radio-xl); overflow: hidden;
+    background: var(--card); box-shadow: var(--anillo-fuerte), var(--sombra);
+  }
+  .resultado > .guia__paso { position: absolute; top: clamp(20px, 3vw, 32px); right: clamp(20px, 3vw, 32px); }
+  .resultado h3 { font-size: clamp(1.5rem, 2.8vw, 2rem); color: var(--verde-oscuro); padding-right: 48px; }
+  .resultado__pasos { margin: 0; padding: 0; list-style: none; counter-reset: paso; display: grid; gap: 12px; }
+  .resultado__pasos li { counter-increment: paso; display: flex; gap: 12px; align-items: flex-start; font-size: 1.0625rem; }
+  .resultado__pasos li::before { content: counter(paso); flex: none; width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: var(--accent); color: var(--tinta); font-weight: 800; font-size: 0.875rem; margin-top: 1px; }
+  .resultado__acciones { display: flex; flex-wrap: wrap; gap: 10px; }
+  .resultado--si { border-top: 6px solid var(--verde-copol); }
+  .resultado--no { border-top: 6px solid var(--amarillo-copol); }
+  .resultado--nose { border-top: 6px solid var(--borde-fuerte); }
+  .resultado--entra { animation: resultado-entra 520ms var(--ease-out-quart); }
+  .resultado--entra .resultado__pasos li { animation: paso-entra 520ms var(--ease-out-quart) both; }
+  .resultado--entra .resultado__pasos li:nth-child(2) { animation-delay: 90ms; }
+  .resultado--entra .resultado__pasos li:nth-child(3) { animation-delay: 180ms; }
+  @keyframes resultado-entra { from { opacity: 0; transform: translateY(14px) scale(0.98); } to { opacity: 1; transform: none; } }
+  @keyframes paso-entra { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: none; } }
+  @media (prefers-reduced-motion: reduce) { .resultado--entra, .resultado--entra .resultado__pasos li { animation: none; } }
+  /* Sin JavaScript no hay pregunta interactiva: la columna de la izquierda muestra solo el texto */
+  .guia:not(.guia--activa) .guia__pregunta { display: none; }
 
   .faq { display: grid; gap: 28px; }
   @media (min-width: 900px) { .faq { grid-template-columns: 1fr 1.4fr; align-items: start; } }

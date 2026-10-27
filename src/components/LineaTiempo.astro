@@ -8,6 +8,7 @@
 import Media from './ui/Media.astro';
 import { fotoHito, fotoLocal } from '../lib/imagenes';
 import type { Hito } from '../data/confirmado/historia';
+import { LOCALES } from '../lib/datos';
 
 interface Props {
   hitos: Hito[];
@@ -15,7 +16,13 @@ interface Props {
   resumenHoy?: string;
 }
 const { hitos, resumenHoy } = Astro.props;
-const localesHoy = ['casa-central', 'salto', 'rocha'].map((id) => fotoLocal(id)).filter(Boolean);
+// "Presencia en todo el país": un local con foto por departamento (Casa Central primero), con su ciudad.
+const porDepto = new Map<string, (typeof LOCALES)[number]>();
+for (const loc of LOCALES) if (fotoLocal(loc.id) && !porDepto.has(loc.departamento)) porDepto.set(loc.departamento, loc);
+const localesHoy = [...porDepto.values()]
+  .sort((a, b) => Number(b.tipo === 'casa-central') - Number(a.tipo === 'casa-central'))
+  .slice(0, 9)
+  .map((loc) => ({ foto: fotoLocal(loc.id)!, ciudad: loc.tipo === 'casa-central' ? 'Casa Central' : loc.ciudad, departamento: loc.departamento }));
 ---
 <div class="tiempo" data-tiempo>
   <nav class="tiempo__anios" aria-label="Ir a un año de la historia">
@@ -51,7 +58,12 @@ const localesHoy = ['casa-central', 'salto', 'rocha'].map((id) => fotoLocal(id))
             )}
             {hoy && localesHoy.length > 0 && (
               <div class="hito__mosaico">
-                {localesHoy.map((f) => <Media src={f!} alt="" ratio="16/9" widths={[240, 360]} sizes="(min-width: 900px) 150px, 30vw" radio="var(--radio-sm, 10px)" />)}
+                {localesHoy.map((f) => (
+                  <figure class="hito__lugar">
+                    <Media src={f.foto} alt={`Local de COPOL en ${f.ciudad}`} ratio="16/9" widths={[240, 360]} sizes="(min-width: 900px) 150px, 30vw" radio="var(--radio-sm, 10px)" />
+                    <figcaption>{f.ciudad}<span>{f.departamento !== f.ciudad ? f.departamento : ''}</span></figcaption>
+                  </figure>
+                ))}
               </div>
             )}
           </article>
@@ -140,7 +152,10 @@ const localesHoy = ['casa-central', 'salto', 'rocha'].map((id) => fotoLocal(id))
   .hito__cita p::before { content: "“"; display: block; height: 0.55em; margin-bottom: 4px; font-size: 2.75rem; line-height: 1; font-weight: 800; color: var(--verde-copol); }
   .hito__cita p { font-size: 1.0625rem; font-weight: 600; color: var(--verde-oscuro); }
   .hito__cita footer { font-size: 0.875rem; color: var(--tinta-suave); }
-  .hito__mosaico { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .hito__mosaico { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+  .hito__lugar { margin: 0; display: grid; gap: 4px; }
+  .hito__lugar figcaption { font-size: 0.8125rem; font-weight: 700; color: var(--verde-oscuro); line-height: 1.2; display: grid; }
+  .hito__lugar figcaption span { font-weight: 500; color: var(--muted-foreground); }
 
   @media (min-width: 900px) {
     /* Alternado: línea al centro, tarjetas a izquierda y derecha. */
