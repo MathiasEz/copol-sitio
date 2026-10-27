@@ -170,7 +170,8 @@ const actual = (href: string) => ruta === href;
       let n = Number(el.dataset.numero) || 1;
       if (modo === 'cantidad') n = Number(el.dataset.cantidad) || 0;
       else if (modo === 'hora') n = (Number(new Intl.DateTimeFormat('es-UY', { hour: 'numeric', hourCycle: 'h23', timeZone: 'America/Montevideo' }).format(new Date())) % 5) + 1;
-      el.textContent = n > 0 ? String(n) : '';
+      const texto = n > 0 ? String(n) : '';
+      if (el.textContent !== texto) el.textContent = texto; // sin esto, el observador se dispara solo y la página se tranca
       el.closest('[data-campana-boton]')?.setAttribute('aria-label', `Novedades de COPOL${n > 0 ? `: ${n} para ver` : ''}`);
     });
   };
