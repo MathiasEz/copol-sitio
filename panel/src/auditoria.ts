@@ -101,6 +101,7 @@ export const ACCIONES: Record<string, string> = {
   'usuario.clave': 'Restableció la contraseña de un usuario',
   'usuario.baja': 'Eliminó un usuario',
   'sistema.siembra': 'Importó el catálogo inicial',
+  'sistema.estadisticas': 'Guardó el registro mensual de estadísticas',
   'sistema.respaldo': 'Respaldo diario automático (cifrado)',
   'sistema.restauracion': 'Restauró un respaldo',
   'asistente.consulta': 'Consultó al asistente',

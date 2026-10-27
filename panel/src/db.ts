@@ -169,6 +169,10 @@ const MIGRACIONES: string[] = [
   /* 11 · sesión «mantener iniciada»: no se cierra mientras se use (el límite por inactividad es en días) */ `
   ALTER TABLE sesiones ADD COLUMN larga INTEGER NOT NULL DEFAULT 0
   `,
+  /* 12 · archivo mensual de estadísticas: al cerrar cada mes se guarda su resumen completo (el de los meses
+     pasados no cambia más) para consultarlo mes a mes desde Estadísticas → Mes a mes */ `
+  CREATE TABLE estadisticas_mes (mes TEXT PRIMARY KEY, resumen TEXT NOT NULL, archivado_en TEXT NOT NULL)
+  `,
 ];
 
 /** Versión del esquema en una tabla propia (PRAGMA user_version no se conserva igual en todos los destinos). */

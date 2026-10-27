@@ -14,7 +14,7 @@ import {
   CATEGORIAS as CATEGORIAS_NOTIFICACION, DESTINOS as DESTINOS_NOTIFICACION, DIAS_SEMANA, LIMITES as LIMITES_NOTIFICACION,
   type Ajustes as AjustesNotificaciones, type Categoria as CategoriaNotificacion, type Destino as DestinoNotificacion, type Instancia, type Notificacion,
 } from './notificaciones.ts';
-import { nombreRuta, type Resumen } from './estadisticas.ts';
+import { nombreMes, nombreRuta, type MesArchivado, type Resumen } from './estadisticas.ts';
 import { DISENOS, estadoDiapositiva, FOCOS, hoyUruguay, htmlBanner, MAX_DIAPOSITIVAS, SEGUNDOS, tituloCompleto, vigentes, type Banner, type Diapositiva, type Diseno, type Foco } from './banner.ts';
 import type * as AC from './acceso.ts';
 import type { MensajeGuardado, ResumenConversacion, TarjetaGuardada } from './conversaciones.ts';
@@ -641,13 +641,14 @@ ${existe ? html`<form method="post" action="${r(`/banner/${d.id}/eliminar`)}" cl
 const numero = (n: number) => n.toLocaleString('es-UY');
 const diaCorto = (f: string) => new Date(`${f}T12:00:00`).toLocaleDateString('es-UY', { weekday: 'short', day: 'numeric', month: 'short' });
 
-export function vistaEstadisticas(c: Contexto, d: Resumen, dias: number) {
+export function vistaEstadisticas(c: Contexto, d: Resumen, dias: number, mes?: { id: string; archivado: string | null }) {
+  const anterior = mes ? 'mes anterior' : `${dias} días anteriores`;
   const variacion = (actual: number, antes: number) => {
-    if (!antes) return html`<span class="kpi__var muted">Sin datos del período anterior</span>`;
+    if (!antes) return html`<span class="kpi__var muted">Sin datos del ${mes ? 'mes anterior' : 'período anterior'}</span>`;
     const p = Math.round(((actual - antes) / antes) * 100);
     return p === 0
-      ? html`<span class="kpi__var muted">Igual que los ${dias} días anteriores</span>`
-      : html`<span class="kpi__var ${p > 0 ? 'kpi__var--sube' : 'kpi__var--baja'}">${p > 0 ? '▲' : '▼'} ${Math.abs(p)} % ${p > 0 ? 'más' : 'menos'} que los ${dias} días anteriores</span>`;
+      ? html`<span class="kpi__var muted">Igual que el ${anterior}</span>`
+      : html`<span class="kpi__var ${p > 0 ? 'kpi__var--sube' : 'kpi__var--baja'}">${p > 0 ? '▲' : '▼'} ${Math.abs(p)} % ${p > 0 ? 'más' : 'menos'} que el ${anterior}</span>`;
   };
   const t = d.totales;
   const pctCelular = t.celular + t.computadora ? Math.round((t.celular / (t.celular + t.computadora)) * 100) : 0;
@@ -680,11 +681,14 @@ export function vistaEstadisticas(c: Contexto, d: Resumen, dias: number) {
       </li>`)}</ol>` : html`<p class="muted ayuda">${vacio}</p>`}
     </section>`;
   };
-  const periodo = (n: number) => html`<a class="tabs__item" href="${r(`/estadisticas?dias=${n}`)}" ${si(n === dias, 'aria-current="true"')}>Últimos ${n} días</a>`;
+  const periodo = (n: number) => html`<a class="tabs__item" href="${r(`/estadisticas?dias=${n}`)}" ${si(!mes && n === dias, 'aria-current="true"')}>Últimos ${n} días</a>`;
   const hayDatos = t.vistas > 0;
-  return layout(c, 'Estadísticas', html`
-<p class="muted subtitulo">Visitas a la web pública, sin cookies ni datos personales: solo contadores por día. Las visitas del panel no se cuentan.</p>
-<nav class="tabs" aria-label="Período">${periodo(7)}${periodo(30)}${periodo(90)}</nav>
+  return layout(c, mes ? `Estadísticas · ${nombreMes(mes.id)}` : 'Estadísticas', html`
+${mes
+  ? html`<p class="muted subtitulo">Registro de ${nombreMes(mes.id)}: del ${diaCorto(d.desde)} al ${diaCorto(d.hasta)}. ${mes.archivado ? `Guardado el ${fecha(mes.archivado)}; no cambia más.` : 'Mes en curso: se actualiza solo y queda guardado al terminar.'}</p>
+<nav class="tabs" aria-label="Período"><a class="tabs__item" href="${r('/estadisticas/meses')}">${icono('izquierda', 16)}Todos los meses</a><a class="tabs__item" href="${r(`/estadisticas/meses/${mes.id}.csv`)}" download>${icono('descargar', 16)}Descargar (Excel / CSV)</a></nav>`
+  : html`<p class="muted subtitulo">Visitas a la web pública, sin cookies ni datos personales: solo contadores por día. Las visitas del panel no se cuentan.</p>
+<nav class="tabs" aria-label="Período">${periodo(7)}${periodo(30)}${periodo(90)}<a class="tabs__item" href="${r('/estadisticas/meses')}">${icono('calendario', 16)}Mes a mes</a></nav>`}
 <div class="kpis">
   ${kpi('Vistas de páginas', numero(t.vistas), variacion(t.vistas, d.anteriores.vistas))}
   ${kpi('Visitantes', numero(t.visitantes), variacion(t.visitantes, d.anteriores.visitantes))}
@@ -711,6 +715,24 @@ export function vistaEstadisticas(c: Contexto, d: Resumen, dias: number) {
   ${lista('Clics en el banner de Inicio', d.ranking.banner, (k) => k, 'Sin clics en el banner.')}
   ${lista('Imágenes ampliadas (por página)', d.ranking.visor, nombreRuta, 'Nadie amplió imágenes todavía.')}
 </div>`);
+}
+
+/** Archivo mes a mes: cada mes cerrado con sus cifras principales y acceso a su registro completo. */
+export function vistaEstadisticasMeses(c: Contexto, d: { enCurso: { mes: string; resumen: Resumen }; meses: MesArchivado[] }) {
+  const fila = (mes: string, res: Resumen, etiqueta: H | string) => html`<tr>
+    <td><a class="usuario-fila" href="${r_(mes)}">${nombreMes(mes)}</a> ${etiqueta}</td>
+    <td data-etiqueta="Vistas">${numero(res.totales.vistas)}</td><td data-etiqueta="Visitantes">${numero(res.totales.visitantes)}</td><td data-etiqueta="Clics a WhatsApp">${numero(res.totales.whatsapp)}</td>
+    <td data-etiqueta="Desde el celular">${res.totales.celular + res.totales.computadora ? `${Math.round((res.totales.celular / (res.totales.celular + res.totales.computadora)) * 100)} %` : '—'}</td>
+    <td class="derecha"><a class="btn btn--ghost btn--sm" href="${r_(mes)}">${icono('ojo', 16)}Ver</a> <a class="btn btn--ghost btn--sm" href="${r(`/estadisticas/meses/${mes}.csv`)}" download>${icono('descargar', 16)}CSV</a></td>
+  </tr>`;
+  const r_ = (mes: string) => r(`/estadisticas/meses/${mes}`);
+  return layout(c, 'Estadísticas · Mes a mes', html`
+<p class="muted subtitulo">Al terminar cada mes, el panel guarda su registro completo (por día, rankings y comparación con el mes anterior). Acá quedan todos los meses para consultarlos o descargarlos.</p>
+<nav class="tabs" aria-label="Período"><a class="tabs__item" href="${r('/estadisticas')}">${icono('izquierda', 16)}Volver a Estadísticas</a></nav>
+<div class="tabla-caja"><table class="tabla tabla--lista">
+<thead><tr><th scope="col">Mes</th><th scope="col">Vistas</th><th scope="col">Visitantes</th><th scope="col">Clics a WhatsApp</th><th scope="col">Desde el celular</th><th scope="col"><span class="sr">Acciones</span></th></tr></thead>
+<tbody>${fila(d.enCurso.mes, d.enCurso.resumen, html`<span class="badge badge--aviso">En curso</span>`)}${d.meses.map((m) => fila(m.mes, m.resumen, html`<span class="badge badge--ok">Guardado</span>`))}</tbody></table></div>
+${d.meses.length ? '' : html`<p class="muted ayuda">Todavía no hay meses cerrados: el primero se guarda solo cuando termine el mes en curso.</p>`}`);
 }
 
 // ── Ofertas del supermercado (Promociones) ──

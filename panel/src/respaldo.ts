@@ -11,7 +11,7 @@ import { todas, type Db } from './db.ts';
 
 /** Tablas que viajan en el respaldo (sin sesiones, pases, códigos, propuestas ni conversaciones). */
 // `dispositivos` no se respalda: son identificadores de celulares que se vuelven a registrar solos.
-export const TABLAS_RESPALDO = ['rubros', 'categorias', 'productos', 'novedades', 'usuarios', 'auditoria', 'ajustes', 'notificaciones', 'registros'] as const;
+export const TABLAS_RESPALDO = ['rubros', 'categorias', 'productos', 'novedades', 'usuarios', 'auditoria', 'ajustes', 'notificaciones', 'registros', 'estadisticas_mes'] as const;
 
 export interface DatosRespaldo { exportado: string; tablas: Record<string, Record<string, unknown>[]> }
 
