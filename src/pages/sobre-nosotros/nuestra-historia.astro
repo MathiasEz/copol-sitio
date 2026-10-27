@@ -16,6 +16,11 @@ import { HITOS_PUBLICADOS } from '../../data/confirmado/historia';
 const sucursales = LOCALES.filter((l) => l.tipo === 'sucursal').length;
 const agencias = LOCALES.filter((l) => l.tipo === 'agencia').length;
 const ESTATUTOS = 'https://anyflip.com/iosef/lfeu';
+const departamentos = [...new Set(LOCALES.map((l) => l.departamento))].sort((a, b) => a.localeCompare(b, 'es'));
+// "Presencia en todo el país": el texto sale de los locales existentes (departamentos y ciudades reales).
+const hitos = HITOS_PUBLICADOS.map((h) => (h.id === 'hoy'
+  ? { ...h, texto: `Desde la Casa Central en Montevideo llegamos a ${departamentos.length} departamentos del país: ${departamentos.join(', ')}. Cada local y cada agencia acerca la cooperativa a las familias de su comunidad.` }
+  : h));
 ---
 <Base titulo="Nuestra historia" descripcion="La historia de COPOL: de las Cantinas Policiales de 1917 a la Cooperativa Policial, con misión, visión y estatutos.">
   <EncabezadoPagina
@@ -35,7 +40,20 @@ const ESTATUTOS = 'https://anyflip.com/iosef/lfeu';
         <p class="lead">{MANUAL.origen}</p>
       </div>
     </div>
-    <LineaTiempo hitos={HITOS_PUBLICADOS} resumenHoy={`Hoy somos ${LOCALES.length} locales: Casa Central, ${sucursales} sucursales y ${agencias} agencias.`} />
+    <LineaTiempo hitos={hitos} resumenHoy={`Hoy somos ${LOCALES.length} locales: Casa Central, ${sucursales} sucursales y ${agencias} agencias.`} />
+  </section>
+
+  <!-- Estatutos: bloque destacado, con jerarquía propia -->
+  <section class="contenedor seccion estatutos-seccion" aria-labelledby="estatutos-titulo">
+    <div class="estatutos aparecer">
+      <span class="estatutos__icono"><Icono nombre="documento" tamano={34} /></span>
+      <div class="estatutos__texto">
+        <span class="eyebrow">Documento oficial</span>
+        <h2 id="estatutos-titulo">Estatutos de la Cooperativa Policial</h2>
+        <p>Consultá el documento oficial de los estatutos de la Cooperativa Policial.</p>
+      </div>
+      <Button href={ESTATUTOS} variant="accent" size="lg">Ver estatutos <Icono nombre="externo" tamano={18} /><span class="visualmente-oculto"> (abre un sitio externo)</span></Button>
+    </div>
   </section>
 
   <section class="contenedor seccion mv" aria-labelledby="mv-titulo">
@@ -50,17 +68,6 @@ const ESTATUTOS = 'https://anyflip.com/iosef/lfeu';
     </Card>
   </section>
 
-  <section class="contenedor" aria-labelledby="estatutos-titulo">
-    <Card class="estatutos">
-      <span class="card__icono"><Icono nombre="documento" tamano={26} /></span>
-      <div>
-        <h2 id="estatutos-titulo">Estatutos</h2>
-        <p>Consultá el documento oficial de los estatutos de la Cooperativa Policial.</p>
-      </div>
-      <Button href={ESTATUTOS}>Ver estatutos <Icono nombre="externo" tamano={18} /><span class="visualmente-oculto"> (abre un sitio externo)</span></Button>
-    </Card>
-  </section>
-
   <BandaSocio />
 </Base>
 
@@ -71,7 +78,15 @@ const ESTATUTOS = 'https://anyflip.com/iosef/lfeu';
   .mv :global(.card--muted p) { color: var(--foreground); }
   .mv :global(.card--primary .eyebrow) { color: var(--amarillo-copol); }
 
-  :global(.estatutos) { flex-direction: row !important; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 20px !important; }
-  :global(.estatutos) > div { flex: 1 1 320px; display: grid; gap: 6px; }
-  :global(.estatutos) h2 { font-size: 1.5rem; }
+  .estatutos {
+    display: grid; gap: 20px 28px; align-items: center; padding: clamp(28px, 4.5vw, 56px); border-radius: var(--radio-xl);
+    background: linear-gradient(120deg, var(--verde-oscuro) 0%, var(--verde-copol) 100%); color: var(--sobre-verde);
+    box-shadow: var(--sombra);
+  }
+  @media (min-width: 900px) { .estatutos { grid-template-columns: auto 1fr auto; } }
+  .estatutos__icono { width: 72px; height: 72px; border-radius: var(--radio-lg); display: grid; place-items: center; background: var(--amarillo-copol); color: var(--tinta); }
+  .estatutos__texto { display: grid; gap: 8px; }
+  .estatutos__texto .eyebrow { color: var(--amarillo-copol); }
+  .estatutos h2 { font-size: clamp(1.625rem, 3.2vw, 2.5rem); color: var(--blanco); line-height: 1.1; }
+  .estatutos p { color: var(--sobre-verde); font-size: 1.125rem; max-width: 54ch; }
 </style>

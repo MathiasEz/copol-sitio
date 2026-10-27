@@ -146,6 +146,23 @@ const secciones = catalogo.categorias.map((c) => ({ ...c, modelos: MODELOS.filte
       </div>
     </dialog>
 
+    <!-- Antes de abrir WhatsApp con un solo producto: ¿consultar solo ese o juntar más y hacer una sola consulta? -->
+    <dialog class="ficha carrito consulta" data-consulta aria-labelledby="consulta-titulo">
+      <div class="ficha__caja">
+        <div class="ficha__barra"><button type="button" class="ficha__cerrar" data-consulta-cerrar aria-label="Cerrar"><Icono nombre="cerrar" tamano={20} /></button></div>
+        <div class="consulta__cuerpo">
+          <span class="consulta__icono"><Icono nombre="whatsapp" tamano={28} /></span>
+          <h2 id="consulta-titulo" class="ficha__titulo">¿Querés consultar solo este producto o preferís agregar más antes de enviar la consulta?</h2>
+          <p class="consulta__producto" data-consulta-producto></p>
+          <p class="ficha__nota" data-consulta-nota>Si juntás todos los productos que te interesan en el carrito, hacés una sola consulta por WhatsApp.</p>
+        </div>
+        <div class="consulta__acciones">
+          <button type="button" class="btn btn--default btn--lg" data-consulta-mas><Icono nombre="carrito" tamano={18} /> Agregar más productos</button>
+          <a class="btn btn--outline btn--lg" href="#" target="_blank" rel="noopener" data-consulta-solo><Icono nombre="whatsapp" tamano={18} /> Consultar solo este producto</a>
+        </div>
+      </div>
+    </dialog>
+
     <div class="aviso-legal">
       <p>Las imágenes son ilustrativas y pueden presentar diferencias con el producto real. Las características, colores y especificaciones técnicas están sujetos a cambios sin previo aviso.</p>
       <p>El estado de stock es orientativo y puede variar durante el día: confirmalo por WhatsApp. El pedido se considerará confirmado únicamente cuando haya sido gestionado por nuestro equipo a través de WhatsApp. La cooperativa no se responsabiliza por posibles errores tipográficos o de publicación.</p>
@@ -569,6 +586,35 @@ const secciones = catalogo.categorias.map((c) => ({ ...c, modelos: MODELOS.filte
     const fila = b?.closest<HTMLElement>('.variante');
     if (b && fila) { e.preventDefault(); agregar(fila); }
   });
+  // Consulta de un solo producto: antes de abrir WhatsApp se ofrece juntar más productos en el carrito.
+  const consultaDialogo = document.querySelector<HTMLDialogElement>('[data-consulta]')!;
+  const consultaSolo = consultaDialogo.querySelector<HTMLAnchorElement>('[data-consulta-solo]')!;
+  const consultaProducto = consultaDialogo.querySelector<HTMLElement>('[data-consulta-producto]')!;
+  const consultaNota = consultaDialogo.querySelector<HTMLElement>('[data-consulta-nota]')!;
+  let consultaFila: HTMLElement | null = null;
+  document.addEventListener('click', (e) => {
+    const enlace = (e.target as HTMLElement).closest<HTMLAnchorElement>('.variante__consulta');
+    const fila = enlace?.closest<HTMLElement>('.variante');
+    if (!enlace || !fila || e.ctrlKey || e.metaKey || e.shiftKey) return;
+    e.preventDefault();
+    consultaFila = fila;
+    consultaSolo.href = enlace.href;
+    consultaProducto.textContent = `${fila.dataset.modelo ?? ''}${fila.dataset.color ? `, color ${fila.dataset.color.toLowerCase()}` : ''}${fila.dataset.codigo ? ` · código ${fila.dataset.codigo}` : ''}`;
+    consultaNota.textContent = carrito.length
+      ? `Ya tenés ${carrito.length} ${carrito.length === 1 ? 'producto' : 'productos'} en el carrito: agregá este y enviá todo junto en una sola consulta.`
+      : 'Si juntás todos los productos que te interesan en el carrito, hacés una sola consulta por WhatsApp.';
+    consultaDialogo.showModal();
+  });
+  consultaDialogo.querySelector('[data-consulta-cerrar]')!.addEventListener('click', () => consultaDialogo.close());
+  consultaDialogo.addEventListener('click', (e) => { if (e.target === consultaDialogo) consultaDialogo.close(); });
+  consultaSolo.addEventListener('click', () => consultaDialogo.close()); // el enlace abre WhatsApp en otra pestaña
+  consultaDialogo.querySelector('[data-consulta-mas]')!.addEventListener('click', () => {
+    const fila = consultaFila;
+    consultaDialogo.close();
+    if (!fila) return;
+    if (ficha.open) ficha.close();
+    agregar(fila);
+  });
   carritoBoton.addEventListener('click', () => {
     if (ficha.open) ficha.close();
     carritoAviso.classList.remove('carrito-aviso--visible');
@@ -860,6 +906,12 @@ const secciones = catalogo.categorias.map((c) => ({ ...c, modelos: MODELOS.filte
   .carrito__cantidad { min-width: 24px; text-align: center; font-weight: 800; font-variant-numeric: tabular-nums; }
   .carrito__vacio p { margin: 0; color: var(--muted-foreground); }
   .carrito__pie { display: grid; gap: 12px; }
+  .consulta { max-width: min(520px, 94vw); }
+  .consulta__cuerpo { display: grid; gap: 12px; justify-items: start; padding: 4px 4px 8px; }
+  .consulta__icono { width: 56px; height: 56px; border-radius: 18px; display: grid; place-items: center; background: var(--accent); color: var(--tinta); }
+  .consulta__producto { margin: 0; font-weight: 700; color: var(--verde-oscuro); }
+  .consulta__acciones { display: grid; gap: 10px; padding-top: 8px; }
+  .consulta__acciones .btn { width: 100%; justify-content: center; }
   .carrito__acciones { display: flex; flex-wrap: wrap; gap: 10px; justify-content: space-between; align-items: center; }
   [data-carrito-vacio][hidden], [data-carrito-pie][hidden] { display: none; }
   @media (max-width: 559px) {

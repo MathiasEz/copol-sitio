@@ -92,7 +92,7 @@ const secciones = [
       <a href="/hipermercado/bazar/" class="enlace-flecha">Ver todo el catálogo <Icono nombre="flecha" tamano={18} /></a>
     </div>
     <!-- Stock vigente desde la base del panel (se genera en cada visita) -->
-    <EstanteBazar server:defer cantidad={5} completo={false}>
+    <EstanteBazar server:defer cantidad={5}>
       <div slot="fallback" class="estante-esqueleto" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
     </EstanteBazar>
   </section>

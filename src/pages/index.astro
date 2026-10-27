@@ -7,7 +7,6 @@ import BannerInicio from '../components/BannerInicio.astro';
 import '../styles/banner-inicio.css';
 import AperturasCredito from '../components/AperturasCredito.astro';
 import EstanteBazar from '../components/EstanteBazar.astro';
-import NovedadesInicio from '../components/NovedadesInicio.astro';
 import BannerSeccion from '../components/BannerSeccion.astro';
 import Icono from '../components/Icono.astro';
 import Button from '../components/ui/Button.astro';
@@ -45,7 +44,7 @@ const accesos = [
 ] as const;
 
 ---
-<Base titulo="Inicio">
+<Base titulo="Inicio" anchoCompleto>
   <!-- Título de la página siempre presente (el banner puede no tener diapositivas publicadas). -->
   <h1 class="visualmente-oculto">COPOL · Cooperativa Policial</h1>
   <!-- ── Banner: diapositivas editables desde el panel (Administración Página) ── -->
@@ -84,16 +83,6 @@ const accesos = [
     <div slot="fallback" class="contenedor creditos-esqueleto" aria-hidden="true"><div></div></div>
   </AperturasCredito>
 
-  <!-- ── Bazar: banner + estante de productos ── -->
-  <section class="contenedor bloque" aria-labelledby="bazar-titulo">
-    <BannerSeccion src={bannerBazar} movil={bannerBazarMovil} href="/hipermercado/bazar/" alt="Bazar: todo para ti y tu hogar. Hasta 15 cuotas sin recargo. Ver el catálogo del Bazar." />
-    <h2 id="bazar-titulo" class="visualmente-oculto">Lo más buscado del Bazar</h2>
-    <!-- Stock vigente: se genera en cada visita a partir de la base del panel -->
-    <EstanteBazar server:defer cantidad={10}>
-      <div slot="fallback" class="estante-esqueleto" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span></div>
-    </EstanteBazar>
-  </section>
-
   <!-- ── Servicios sociales: banner + servicios ── -->
   <section class="bloque bloque--suave" aria-labelledby="servicios-titulo">
     <div class="contenedor bloque__interior">
@@ -111,6 +100,16 @@ const accesos = [
         ))}
       </ul>
     </div>
+  </section>
+
+  <!-- ── Bazar: banner + estante de productos ── -->
+  <section class="contenedor bloque bloque--pegado" aria-labelledby="bazar-titulo">
+    <BannerSeccion src={bannerBazar} movil={bannerBazarMovil} href="/hipermercado/bazar/" alt="Bazar: todo para ti y tu hogar. Hasta 15 cuotas sin recargo. Ver el catálogo del Bazar." />
+    <h2 id="bazar-titulo" class="visualmente-oculto">Lo más buscado del Bazar</h2>
+    <!-- Stock vigente: se genera en cada visita a partir de la base del panel -->
+    <EstanteBazar server:defer cantidad={10}>
+      <div slot="fallback" class="estante-esqueleto" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span></div>
+    </EstanteBazar>
   </section>
 
   <!-- ── Pinecoop: banner + detalle ── -->
@@ -135,11 +134,6 @@ const accesos = [
       </a>
     </div>
   </section>
-
-  <!-- ── Novedades: las publicadas en el panel, en su orden ── -->
-  <NovedadesInicio server:defer>
-    <div slot="fallback" class="contenedor bloque" aria-hidden="true"><div class="novedades-esqueleto"></div></div>
-  </NovedadesInicio>
 
   <!-- ── Hacete socio: banner + beneficios ── -->
   <section class="bloque bloque--suave bloque--final" aria-labelledby="socio-titulo">
@@ -200,6 +194,14 @@ const accesos = [
     .accesos__lista { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
     .accesos :global(.acceso) { padding: 16px 14px; }
   }
+
+  /* Bazar: los productos van pegados al banner */
+  .bloque--pegado { gap: 10px; }
+  .bloque--pegado :global(.estante-bazar) { gap: 10px; }
+
+  /* Íconos quietos: sin gestos animados ni giros al pasar el puntero (solo Inicio) */
+  main :global(.icono__g), main :global(.icono__parte) { animation: none !important; }
+  main :global(a.card:hover .card__icono) { transform: none; }
 
   /* Bloque de sección: banner → cabecera con llamado a la acción → contenido */
 

@@ -167,9 +167,7 @@ const VIEWPORTS = { movil: { width: 375, height: 812 }, escritorio: { width: 136
   const copias = await page.$$eval('[data-ofertas] .oferta[aria-hidden="true"] img', (is) => is.map((i) => i.alt));
   verificar(copias.length === 58 && copias.every((a) => a === ''), `Promociones · copias del bucle ocultas para lectores de pantalla (${copias.length})`);
   const orden = await page.$$eval('main h2', (hs) => hs.map((h) => h.textContent.trim()));
-  verificar(orden.indexOf('Ofertas de octubre') > -1 && orden.indexOf('Ofertas de octubre') < orden.indexOf('Campañas vigentes'), `Promociones · la sección de ofertas va antes de "Campañas vigentes" (${orden.join(' → ')})`);
-  const campanas = await page.$$eval('.campana h3', (hs) => hs.map((h) => h.textContent.trim()));
-  verificar(campanas.length === 2 && campanas.some((t) => /moto/i.test(t)) && campanas.some((t) => /alquiler/i.test(t)), `Promociones · "Campañas vigentes" solo con motos y Porto Seguro (${campanas.join(' / ')})`);
+  verificar(orden.includes('Ofertas de octubre') && !orden.includes('Campañas vigentes') && (await page.$$('.campana')).length === 0, `Promociones · solo ofertas del supermercado, sin campañas de motos ni garantía de alquiler (${orden.join(' → ')})`);
   verificar((await page.$$('[data-ofertas] button')).length === 0, 'Promociones · sin botones de avanzar/pausar/volver');
   await page.locator('[data-ofertas]').scrollIntoViewIfNeeded();
   await page.mouse.move(5, 5);

@@ -111,3 +111,18 @@ Movimiento: transiciones cortas, aparición progresiva al hacer scroll (solo con
 | Varios roles por persona | `usuarios.roles` guarda la lista y los permisos se suman. Roles: Administrador, Editor de stock, Visualizador de stock y el nuevo **Carga de registros**. El Administrador del panel de registros equivale al Administrador del panel único. Las cuentas existentes se migran solas. |
 | Menú en tres secciones | **Stock Bazar** (Inventario, Agregar producto, Asistente), **Registros** (Nuevo registro, Planilla) y **Administración** (Administración Página, Información empleados, Estadísticas, Usuarios, Registro de cambios, Accesos). «Registro» pasó a llamarse «Registro de cambios» para no confundirse con Registros. |
 | Datos personales | Con la hoja de Google conectada, la base guarda solo un resumen de cada registro; cédula, dirección, service e información adicional quedan únicamente en la hoja. La auditoría nunca los guarda. |
+
+## Rediseño de Inicio y secciones (27/10/2026)
+
+| Tema | Decisión |
+|---|---|
+| Inicio a todo el ancho | `Base` acepta `anchoCompleto`: el contenido llega de borde a borde (margen interno de 16 a 44 px) y no hay textura lateral. Solo Inicio lo usa. |
+| Orden de Inicio | Banner principal, beneficios, accesos, créditos, **Servicios sociales** (arriba, para que se vean con poco scroll), Bazar, Pinecoop y Hacete socio. Cada banner reemplaza al título de su sección. |
+| Bazar en Inicio | Sin botones de categorías: solo los productos, pegados al banner. |
+| Novedades | Se quitó la sección del final de Inicio. Ahora están en la **campana del encabezado** (todas las páginas): el número (1 a 5) sale de la hora de Uruguay y el desplegable muestra las novedades del panel (`NovedadesCampana.astro`). |
+| Locales y Convenios | Al elegir un punto: scroll propio, lento y con arranque y frenado suaves hasta el mapa; luego el mapa vuela (flyTo) hasta el lugar. |
+| Historia | Sin el hito «Nueva identidad de marca». «Presencia en todo el país» lista los departamentos y muestra un local por departamento (sale de los locales). Estatutos en un bloque destacado. |
+| Promociones | Sin «Campañas vigentes» (motos Zanella y garantía de alquiler). |
+| Bazar | Al tocar «Consultar» en un color, un modal ofrece consultar solo ese producto o agregar más al carrito para hacer una sola consulta. |
+| Acceso web | Primero Mi cuenta de socio (degradé de marca, aro, llamado amarillo) y debajo el Portal de empleados; se quitó la tarjeta «App para Android – pendiente». |
+| Hacete socio | «Dos caminos» pasó a ser un asistente interactivo de una pregunta con tres respuestas y sus pasos (con los textos existentes). |

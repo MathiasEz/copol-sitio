@@ -9,22 +9,14 @@ import { cachearEnCdn, ETIQUETAS_WEB, sinCache } from '../lib/cache-publica';
 
 interface Props {
   cantidad?: number;
-  /** Muestra accesos por categoría y el total de productos. */
-  completo?: boolean;
 }
-const { cantidad = 10, completo = true } = Astro.props;
+const { cantidad = 10 } = Astro.props;
 const catalogo = await obtenerCatalogo();
 if (catalogo.enVivo) cachearEnCdn(Astro.response.headers, ETIQUETAS_WEB.bazar);
 else sinCache(Astro.response.headers);
 const lista = destacados(catalogo, cantidad);
-const chips = [...catalogo.categorias].filter((c) => c.id !== 'destacados').sort((a, b) => b.conStock - a.conStock).slice(0, 8);
 ---
 <div class="estante-bazar">
-  {completo && (
-    <nav class="chips" aria-label="Categorías del Bazar">
-      {chips.map((c) => <a class="chip" href={`/hipermercado/bazar/?categoria=${encodeURIComponent(c.id)}`}>{c.nombre}<span class="chip__n">{c.total}</span></a>)}
-    </nav>
-  )}
   {lista.length > 0 ? (
     <ul class="estante" aria-label="Productos destacados del Bazar">
       {lista.map((p) => <li><TarjetaProducto producto={p} /></li>)}
@@ -44,24 +36,12 @@ const chips = [...catalogo.categorias].filter((c) => c.id !== 'destacados').sort
 
 <style is:global>
   .estante-bazar { display: grid; gap: clamp(16px, 2.2vw, 24px); }
-  .chips { display: flex; gap: 8px; flex-wrap: wrap; }
-  .chip {
-    display: inline-flex; align-items: center; gap: 8px; padding: 7px 8px 7px 14px; border-radius: var(--radio-pill);
-    border: 1px solid var(--border); background: var(--card); text-decoration: none; color: var(--foreground);
-    font-weight: 600; font-size: 0.9375rem; transition: background var(--transicion), border-color var(--transicion), transform 300ms var(--resorte);
-  }
-  .chip:hover { background: var(--muted); border-color: var(--borde-fuerte); }
-  .chip:active { transform: scale(0.97); }
-  .chip__n { min-width: 28px; padding: 1px 8px; border-radius: var(--radio-pill); background: var(--muted); color: var(--verde-oscuro); font-size: 0.8125rem; text-align: center; font-variant-numeric: tabular-nums; }
   .estante { list-style: none; margin: 0; padding: 0; display: grid; gap: clamp(12px, 1.6vw, 20px); grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
   .estante > li { display: flex; min-width: 0; }
   .estante > li > .producto { flex: 1; }
   @media (min-width: 1100px) { .estante { grid-template-columns: repeat(5, minmax(0, 1fr)); } .estante__final { display: none !important; } }
   @media (max-width: 639px) {
-    /* scroll-padding: el encastre deja cada categoría alineada con el margen del contenido, no pegada al borde. */
-    .chips { flex-wrap: nowrap; overflow-x: auto; margin-inline: calc(-1 * var(--gutter)); padding: 2px var(--gutter) 6px; scroll-padding-inline: var(--gutter); scrollbar-width: none; scroll-snap-type: x proximity; }
-    .chips::-webkit-scrollbar, .estante::-webkit-scrollbar { display: none; }
-    .chip { flex: none; scroll-snap-align: start; min-height: 44px; }
+    .estante::-webkit-scrollbar { display: none; }
     .estante {
       grid-auto-flow: column; grid-template-columns: none; grid-auto-columns: 44%;
       overflow-x: auto; scroll-snap-type: x mandatory; overscroll-behavior-x: contain;

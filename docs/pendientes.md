@@ -6,7 +6,6 @@
 |---|---|---|
 | Hipermercado → "Productos del Hipermercado" | Marca "Contenido de demostración — reemplazar por catálogo oficial" | Catálogo oficial sin precios (ver reemplazo-de-datos.md). |
 | Promociones → "Ofertas de octubre" | 29 piezas con precio (excepción aprobada) | **Retirarlas al terminar octubre de 2026** o reemplazarlas por las del mes siguiente (src/data/confirmado/ofertas-supermercado.ts). |
-| Promociones → "Campañas vigentes" | Motos Zanella y garantía de alquiler con Porto Seguro | Confirmar que ambas siguen vigentes. |
 | Acceso web → App Android | "Pendiente de confirmación" | Confirmar el enlace vigente (APK o Google Play). |
 | Contacto → formulario | "Formulario en modo demostración" | Backend del formulario (produccion.md, P1). |
 | Locales → Artigas y Paysandú | "Teléfono pendiente de confirmación" | Confirmar el fijo de cada agencia (ambas figuran con 4772 5070). |
@@ -50,7 +49,6 @@ Cargados en `src/data/confirmado/historia.ts` con `pendiente`; se publican cuand
 | "+150 beneficios" | No publicado | Hacete socio (sitio anterior) | No se usa: posible confusión con empleados. |
 | Años de historia | Se usa "Desde 1917" y "más de un siglo" | Historia: "108 años" (desactualizado) | No se publica un número fijo. |
 | Parques vacacionales | Salinas + Chuy "próximamente" | Sitio anterior: "2 parques" | Se describe Chuy como "Próximamente". |
-| Motos Zanella / garantía de alquiler | Campañas en carrusel y promociones | Banners del sitio anterior | **Confirmar vigencia**. |
 | Campaña "cáncer de mama" | Promociones | Pieza de octubre | Retirar al terminar octubre. |
 | Fiestas y cumpleaños de 15 | Novedad en Inicio | Hero del sitio anterior | Confirmar vigencia y canal de reserva (hoy, WhatsApp general). |
 | Atención presencial de Pinecoop | "Lunes a viernes 9:00 a 17:00, sede central piso 2" | Ficha Pinecoop del sitio anterior | Publicado tal cual. |
