@@ -100,8 +100,11 @@ const agencias = LOCALES.filter((l) => l.tipo === 'agencia').length;
   .mision :global(.mision__bloque) { padding: clamp(24px, 4vw, 44px); border-radius: var(--radio-xl); }
   .mision :global(.card--muted p) { color: var(--foreground); }
 
-  .foto-historica { margin: 0; display: grid; gap: 20px 40px; align-items: end; }
+  .foto-historica { margin: 0; display: grid; gap: 20px 48px; align-items: center; }
   @media (min-width: 900px) { .foto-historica { grid-template-columns: 1.4fr 1fr; } }
   .foto-historica figcaption { display: grid; gap: 10px; justify-items: start; padding-bottom: 8px; }
-  .foto-historica figcaption strong { font-size: clamp(1.25rem, 2vw, 1.5rem); color: var(--verde-oscuro); line-height: 1.25; }
+  .foto-historica figcaption strong {
+    font-family: var(--fuente-titulo); font-stretch: var(--titulo-ancho); font-weight: var(--titulo-peso); text-transform: var(--titulo-caja);
+    font-size: clamp(1.75rem, 3.2vw, 2.75rem); line-height: var(--titulo-interlineado); letter-spacing: var(--titulo-tracking); color: var(--verde-oscuro); text-wrap: balance;
+  }
 </style>

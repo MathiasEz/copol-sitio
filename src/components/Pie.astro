@@ -105,6 +105,9 @@ const secciones = NAVEGACION.filter((n) => n.hijos);
     text-wrap: balance;
   }
   :global(:root[data-estilo='afiche']) .pie__logo { border-radius: 0; }
+  :global(:root[data-estilo='afiche']) .pie__titulo,
+  :global(:root[data-estilo='afiche']) .pie__titulo a { color: var(--blanco-verdozo); text-transform: uppercase; letter-spacing: 0.04em; font-size: 0.875rem; }
+  :global(:root[data-estilo='afiche']) .pie__lema { color: var(--blanco); }
   :global(:root[data-estilo='afiche']) .pie__redes a { border-radius: var(--radio-md); }
   /* Folleto: banda amarilla con el lema en negro ancho, como el cierre del folleto. */
   :global(:root[data-estilo='folleto']) .pie__cartel {

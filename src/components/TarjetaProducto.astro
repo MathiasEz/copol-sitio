@@ -47,8 +47,8 @@ const ICONO_ESTADO = { 'con-stock': 'check', 'sin-stock': 'cerrar', 'sin-dato': 
       <Icono nombre={ICONO_ESTADO[producto.estado]} tamano={14} />
       <span data-stock-texto>{ESTADO_STOCK[producto.estado]}</span>
     </span>
-    <span class="producto__categoria">{producto.categoria}{producto.marca && ` · ${producto.marca}`}</span>
     <Titulo class="producto__nombre">{producto.nombre}</Titulo>
+    <span class="producto__categoria">{producto.categoria}{producto.marca && ` · ${producto.marca}`}</span>
     {producto.codigo && <span class="producto__codigo">Código interno COPOL {producto.codigo}</span>}
   </div>
   <a href={producto.consulta} class="btn btn--secondary btn--sm producto__accion" rel="noopener">

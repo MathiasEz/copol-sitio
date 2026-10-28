@@ -473,6 +473,10 @@ a.card--primary:hover { color: var(--sobre-campo-suave); box-shadow: inset 0 0 0
 @media (prefers-reduced-motion: no-preference) {
   :root[data-estilo='afiche'] a.card { transition: background-color 160ms var(--ease-out-quart), color 160ms var(--ease-out-quart), padding 260ms var(--ease-out-quart); }
 }
+/* Afiche: el Amarillo pleno es solo para la acción principal; íconos, sellos y resaltados van en tinta o papel. */
+:root[data-estilo='afiche'] .card__icono--accent { background: var(--verde-oscuro); color: var(--blanco-verdozo); }
+:root[data-estilo='afiche'] .badge--accent { background: var(--verde-oscuro); color: var(--blanco); }
+:root[data-estilo='afiche'] .bi__resaltado { background: var(--blanco-verdozo); color: var(--verde-oscuro); }
 /* Folleto: al pasar el puntero, la tarjeta se pinta de Amarillo, como una etiqueta de oferta. */
 :root[data-estilo='folleto'] a.card:not(.card--primary):hover { background: var(--amarillo-copol); }
 .card__icono {

@@ -8,8 +8,9 @@
   display: grid; place-content: center; justify-items: center; gap: 8px; font-size: 0.8125rem; font-weight: 600; text-align: center; padding: 12px;
 }
 .producto__cuerpo { display: grid; gap: 4px; padding-inline: 2px; }
-.producto__categoria { font-size: 0.75rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--verde-oscuro); }
-.producto__nombre { font-size: 0.98rem; font-weight: 650; line-height: 1.35; color: var(--foreground); letter-spacing: -0.005em; transition: color var(--transicion); }
+.producto__categoria { font-size: 0.8125rem; font-weight: 600; color: var(--verde-oscuro); }
+/* El nombre es dato de catálogo: siempre en la letra de texto, sin la voz de los títulos del estilo. */
+.producto__nombre { font-family: var(--fuente); font-stretch: 100%; text-transform: none; font-size: 0.98rem; font-weight: 650; line-height: 1.35; color: var(--foreground); letter-spacing: -0.005em; transition: color var(--transicion); }
 .producto:hover .producto__nombre { color: var(--verde-oscuro); }
 .producto__codigo { font-size: 0.8125rem; color: var(--muted-foreground); }
 .producto__accion { margin-top: auto; align-self: flex-start; }

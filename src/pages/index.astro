@@ -37,12 +37,12 @@ const beneficios = BENEFICIOS_SOCIO.map((b) => (b.icono === 'ubicacion' ? { ...b
 // Cada acceso dice algo concreto y verificable (horario, cantidades), no solo el nombre de la sección.
 const horarioTienda = HORARIOS.casaCentral[0];
 const accesos = [
-  { texto: 'Acceso web', detalle: 'Saldo, crédito y estado de cuenta', href: '/acceso-web/', icono: 'candado' },
-  { texto: 'Bazar', detalle: 'Hasta 15 cuotas sin recargo', href: '/hipermercado/bazar/', icono: 'celular' },
-  { texto: 'Tienda', detalle: `${horarioTienda.dias}, ${horarioTienda.horas}`, href: '/hipermercado/tienda/', icono: 'tienda' },
-  { texto: 'Servicios sociales', detalle: `${SERVICIOS.length} servicios: salud, turismo y más`, href: '/beneficios/servicios-sociales/', icono: 'corazon' },
-  { texto: 'Convenios', detalle: `${CONVENIOS.length} comercios adheridos`, href: '/beneficios/convenios/', icono: 'convenio' },
-  { texto: 'Locales', detalle: `${LOCALES.length} en todo el país`, href: '/sobre-nosotros/locales/', icono: 'ubicacion' },
+  { texto: 'Acceso web', detalle: 'Saldo, crédito y estado de cuenta', href: '/acceso-web/', icono: 'candado', cifra: null, junto: null },
+  { texto: 'Bazar', detalle: 'Hasta 15 cuotas sin recargo', href: '/hipermercado/bazar/', icono: 'celular', cifra: '15', junto: 'cuotas sin recargo, como máximo' },
+  { texto: 'Tienda', detalle: `${horarioTienda.dias}, ${horarioTienda.horas}`, href: '/hipermercado/tienda/', icono: 'tienda', cifra: horarioTienda.horas.replace(':00', '').replace(':00', '').replace(' a ', '–'), junto: `${horarioTienda.dias}, en Casa Central` },
+  { texto: 'Servicios sociales', detalle: `${SERVICIOS.length} servicios: salud, turismo y más`, href: '/beneficios/servicios-sociales/', icono: 'corazon', cifra: String(SERVICIOS.length), junto: 'salud, turismo, Pinecoop y más' },
+  { texto: 'Convenios', detalle: `${CONVENIOS.length} comercios adheridos`, href: '/beneficios/convenios/', icono: 'convenio', cifra: String(CONVENIOS.length), junto: 'comercios en todo el país' },
+  { texto: 'Locales', detalle: `${LOCALES.length} en todo el país`, href: '/sobre-nosotros/locales/', icono: 'ubicacion', cifra: String(LOCALES.length), junto: 'Casa Central, sucursales y agencias' },
 ] as const;
 
 ---
@@ -71,8 +71,10 @@ const accesos = [
         <li>
           <a href={a.href} class="indice__item">
             <span class="indice__icono"><Icono nombre={a.icono} tamano={22} /></span>
+            {a.cifra && <span class="indice__cifra" aria-hidden="true">{a.cifra}</span>}
             <strong class="indice__texto">{a.texto}</strong>
-            <span class="indice__detalle">{a.detalle}</span>
+            <span class:list={['indice__detalle', { 'indice__detalle--sin-cifra': a.junto }]}>{a.detalle}</span>
+            {a.junto && <span class="indice__detalle indice__detalle--con-cifra">{a.junto}</span>}
             <Icono nombre="flecha" tamano={18} clase="indice__flecha" />
           </a>
         </li>
@@ -141,11 +143,11 @@ const accesos = [
       <ul class="beneficios escalonar">
         {beneficios.map((b) => (
           <li>
-            <Card href={b.href} class="beneficio">
-              <span class="card__icono card__icono--accent"><Icono nombre={b.icono} tamano={24} /></span>
+            <a href={b.href} class="beneficio">
+              <Icono nombre={b.icono} tamano={22} clase="beneficio__icono" />
               <strong>{b.titulo}</strong>
               <span>{b.texto}</span>
-            </Card>
+            </a>
           </li>
         ))}
       </ul>
@@ -169,7 +171,7 @@ const accesos = [
   @media (min-width: 784px) { .banner-esqueleto { border-radius: 0; max-height: 680px; } }
 
   /* Banner de beneficios entre el banner de Inicio y los accesos rápidos */
-  .banner-beneficios { padding-top: var(--seccion); }
+  .banner-beneficios { padding-top: clamp(16px, 2.4vw, 32px); }
   .accesos { padding-top: var(--seccion); }
   .accesos__titulo { font-size: clamp(1.625rem, 2.8vw, 2.25rem); margin-bottom: clamp(16px, 2vw, 24px); }
 
@@ -223,6 +225,18 @@ const accesos = [
     :global(:root[data-estilo='afiche']) .indice > li + li:nth-child(3n + 1) .indice__item { box-shadow: none; }
   }
   :global(:root[data-estilo='afiche']) .indice__icono { width: auto; height: auto; justify-content: start; background: none; margin-bottom: 14px; }
+  .indice__cifra, .indice__detalle--con-cifra { display: none; }
+  /* Afiche: debajo de la cifra va un dato que la complementa en lugar de repetirla. */
+  :global(:root[data-estilo='afiche']) .indice__detalle--sin-cifra { display: none; }
+  :global(:root[data-estilo='afiche']) .indice__detalle--con-cifra { display: block; }
+  /* Afiche: la cifra real es la protagonista (numeral condensado y tabular); el ícono queda solo donde no hay cifra. */
+  :global(:root[data-estilo='afiche']) .indice__item:has(.indice__cifra) .indice__icono { display: none; }
+  :global(:root[data-estilo='afiche']) .indice__cifra {
+    display: block; margin-bottom: 8px; font-family: var(--fuente-titulo); font-stretch: 66%; font-weight: 800;
+    font-size: clamp(2.75rem, 4.6vw, 4rem); line-height: 0.86; letter-spacing: -0.01em; color: var(--verde-oscuro); font-variant-numeric: tabular-nums;
+  }
+  :global(:root[data-estilo='afiche']) .indice__item:hover .indice__cifra { color: var(--blanco-verdozo); }
+  :global(:root[data-estilo='afiche']) .indice__icono { min-height: calc(clamp(2.75rem, 4.6vw, 4rem) * 0.86); align-items: end; }
   :global(:root[data-estilo='afiche']) .indice__texto {
     font-family: var(--fuente-titulo); font-stretch: 72%; font-weight: 800; text-transform: uppercase;
     font-size: clamp(1.375rem, 2vw, 1.75rem); line-height: 0.95;
@@ -285,13 +299,15 @@ const accesos = [
   .socio__acciones { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 8px; }
 
   /* Beneficios de socio */
-  .beneficios { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); }
-  .beneficios > li { display: flex; }
-  .beneficios :global(.beneficio) { flex: 1; gap: 6px; padding: 20px; }
-  .beneficios :global(.beneficio strong) { font-size: 1.0625rem; color: var(--verde-oscuro); margin-top: 6px; }
-  .beneficios :global(.beneficio span:last-child) { color: var(--muted-foreground); font-size: 0.9375rem; }
-  @media (max-width: 479px) {
-    .beneficios { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-    .beneficios :global(.beneficio) { padding: 16px 14px; }
-  }
+  /* Beneficios de socio: lista entre filetes (no tarjetas iguales), 2 columnas en celular y 4 en computadora. */
+  .beneficios { list-style: none; margin: 0; padding: 0; display: grid; gap: 0 clamp(16px, 2.4vw, 32px); grid-template-columns: repeat(2, minmax(0, 1fr)); border-bottom: var(--filete); }
+  @media (min-width: 900px) { .beneficios { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+  .beneficios > li { display: flex; border-top: var(--filete); }
+  .beneficio { flex: 1; display: grid; align-content: start; gap: 4px; padding: 16px 0 20px; color: var(--foreground); text-decoration: none; }
+  .beneficio:hover { color: var(--foreground); }
+  .beneficio:hover strong { text-decoration: underline; text-underline-offset: 4px; }
+  .beneficios :global(.beneficio__icono) { color: var(--verde-copol); margin-bottom: 6px; }
+  .beneficio strong { font-size: 1.0625rem; color: var(--verde-oscuro); }
+  .beneficio span { color: var(--muted-foreground); font-size: 0.9375rem; }
+  :global(:root[data-estilo='afiche']) .beneficio strong { font-family: var(--fuente-titulo); font-stretch: 72%; font-weight: 800; text-transform: uppercase; font-size: 1.5rem; line-height: 0.95; }
 </style>

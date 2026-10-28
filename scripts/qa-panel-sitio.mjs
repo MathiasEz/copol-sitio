@@ -5,7 +5,7 @@
 //   2. Escaneo: cámara simulada que muestra un código EAN-13 → el campo "Código interno COPOL" se completa.
 //      Con el permiso de cámara denegado, el ingreso manual sigue funcionando.
 //   3. Usuarios: alta con usuario/correo, uno o varios roles y contraseña temporal; cambio de contraseña en el perfil.
-//   4. Novedades: crear con imagen, publicar → aparece en Inicio; despublicar → desaparece.
+//   4. Novedades: crear con imagen, publicar → aparece en la campana del encabezado; despublicar → desaparece.
 // Crea un usuario administrador temporal con contraseña aleatoria y lo elimina al terminar; restaura
 // el stock del producto usado y elimina la novedad y el usuario de prueba.
 //   node scripts/qa-panel-sitio.mjs [urlBase]
@@ -197,9 +197,10 @@ try {
   verificar(nov && !nov.publicado && /-1600\.webp$/.test(nov.imagen), 'Novedades · creada como borrador con imagen validada y guardada');
   const enInicio = async () => {
     await sitio.goto(`${BASE}/`);
-    await sitio.waitForSelector('.novedades-lista, footer', { timeout: 15_000 });
+    // Desde el 27/10/2026 las novedades se muestran en la campana del encabezado (NovedadesCampana.astro).
+    await sitio.waitForSelector('.nc-lista, .nc-vacio', { state: 'attached', timeout: 15_000 });
     await sitio.waitForTimeout(800);
-    return sitio.$$eval('.nov h3', (hs) => hs.map((h) => h.textContent.trim()));
+    return sitio.$$eval('.nc-item__cuerpo strong', (hs) => hs.map((h) => h.textContent.trim()));
   };
   verificar(!(await enInicio()).includes(titulo), 'Novedades · el borrador no aparece en Inicio');
   await panel.goto(`${BASE}${RUTA}/novedades`);
@@ -207,7 +208,7 @@ try {
   await panel.waitForURL(/aviso=novedad-publicada/);
   const titulos = await enInicio();
   verificar(titulos.includes(titulo), `Novedades · publicada, aparece en Inicio (${titulos.length} publicadas)`);
-  const src = await sitio.$eval(`.nov:has(h3:text-is("${titulo}")) img`, (i) => i.currentSrc || i.src).catch(() => null);
+  const src = await sitio.$eval(`.nc-item:has(strong:text-is("${titulo}")) img`, (i) => i.currentSrc || i.src).catch(() => null);
   const resImg = src ? await sitio.request.get(new URL(src, BASE).href) : null;
   const imgOk = resImg?.ok() && resImg.headers()['content-type'] === 'image/webp';
   verificar(imgOk, 'Novedades · su imagen se sirve desde el almacenamiento configurado');

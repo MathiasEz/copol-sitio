@@ -60,8 +60,8 @@ const consulta = n > 1 ? consultaProducto(m.nombre, null) : m.variantes[0].consu
   </div>
   <div class="producto__cuerpo">
     <span class="stock-etiqueta" data-stock-etiqueta><span data-stock-texto>{ESTADO_STOCK[m.estado]}</span></span>
-    <span class="producto__categoria">{m.categoria}{m.marca && ` · ${m.marca}`}</span>
     <Titulo class="producto__nombre" data-nombre>{m.nombre}</Titulo>
+    <span class="producto__categoria">{m.categoria}{m.marca && ` · ${m.marca}`}</span>
     {resumen && <span class="producto__codigo">{resumen}</span>}
   </div>
   <details class="producto__detalle" data-detalle>

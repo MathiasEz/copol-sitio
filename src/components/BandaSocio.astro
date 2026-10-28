@@ -19,7 +19,7 @@ const {
 const abanico = [
   { img: foto('tienda-interior'), pos: '50% 50%' },
   { img: foto('fiestas-eventos'), pos: '50% 50%' },
-  { img: foto('motos-bazar'), pos: '50% 50%' },
+  { img: foto('casa-central'), pos: '50% 40%' },
   { img: foto('pinecoop-salinas'), pos: '50% 60%' },
 ];
 ---
@@ -98,6 +98,8 @@ const abanico = [
   :global(:root[data-estilo='afiche']) .banda__caja { background: transparent; box-shadow: none; padding: 0; border-top: var(--filete-fuerte); gap: 0; }
   :global(:root[data-estilo='afiche']) .banda__texto { padding-inline: 0 clamp(20px, 4vw, 48px); }
   :global(:root[data-estilo='afiche']) .banda__abanico { background: var(--verde-oscuro); }
-  :global(:root[data-estilo='afiche']) .banda__foto { box-shadow: 0 0 0 5px var(--blanco-verdozo), 0 18px 30px -14px rgb(0 0 0 / 0.5); }
+  :global(:root[data-estilo='afiche']) .banda__abanico { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; padding: 6px; min-height: 0; }
+  :global(:root[data-estilo='afiche']) .banda__foto { position: static; width: auto; translate: none; rotate: none; scale: none; box-shadow: none; border-radius: 0; }
+  :global(:root[data-estilo='afiche']) .banda__caja:hover .banda__foto { rotate: none; }
   :global(:root[data-estilo='folleto']) .banda__caja { box-shadow: none; }
 </style>
