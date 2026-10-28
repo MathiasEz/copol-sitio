@@ -153,6 +153,7 @@ La app (`../copol-sitio-app`) lee estos endpoints públicos de solo lectura (JSO
 | Ruta | Contenido | Caché |
 |---|---|---|
 | `/api/app/v1/inicio` | Banner, novedades, aperturas de crédito y ofertas vigentes | CDN con etiquetas `banner`, `novedades`, `creditos`, `ofertas` (se renueva al guardar en el panel) |
+| `/api/app/v1/empleados` | Portal de empleados: recibos, reglamento, protocolo, encuesta y fotos (lo mismo que /portal-empleados/) | CDN con etiqueta `empleados` (se renueva al guardar "Información empleados" en el panel) |
 | `/api/app/v1/bazar` | Modelos del Bazar con estado de stock por color | CDN con etiqueta `bazar` |
 | `/api/app/v1/contenido.json` | Servicios, locales, convenios, contacto, horarios e historia | Se genera en el build |
 | `/api/app/v1/version.json` | Última versión del APK de Android (`versionCode`, dirección de descarga, notas) | Se genera en el build; se edita en `src/data/confirmado/app-celular.ts` |
