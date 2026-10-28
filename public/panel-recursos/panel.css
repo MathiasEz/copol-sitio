@@ -721,8 +721,8 @@ body { font-size: 1rem; }
 /* ── Afiche: papel Blanco verdozo, barra lateral entintada en Verde oscuro, títulos condensados en mayúsculas
    y esquinas rectas. ── */
 :root[data-estilo="afiche"]:not([data-tema="oscuro"]) {
-  --background: #eaf4ee; --muted: #dbece1; --accent: #d1e7d9; --border: #bcd7c5; --input: #8fb39c;
-  --fila-hover: #f3f9f5; --radius: 4px; --radius-sm: 3px; --radius-lg: 4px; --sombra: none;
+  --background: #fefce3; --muted: #f6efc0; --accent: #d1e7d9; --border: #ddd3a0; --input: #8fb39c;
+  --fila-hover: #fbf8dc; --radius: 4px; --radius-sm: 3px; --radius-lg: 4px; --sombra: none;
 }
 :root[data-estilo="afiche"]:not([data-tema="oscuro"]) .sidebar { background: #006633; border-color: #006633; color: #d9ecdf; }
 :root[data-estilo="afiche"]:not([data-tema="oscuro"]) .sidebar__marca { border-color: rgb(255 255 255 / .16); }
@@ -730,17 +730,17 @@ body { font-size: 1rem; }
 :root[data-estilo="afiche"]:not([data-tema="oscuro"]) .sidebar__marca span { color: #fff; }
 :root[data-estilo="afiche"]:not([data-tema="oscuro"]) .nav__item { color: #d9ecdf; }
 :root[data-estilo="afiche"]:not([data-tema="oscuro"]) .nav__item:hover { background: rgb(255 255 255 / .1); color: #fff; }
-:root[data-estilo="afiche"]:not([data-tema="oscuro"]) .nav__item[aria-current="page"] { background: #eaf4ee; color: #006633; }
+:root[data-estilo="afiche"]:not([data-tema="oscuro"]) .nav__item[aria-current="page"] { background: #fefce3; color: #006633; }
 :root[data-estilo="afiche"]:not([data-tema="oscuro"]) .nav__titulo { color: #f8ea39; }
 :root[data-estilo="afiche"]:not([data-tema="oscuro"]) .nav__grupo + .nav__grupo,
 :root[data-estilo="afiche"]:not([data-tema="oscuro"]) .sidebar__pie { border-color: rgb(255 255 255 / .16); }
 :root[data-estilo="afiche"]:not([data-tema="oscuro"]) .sidebar :is(.perfil, .btn--ghost) { color: #d9ecdf; }
 :root[data-estilo="afiche"]:not([data-tema="oscuro"]) .sidebar :is(.perfil:hover, .perfil[aria-current="page"], .btn--ghost:hover) { background: rgb(255 255 255 / .1); color: #fff; }
 :root[data-estilo="afiche"]:not([data-tema="oscuro"]) .sidebar .perfil__texto small { color: #b9d5c3; }
-:root[data-estilo="afiche"]:not([data-tema="oscuro"]) .sidebar .avatar { background: #eaf4ee; color: #006633; }
+:root[data-estilo="afiche"]:not([data-tema="oscuro"]) .sidebar .avatar { background: #fefce3; color: #006633; }
 :root[data-estilo="afiche"]:not([data-tema="oscuro"]) .sidebar .estilo-panel { background: rgb(255 255 255 / .1); }
 :root[data-estilo="afiche"]:not([data-tema="oscuro"]) .sidebar .estilo-panel :is(span, button) { color: #d9ecdf; }
-:root[data-estilo="afiche"]:not([data-tema="oscuro"]) .sidebar .estilo-panel button[aria-pressed="true"] { background: #eaf4ee; color: #006633; }
+:root[data-estilo="afiche"]:not([data-tema="oscuro"]) .sidebar .estilo-panel button[aria-pressed="true"] { background: #fefce3; color: #006633; }
 :root[data-estilo="afiche"]:not([data-tema="oscuro"]) .sidebar :focus-visible { outline-color: #f8ea39; }
 @media (max-width: 899px) {
   :root[data-estilo="afiche"]:not([data-tema="oscuro"]) .sidebar__menu > summary { color: #fff; }
@@ -756,7 +756,7 @@ body { font-size: 1rem; }
 
 /* ── Folleto: barra lateral en Amarillo pleno, ítem actual en verde, tarjetas con borde verde y títulos anchos. ── */
 :root[data-estilo="folleto"]:not([data-tema="oscuro"]) {
-  --background: #fffdf0; --muted: #fbf3b8; --border: #e3dba0; --input: #b9ae55;
+  --background: #fefce3; --muted: #fbf3b8; --border: #e3dba0; --input: #b9ae55;
   --radius: 12px; --radius-sm: 10px; --radius-lg: 18px; --sombra: none;
 }
 :root[data-estilo="folleto"]:not([data-tema="oscuro"]) .sidebar { background: #f8ea39; border-color: #006633; }

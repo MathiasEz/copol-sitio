@@ -95,7 +95,7 @@ const dato = antetitulo?.split(' · ').filter((p) => !enMigas.has(normalizar(p))
   /* Afiche: la cabecera es un campo entintado en Verde oscuro; título en papel, imagen como plancha impresa. */
   :global(:root[data-estilo='afiche']) .cabecera {
     --cab-fondo: var(--verde-oscuro);
-    --cab-titulo: var(--blanco-verdozo);
+    --cab-titulo: var(--papel);
     --cab-texto: var(--sobre-verde);
     border-bottom: 0;
   }
@@ -103,14 +103,14 @@ const dato = antetitulo?.split(' · ').filter((p) => !enMigas.has(normalizar(p))
   :global(:root[data-estilo='afiche']) .cabecera :global(.migas a),
   :global(:root[data-estilo='afiche']) .cabecera :global(.migas [aria-current]) { color: var(--sobre-verde); }
   :global(:root[data-estilo='afiche']) .cabecera :global(.migas li + li::before) { color: rgb(255 255 255 / 0.4); }
-  :global(:root[data-estilo='afiche']) .cabecera :global(.btn--default) { background: var(--blanco-verdozo); color: var(--verde-oscuro); }
+  :global(:root[data-estilo='afiche']) .cabecera :global(.btn--default) { background: var(--papel); color: var(--verde-oscuro); }
   :global(:root[data-estilo='afiche']) .cabecera :global(.btn--default:hover) { background: var(--blanco); color: var(--verde-oscuro); }
   :global(:root[data-estilo='afiche']) .cabecera :global(:is(.btn--outline, .btn--secondary)) { background: transparent; color: var(--blanco); border-color: rgb(255 255 255 / 0.7); box-shadow: none; }
   :global(:root[data-estilo='afiche']) .cabecera :global(:is(.btn--outline, .btn--secondary):hover) { background: rgb(255 255 255 / 0.12); color: var(--blanco); }
   :global(:root[data-estilo='afiche']) .cabecera :global(:focus-visible) { outline-color: var(--amarillo-copol); }
-  :global(:root[data-estilo='afiche']) .cabecera :global(.cabecera__imagen) { box-shadow: 0 0 0 6px var(--blanco-verdozo); }
+  :global(:root[data-estilo='afiche']) .cabecera :global(.cabecera__imagen) { box-shadow: 0 0 0 6px var(--papel); }
   :global(:root[data-estilo='afiche']) .cabecera :global(.cabecera__imagen::after) { box-shadow: none; }
-  :global(:root[data-estilo='afiche']) .cabecera__dato { color: var(--blanco-verdozo); text-transform: uppercase; letter-spacing: 0.04em; font-family: var(--fuente-titulo); font-stretch: 84%; font-size: 1.0625rem; }
+  :global(:root[data-estilo='afiche']) .cabecera__dato { color: var(--papel); text-transform: uppercase; letter-spacing: 0.04em; font-family: var(--fuente-titulo); font-stretch: 84%; font-size: 1.0625rem; }
 
   /* Folleto: tapa en Amarillo pleno; el dato es un sello redondo y la foto lleva marco verde grueso. */
   :global(:root[data-estilo='folleto']) .cabecera {

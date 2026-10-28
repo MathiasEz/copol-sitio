@@ -257,7 +257,7 @@ El usuario pidió construir las tres direcciones y elegir después. Hasta entonc
 
 | Estilo | Mundo | Papel | Titulares | Contenedores | Separación |
 |---|---|---|---|---|---|
-| **Afiche** (predeterminado, dirección asignada) | Afiche cooperativo y grabado popular | Blanco verdozo | Archivo condensado (70 %), 800, mayúsculas | Sin caja: bloques entre filetes, campos verdes | Filete de tinta de 2 px; 4 px arriba de cada cabecera de sección |
+| **Afiche** (predeterminado, dirección asignada) | Afiche cooperativo y grabado popular | Amarillo al 14 % (#FEFCE3, el de la página oficial) | Archivo condensado (70 %), 800, mayúsculas | Sin caja: bloques entre filetes, campos verdes | Filete de tinta de 2 px; 4 px arriba de cada cabecera de sección |
 | **Folleto** | Folleto semanal del súper | Blanco con bandas de Amarillo pleno | Archivo ancho (112 %), 900, mayúsculas | Borde verde de 3 px, esquinas de 22 px, sellos redondos | Filete verde de 3 px; banda amarilla de 10 px |
 | **Estándar** | Institucional de cooperativa | Blanco | Figtree 800, caja normal | Tarjetas de 16 px con sombra suave | Espacio + línea fina de 1 px |
 
@@ -287,12 +287,12 @@ Dos tintas del manual sobre papel claro: Verde oscuro para todo lo que se lee y 
 - **Verde Copol** (`verde-copol`): íconos de listas de verificación y de beneficios, borde de campo en hover. No va en texto chico (4,3:1 sobre blanco).
 
 ### Neutral
-- **Blanco verdozo** (`blanco-verdozo`): el papel de Afiche y, en los otros estilos, el texto sobre campos verdes donde se quiere un blanco tibio.
+- **Blanco verdozo** (`blanco-verdozo`): color del manual disponible para superficies suaves. Desde el 28/10/2026 el papel de los tres estilos es el fondo de la página oficial, `blanco-amarillo` (#FEFCE3, token `--papel`), también sobre los campos verdes.
 - **Blanco** (`blanco`): papel de Folleto y Estándar, interior de tarjetas, cápsula del logo sobre verde.
 - **Tinta** (`tinta`) y **Tinta suave** (`tinta-suave`): texto de cuerpo y texto secundario (≥ 4,5:1 sobre blanco y Blanco verdozo). En Afiche, la tinta también dibuja los filetes.
 - **Sobre verde** (`sobre-verde`): texto secundario sobre campos de Verde oscuro.
 - **Borde** / **Borde fuerte** (`borde`, `borde-fuerte`): líneas finas y bordes de campos en Estándar.
-- **Fondos suaves por estilo**: `estandar-muted`/`estandar-secondary` (verde muy claro), `afiche-muted`/`afiche-border`/`afiche-input` (verdes de papel entintado), `folleto-muted`/`folleto-secondary`/`folleto-border` (amarillos de folleto). Son los `--muted`, `--secondary`, `--border` e `--input` de cada estilo.
+- **Fondos suaves por estilo**: `estandar-muted`/`estandar-secondary` (#FBF4C2 y #F9EEA6, los mismos de la página oficial), `afiche-muted`/`afiche-border`/`afiche-input` (verdes de papel entintado), `folleto-muted`/`folleto-secondary`/`folleto-border` (amarillos de folleto). Son los `--muted`, `--secondary`, `--border` e `--input` de cada estilo.
 - **Rojo de error** (`rojo-error`): errores de formulario. **Aviso** (`aviso-papel` + `aviso-trazo`): contenido de demostración o pendiente, con borde punteado.
 
 ### Named Rules
@@ -375,8 +375,8 @@ Rótulos firmes, de una sola acción cada uno.
 - **Toggle (filtros del Bazar y Locales):** radios nativos con forma de cápsula de 42 px; seleccionado en Verde oscuro con el contador en Amarillo.
 
 ### Cards / Containers
-- **Estándar:** fondo blanco, borde de 1 px `borde`, esquinas de 16 px, sombra mínima; en hover sombra suave y sube 3 px.
-- **Folleto:** fondo blanco, borde de 3 px Verde oscuro, esquinas de 22 px, sin sombra; en hover se pinta de Amarillo.
+- **Estándar:** tarjeta blanca sobre el fondo #FEFCE3, borde de 1 px `borde`, esquinas de 16 px, sombra mínima; en hover sombra suave y sube 3 px.
+- **Folleto:** tarjeta blanca sobre el fondo #FEFCE3, borde de 3 px Verde oscuro, esquinas de 22 px, sin sombra; en hover se pinta de Amarillo.
 - **Afiche:** sin fondo ni borde lateral; un filete de tinta arriba y sin relleno horizontal. En hover el bloque se entinta de Verde oscuro, el texto pasa a blanco y gana relleno (160 ms de color, 260 ms de relleno).
 - **Campo entintado (`campo-entintado`):** bloque de Verde oscuro a todo el ancho del contenedor para lo importante (aperturas de crédito, tarjeta primaria, cabecera de página en Afiche). En Folleto lleva un borde interior amarillo de 6 px.
 - **Relleno interno:** `card-relleno` (20–28 px; 18–26 px en Afiche).

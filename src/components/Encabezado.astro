@@ -432,5 +432,5 @@ const actual = (href: string) => ruta === href;
   :global(:root[data-estilo='folleto']) .barra-superior__acceso { background: var(--blanco); color: var(--verde-oscuro); }
 
   /* Estándar: cabezal blanco con línea fina y resalte verde muy claro. */
-  :global(:root[data-estilo='estandar']) .encabezado::before { background: color-mix(in srgb, #ffffff 94%, transparent); }
+  :global(:root[data-estilo='estandar']) .encabezado::before { background: color-mix(in srgb, var(--fondo-pagina) 94%, transparent); }
 </style>

@@ -37,20 +37,23 @@
   --blanco: #ffffff;
   --sobre-verde: #d9ecdf;
 
+  /* Fondo de página de los tres estilos: el mismo de la página oficial (Amarillo del manual al 14 %),
+     pedido por el usuario el 28/10/2026. --papel es ese mismo color cuando aparece sobre campos verdes. */
+  --fondo-pagina: var(--blanco-amarillo);
+  --papel: var(--fondo-pagina);
   /* ── Estándar (valores base) ── */
-  --fondo-pagina: #ffffff;
   --background: var(--fondo-pagina);
   --foreground: var(--tinta);
   --card: var(--blanco);
   --card-foreground: var(--tinta);
-  --muted: #edf5f0;
+  --muted: #fbf4c2;
   --muted-foreground: var(--tinta-suave);
   --border: var(--borde);
   --input: var(--borde-fuerte);
   --ring: var(--verde-oscuro);
   --primary: var(--verde-oscuro);
   --primary-foreground: var(--blanco);
-  --secondary: #e2efe7;
+  --secondary: #f9eea6;
   --secondary-foreground: var(--verde-oscuro);
   --accent: var(--amarillo-copol);
   --accent-foreground: var(--tinta);
@@ -110,14 +113,11 @@
   color-scheme: light;
 }
 
-/* ── Afiche: papel Blanco verdozo, tinta Verde oscuro en campos enteros, titulares condensados en
+/* ── Afiche: papel (el fondo de la página oficial), tinta Verde oscuro en campos enteros, titulares condensados en
    mayúsculas, filetes de tinta en lugar de cajas y el Amarillo solo para la acción principal. ── */
 :root[data-estilo='afiche'] {
-  --fondo-pagina: var(--blanco-verdozo);
   --card: transparent;
-  --muted: #d6e9dd;
-  --secondary: #d6e9dd;
-  --border: #b9d5c3;
+  --border: #d9cf9a;
   --input: #6f9a80;
   --fuente-titulo: 'Archivo Variable', var(--fuente);
   --titulo-ancho: 70%;
@@ -150,8 +150,7 @@
 /* ── Folleto: blanco con bandas de Amarillo pleno, titulares anchos y negros, bordes verdes gruesos y
    sellos redondos, como el folleto semanal del supermercado. ── */
 :root[data-estilo='folleto'] {
-  --fondo-pagina: #ffffff;
-  --muted: #fdf7c4;
+  --muted: #fbf1a8;
   --secondary: #fbf19a;
   --border: #e6e0a4;
   --fuente-titulo: 'Archivo Variable', var(--fuente);
@@ -474,9 +473,9 @@ a.card--primary:hover { color: var(--sobre-campo-suave); box-shadow: inset 0 0 0
   :root[data-estilo='afiche'] a.card { transition: background-color 160ms var(--ease-out-quart), color 160ms var(--ease-out-quart), padding 260ms var(--ease-out-quart); }
 }
 /* Afiche: el Amarillo pleno es solo para la acción principal; íconos, sellos y resaltados van en tinta o papel. */
-:root[data-estilo='afiche'] .card__icono--accent { background: var(--verde-oscuro); color: var(--blanco-verdozo); }
+:root[data-estilo='afiche'] .card__icono--accent { background: var(--verde-oscuro); color: var(--papel); }
 :root[data-estilo='afiche'] .badge--accent { background: var(--verde-oscuro); color: var(--blanco); }
-:root[data-estilo='afiche'] .bi__resaltado { background: var(--blanco-verdozo); color: var(--verde-oscuro); }
+:root[data-estilo='afiche'] .bi__resaltado { background: var(--papel); color: var(--verde-oscuro); }
 /* Folleto: al pasar el puntero, la tarjeta se pinta de Amarillo, como una etiqueta de oferta. */
 :root[data-estilo='folleto'] a.card:not(.card--primary):hover { background: var(--amarillo-copol); }
 .card__icono {

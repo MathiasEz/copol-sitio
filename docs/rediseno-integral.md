@@ -46,9 +46,9 @@ Tres estilos sobre el mismo HTML, elegidos con `data-estilo` en `<html>` (clave 
 
 | Estilo | Mundo | Fondo | Títulos | Contenedores |
 |---|---|---|---|---|
-| **Afiche** (predeterminado) | Afiche cooperativo y grabado popular | Blanco verdozo (papel) | Archivo condensado, mayúsculas | Filetes de tinta, campos verdes, sin sombras |
-| **Folleto** | Folleto del súper | Blanco con bandas Amarillo pleno | Archivo ancho y negro | Bordes verdes gruesos, sellos redondos |
-| **Estándar** | Institucional de cooperativa | Blanco | Figtree 800 | Tarjetas de 16 px con sombra suave |
+| **Afiche** (predeterminado) | Afiche cooperativo y grabado popular | #FEFCE3 (el de la página oficial) | Archivo condensado, mayúsculas | Filetes de tinta, campos verdes, sin sombras |
+| **Folleto** | Folleto del súper | #FEFCE3 con bandas Amarillo pleno | Archivo ancho y negro | Bordes verdes gruesos, sellos redondos |
+| **Estándar** | Institucional de cooperativa | #FEFCE3 | Figtree 800 | Tarjetas de 16 px con sombra suave |
 
 Compartido: escala de espaciado (4/8/12/16/24/32/48/64/96), medida de lectura de 68ch, botones de 48 px (44 px los chicos), foco de 3 px, cifras tabulares, `prefers-reduced-motion`.
 
