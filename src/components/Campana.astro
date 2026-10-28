@@ -48,7 +48,7 @@ const novedades = leidas ?? [];
   .campana__panel {
     position: absolute; z-index: 70; top: calc(100% + 6px); left: 12px; right: 12px;
     max-height: min(72vh, 620px); overflow-y: auto; overscroll-behavior: contain;
-    display: grid; gap: 12px; padding: 14px; border-radius: 20px; background: var(--background); box-shadow: var(--anillo), var(--sombra);
+    display: grid; gap: 12px; padding: 14px; border-radius: var(--radio-lg); background: var(--background); box-shadow: var(--anillo), var(--sombra);
     transform-origin: top right;
   }
   .campana__panel--entra { animation: campana-entra 320ms var(--ease-out-quart); }

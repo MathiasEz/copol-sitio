@@ -18,7 +18,6 @@ const piezas = piezasVigentes(ofertas).map((p) => ({ ...imagenPieza(p.imagen), g
   <section class="contenedor seccion supermercado" aria-labelledby="super-titulo">
     <div class="encabezado-seccion">
       <div>
-        <span class="eyebrow">Promociones del supermercado</span>
         <h2 id="super-titulo">{ofertas.titulo}</h2>
         {ofertas.mes && <p class="lead">Ofertas del supermercado de COPOL para {ofertas.mes}.</p>}
       </div>

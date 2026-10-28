@@ -101,7 +101,7 @@ export interface Recursos { estilos?: string[]; scripts?: string[] }
 
 function cabeza(titulo: string, extra: Recursos = {}) {
   return html`<!doctype html>
-<html lang="es-UY" data-base="${BASE}">
+<html lang="es-UY" data-base="${BASE}" data-estilo="afiche">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -120,6 +120,14 @@ ${(extra.scripts ?? []).map((e) => html`<script src="${e}" defer></script>`)}
 /** Alterna claro/oscuro; lo activa tema.js (sin JavaScript queda oculto). */
 const botonTema = (clase: string) =>
   html`<button type="button" class="${clase}" data-tema-boton aria-pressed="false" hidden>${raw(icono('luna', 16).toString().replace('class="i"', 'class="i i--luna"'))}${raw(icono('sol', 16).toString().replace('class="i"', 'class="i i--sol"'))}<span data-tema-texto>Modo oscuro</span></button>`;
+
+/** Estilo visual (Afiche · Folleto · Estándar), compartido con el sitio público; lo activa tema.js. */
+const selectorEstilo = html`<div class="estilo-panel" role="group" aria-label="Estilo visual" data-estilo-grupo hidden>
+  <span class="estilo-panel__titulo">Estilo</span>
+  <button type="button" data-estilo-opcion="afiche" aria-pressed="false">Afiche</button>
+  <button type="button" data-estilo-opcion="folleto" aria-pressed="false">Folleto</button>
+  <button type="button" data-estilo-opcion="estandar" aria-pressed="false">Estándar</button>
+</div>`;
 
 const alerta = (a: Contexto['aviso']) =>
   a ? html`<div class="alert alert--${a.tipo}" role="${a.tipo === 'error' ? 'alert' : 'status'}" data-aviso>${icono(a.tipo === 'ok' ? 'check' : 'info')}<p>${a.texto}</p></div>` : '';
@@ -164,6 +172,7 @@ export function layout(c: Contexto, titulo: string, cuerpo: H, acciones: H | '' 
         <span class="avatar" aria-hidden="true">${u.usuario.slice(0, 1).toUpperCase()}</span>
         <span class="perfil__texto"><strong>${u.usuario}</strong><small>${nombresRoles(u)}</small></span>
       </a>
+      ${selectorEstilo}
       ${botonTema('btn btn--ghost btn--sm btn--bloque')}
       <form method="post" action="${r('/salir')}">${csrfCampo(c)}<button class="btn btn--ghost btn--sm btn--bloque" type="submit">${icono('salir', 16)}Cerrar sesión</button></form>
     </div>
@@ -171,7 +180,7 @@ export function layout(c: Contexto, titulo: string, cuerpo: H, acciones: H | '' 
 </aside>
 <main id="contenido" class="main">
   <header class="main__cabecera"><h1>${titulo}</h1>${acciones ? html`<div class="main__acciones">${acciones}</div>` : ''}</header>
-  ${c.sistema ? html`<div class="alert alert--error" role="status">${icono('info')}<p>${c.sistema}</p></div>` : ''}
+  ${c.sistema ? html`<details class="alert alert--error alert--sistema" role="status"><summary>${icono('info')}<span>Aviso de configuración</span></summary><p>${c.sistema}</p></details>` : ''}
   ${alerta(c.aviso)}
   ${cuerpo}
 </main>

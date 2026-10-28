@@ -227,4 +227,16 @@ const GRUPOS = [
   .mapa-locales__ayuda { margin-top: 10px; font-size: 0.875rem; color: var(--muted-foreground); }
   .seccion--tras-mapa { padding-top: clamp(32px, 5vw, 56px); }
   .vacio { margin-top: 16px; text-align: center; align-items: center; }
+
+  /* Afiche: cada local es un bloque impreso entre filetes (sin caja); la Casa Central lleva el filete grueso
+     y el local elegido en el mapa se entinta de verde claro. */
+  :global(:root[data-estilo='afiche']) .local { box-shadow: none; padding: 0 0 24px; }
+  :global(:root[data-estilo='afiche']) .local > :not(.local__foto) { margin-inline: 0; }
+  :global(:root[data-estilo='afiche']) .local__foto { margin: 16px 0 0; }
+  :global(:root[data-estilo='afiche']) .local--casa-central { border-top: var(--filete-fuerte); }
+  :global(:root[data-estilo='afiche']) .local[data-elegido] { box-shadow: none; background: var(--muted); }
+  :global(:root[data-estilo='afiche']) .local__sello { border-radius: 0; }
+  /* Folleto: la Casa Central lleva un borde amarillo grueso por dentro del verde. */
+  :global(:root[data-estilo='folleto']) .local--casa-central { box-shadow: inset 0 0 0 6px var(--amarillo-copol); }
+  :global(:root[data-estilo='folleto']) .local__foto { margin: -3px -3px 0; }
 </style>

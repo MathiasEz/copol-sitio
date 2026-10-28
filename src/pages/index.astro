@@ -13,11 +13,11 @@ import Button from '../components/ui/Button.astro';
 import Badge from '../components/ui/Badge.astro';
 import Card from '../components/ui/Card.astro';
 import Media from '../components/ui/Media.astro';
-import { LOCALES } from '../lib/datos';
+import { CONVENIOS, LOCALES } from '../lib/datos';
 import { foto } from '../lib/imagenes';
 import { SERVICIOS } from '../data/confirmado/servicios';
 import { BENEFICIOS_SOCIO } from '../data/confirmado/beneficios-socio';
-import { CONTACTO, whatsapp } from '../data/confirmado/sitio';
+import { CONTACTO, HORARIOS, whatsapp } from '../data/confirmado/sitio';
 import bannerBazar from '../assets/banners/bazar.webp';
 import bannerServicios from '../assets/banners/servicios-sociales.webp';
 import bannerPinecoop from '../assets/banners/pinecoop.webp';
@@ -34,12 +34,14 @@ const pinecoop = SERVICIOS.find((s) => s.slug === 'pinecoop')!;
 const otrosServicios = SERVICIOS.filter((s) => s.slug !== 'pinecoop');
 const beneficios = BENEFICIOS_SOCIO.map((b) => (b.icono === 'ubicacion' ? { ...b, titulo: `${LOCALES.length} locales` } : b));
 
+// Cada acceso dice algo concreto y verificable (horario, cantidades), no solo el nombre de la sección.
+const horarioTienda = HORARIOS.casaCentral[0];
 const accesos = [
-  { texto: 'Acceso web', detalle: 'Tu cuenta de socio', href: '/acceso-web/', icono: 'candado' },
-  { texto: 'Bazar', detalle: 'Tecnología y hogar', href: '/hipermercado/bazar/', icono: 'celular' },
-  { texto: 'Tienda', detalle: 'Rubros y horarios', href: '/hipermercado/tienda/', icono: 'tienda' },
-  { texto: 'Servicios sociales', detalle: 'Salud, turismo y más', href: '/beneficios/servicios-sociales/', icono: 'corazon' },
-  { texto: 'Convenios', detalle: 'Comercios adheridos', href: '/beneficios/convenios/', icono: 'convenio' },
+  { texto: 'Acceso web', detalle: 'Saldo, crédito y estado de cuenta', href: '/acceso-web/', icono: 'candado' },
+  { texto: 'Bazar', detalle: 'Hasta 15 cuotas sin recargo', href: '/hipermercado/bazar/', icono: 'celular' },
+  { texto: 'Tienda', detalle: `${horarioTienda.dias}, ${horarioTienda.horas}`, href: '/hipermercado/tienda/', icono: 'tienda' },
+  { texto: 'Servicios sociales', detalle: `${SERVICIOS.length} servicios: salud, turismo y más`, href: '/beneficios/servicios-sociales/', icono: 'corazon' },
+  { texto: 'Convenios', detalle: `${CONVENIOS.length} comercios adheridos`, href: '/beneficios/convenios/', icono: 'convenio' },
   { texto: 'Locales', detalle: `${LOCALES.length} en todo el país`, href: '/sobre-nosotros/locales/', icono: 'ubicacion' },
 ] as const;
 
@@ -64,15 +66,15 @@ const accesos = [
 
   <section class="contenedor accesos" aria-labelledby="accesos-titulo">
     <h2 id="accesos-titulo" class="accesos__titulo"><span class="mascara"><span>¿Qué necesitás hoy?</span></span></h2>
-    <ul class="accesos__lista escalonar">
+    <ul class="indice escalonar">
       {accesos.map((a) => (
         <li>
-          <Card href={a.href} class="acceso">
-            <span class="card__icono"><Icono nombre={a.icono} tamano={24} /></span>
-            <span class="acceso__texto">{a.texto}</span>
-            <span class="acceso__detalle">{a.detalle}</span>
-            <Icono nombre="flecha" tamano={18} clase="acceso__flecha" />
-          </Card>
+          <a href={a.href} class="indice__item">
+            <span class="indice__icono"><Icono nombre={a.icono} tamano={22} /></span>
+            <strong class="indice__texto">{a.texto}</strong>
+            <span class="indice__detalle">{a.detalle}</span>
+            <Icono nombre="flecha" tamano={18} clase="indice__flecha" />
+          </a>
         </li>
       ))}
     </ul>
@@ -115,7 +117,6 @@ const accesos = [
     <BannerSeccion src={bannerPinecoop} movil={bannerPinecoopMovil} href="/beneficios/servicios-sociales/pinecoop/" alt="Pinecoop: piscina, reposeras y sombrillas del Parque Vacacional. Ver más sobre Pinecoop." />
     <div class="pinecoop">
       <div class="pinecoop__texto">
-        <span class="eyebrow">Servicios sociales · Turismo</span>
         <h2 id="pinecoop-titulo"><span class="mascara"><span>{pinecoop.titulo}</span></span></h2>
         <p class="lead">{pinecoop.descripcion}</p>
         <div class="pinecoop__acciones">
@@ -163,33 +164,80 @@ const accesos = [
 <style>
   /* Banner de Inicio: el espacio queda reservado mientras llega (sin saltos de diseño). */
   .banner-inicio { padding-top: clamp(16px, 2.4vw, 28px); }
-  .banner-esqueleto { border-radius: 28px; background: var(--muted); aspect-ratio: 8 / 3; margin-bottom: 52px; }
-  @media (max-width: 783px) { .banner-esqueleto { aspect-ratio: auto; height: min(118vw, 560px); border-radius: 22px; } }
+  .banner-esqueleto { border-radius: var(--radio-xl); background: var(--muted); aspect-ratio: 8 / 3; margin-bottom: 52px; }
+  @media (max-width: 783px) { .banner-esqueleto { aspect-ratio: auto; height: min(118vw, 560px); border-radius: var(--radio-md); } }
   @media (min-width: 784px) { .banner-esqueleto { border-radius: 0; max-height: 680px; } }
 
   /* Banner de beneficios entre el banner de Inicio y los accesos rápidos */
   .banner-beneficios { padding-top: var(--seccion); }
   .accesos { padding-top: var(--seccion); }
-  .accesos__titulo { font-size: clamp(1.5rem, 2.4vw, 1.875rem); margin-bottom: 20px; }
-  .accesos__lista {
+  .accesos__titulo { font-size: clamp(1.625rem, 2.8vw, 2.25rem); margin-bottom: clamp(16px, 2vw, 24px); }
+
+  /* Índice de accesos: seis entradas con un dato real cada una. 6 → 3 → 2 columnas, nunca una huérfana. */
+  .indice {
     list-style: none; margin: 0; padding: 0;
-    display: grid; gap: 14px;
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, 160px), 1fr));
+    display: grid; gap: 12px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-  .accesos__lista > li { display: flex; }
-  .accesos :global(.acceso) { flex: 1; gap: 4px; padding: 20px 18px; }
-  .accesos :global(.acceso .card__icono) { margin-bottom: 10px; }
-  .acceso__texto { font-weight: 700; font-size: 1.0625rem; }
-  .acceso__detalle { font-size: 0.875rem; color: var(--muted-foreground); }
-  .accesos :global(.acceso__flecha) {
-    position: absolute; top: 22px; right: 18px; color: var(--verde-oscuro);
+  @media (min-width: 720px) { .indice { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+  @media (min-width: 1180px) { .indice { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
+  .indice > li { display: flex; }
+  .indice__item {
+    position: relative; flex: 1;
+    display: grid; align-content: start; gap: 4px;
+    padding: 18px 18px 20px;
+    border-radius: var(--radio-lg); border: var(--card-borde); background: var(--blanco);
+    color: var(--foreground); text-decoration: none;
+    transition: background-color 180ms var(--ease-out-quart), color 180ms var(--ease-out-quart), box-shadow 250ms var(--ease-out-quart), border-color 180ms var(--ease-out-quart);
+  }
+  .indice__item:hover { color: var(--foreground); border-color: var(--borde-fuerte); box-shadow: var(--sombra-suave); }
+  .indice__icono {
+    display: grid; place-items: center; width: 44px; height: 44px; margin-bottom: 10px;
+    border-radius: var(--radio-md); background: var(--muted); color: var(--verde-oscuro);
+  }
+  .indice__texto { font-size: 1.0625rem; line-height: 1.2; color: var(--verde-oscuro); }
+  .indice__detalle { font-size: 0.9375rem; line-height: 1.4; color: var(--muted-foreground); font-variant-numeric: tabular-nums; }
+  .indice :global(.indice__flecha) {
+    position: absolute; top: 20px; right: 18px; color: var(--verde-oscuro);
     opacity: 0; transform: translateX(-6px); transition: opacity var(--transicion), transform 400ms var(--resorte);
   }
-  .accesos :global(.acceso:hover .acceso__flecha) { opacity: 1; transform: none; }
+  .indice__item:hover :global(.indice__flecha),
+  .indice__item:focus-visible :global(.indice__flecha) { opacity: 1; transform: none; }
   @media (max-width: 479px) {
-    .accesos__lista { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-    .accesos :global(.acceso) { padding: 16px 14px; }
+    .indice { gap: 10px; }
+    .indice__item { padding: 14px 14px 16px; }
+    .indice__detalle { font-size: 0.875rem; }
   }
+
+  /* Afiche: el índice es una fila impresa entre filetes; cada entrada se separa con una línea de tinta y
+     al pasar el puntero se entinta de verde. */
+  :global(:root[data-estilo='afiche']) .accesos__titulo { padding-top: 14px; border-top: var(--filete-fuerte); }
+  :global(:root[data-estilo='afiche']) .indice { gap: 0; border-bottom: var(--filete); }
+  :global(:root[data-estilo='afiche']) .indice > li { border-top: var(--filete); }
+  :global(:root[data-estilo='afiche']) .indice__item { background: transparent; border: 0; border-radius: 0; padding: 18px 18px 22px; }
+  :global(:root[data-estilo='afiche']) .indice > li + li .indice__item { box-shadow: inset 2px 0 0 var(--tinta); }
+  @media (max-width: 719px) {
+    :global(:root[data-estilo='afiche']) .indice > li + li:nth-child(odd) .indice__item { box-shadow: none; }
+  }
+  @media (min-width: 720px) and (max-width: 1179px) {
+    :global(:root[data-estilo='afiche']) .indice > li + li:nth-child(3n + 1) .indice__item { box-shadow: none; }
+  }
+  :global(:root[data-estilo='afiche']) .indice__icono { width: auto; height: auto; justify-content: start; background: none; margin-bottom: 14px; }
+  :global(:root[data-estilo='afiche']) .indice__texto {
+    font-family: var(--fuente-titulo); font-stretch: 72%; font-weight: 800; text-transform: uppercase;
+    font-size: clamp(1.375rem, 2vw, 1.75rem); line-height: 0.95;
+  }
+  :global(:root[data-estilo='afiche']) .indice__item:hover { background: var(--verde-oscuro); box-shadow: none; }
+  :global(:root[data-estilo='afiche']) .indice__item:hover .indice__texto,
+  :global(:root[data-estilo='afiche']) .indice__item:hover .indice__icono,
+  :global(:root[data-estilo='afiche']) .indice__item:hover :global(.indice__flecha) { color: var(--blanco-verdozo); }
+  :global(:root[data-estilo='afiche']) .indice__item:hover .indice__detalle { color: var(--sobre-verde); }
+
+  /* Folleto: etiquetas de góndola con borde verde grueso; el ícono va en un círculo amarillo. */
+  :global(:root[data-estilo='folleto']) .indice__icono { border-radius: 50%; background: var(--amarillo-copol); }
+  :global(:root[data-estilo='folleto']) .indice__texto { font-family: var(--fuente-titulo); font-stretch: 108%; font-weight: 900; font-size: 1.125rem; }
+  :global(:root[data-estilo='folleto']) .indice__item:hover { background: var(--amarillo-copol); box-shadow: none; border-color: var(--verde-oscuro); }
+  :global(:root[data-estilo='folleto']) .indice__item:hover .indice__icono { background: var(--blanco); }
 
   /* Todos los bloques: misma separación entre secciones y entre el banner y su contenido */
   .bloque :global(.estante-bazar) { gap: 16px; }

@@ -55,7 +55,6 @@ const faqLd = {
   <section class="seccion seccion--suave" id="como-funciona" aria-labelledby="caminos-titulo">
     <div class="contenedor guia" data-guia>
       <div class="guia__intro">
-        <span class="eyebrow">¿Cómo funciona?</span>
         <h2 id="caminos-titulo">Descubrí tu camino para asociarte</h2>
         <p class="lead">Sea cual sea tu situación, hay un camino para que formes parte de COPOL. Respondé una pregunta y te mostramos cómo seguir.</p>
         <div class="guia__pregunta" role="group" aria-labelledby="guia-pregunta">
@@ -109,8 +108,7 @@ const faqLd = {
 
   <section class="contenedor seccion faq" aria-labelledby="faq-titulo">
     <div>
-      <span class="eyebrow">Preguntas frecuentes</span>
-      <h2 id="faq-titulo">Resolvé tus dudas</h2>
+      <h2 id="faq-titulo">Preguntas frecuentes</h2>
       <p class="lead">¿Otra consulta? Escribinos al <a href={ws('Hola, tengo una consulta para asociarme')} rel="noopener">{CONTACTO.whatsappSocios.texto}</a>.</p>
     </div>
     <Accordion items={preguntas.map((q) => ({ titulo: q.p, contenido: q.r }))} />
@@ -159,21 +157,18 @@ const faqLd = {
 </script>
 
 <style>
-  .ventajas { list-style: none; margin: 24px 0 0; padding: 0; display: grid; gap: 16px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr)); }
+  /* Cuatro ventajas parejas: 1 → 2 → 4 columnas (antes alternaban verde, blanco y amarillo sin motivo). */
+  .ventajas { list-style: none; margin: 24px 0 0; padding: 0; display: grid; gap: 16px; grid-template-columns: 1fr; }
+  @media (min-width: 560px) { .ventajas { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (min-width: 1000px) { .ventajas { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
   .ventajas > li { display: flex; }
-  .ventajas :global(.ventaja) { flex: 1; gap: 8px; transition: transform 450ms var(--resorte), box-shadow 300ms var(--ease-out-quart), background-color 300ms; }
-  .ventajas > li:nth-child(4n + 1) :global(.ventaja) { background: linear-gradient(135deg, var(--verde-oscuro), var(--verde-copol)); color: var(--sobre-verde); }
-  .ventajas > li:nth-child(4n + 1) :global(.ventaja h3) { color: var(--blanco); }
-  .ventajas > li:nth-child(4n + 1) :global(.ventaja p) { color: var(--sobre-verde); }
-  .ventajas > li:nth-child(4n + 3) :global(.ventaja) { background: var(--accent); }
-  .ventajas > li:nth-child(4n + 3) :global(.ventaja p) { color: var(--tinta); }
-  .ventajas > li:nth-child(4n + 3) :global(.ventaja .card__icono) { background: var(--verde-oscuro); color: var(--amarillo-copol); }
+  .ventajas :global(.ventaja) { flex: 1; gap: 8px; }
 
   /* Asistente para socios */
   .guia { display: grid; gap: clamp(24px, 4vw, 48px); align-items: start; }
   @media (min-width: 900px) { .guia { grid-template-columns: 1fr 1fr; } }
   .guia__intro { display: grid; gap: 14px; }
-  .guia__pregunta { display: grid; gap: 14px; margin-top: 8px; padding: clamp(18px, 2.4vw, 26px); border-radius: var(--radio-xl); background: var(--card); box-shadow: var(--anillo), var(--sombra-suave); }
+  .guia__pregunta { display: grid; gap: 14px; margin-top: 8px; padding: clamp(18px, 2.4vw, 26px); border-radius: var(--radio-xl); background: var(--blanco); border: var(--card-borde); box-shadow: var(--card-sombra); }
   .guia__enunciado { display: flex; gap: 12px; align-items: center; margin: 0; font-weight: 800; font-size: 1.1875rem; color: var(--verde-oscuro); }
   .guia__opciones { display: grid; gap: 10px; }
   .guia__opcion {
@@ -181,18 +176,19 @@ const faqLd = {
     padding: 14px 18px; border-radius: var(--radio-lg); border: 2px solid var(--borde); background: var(--background); color: var(--foreground);
     transition: transform 350ms var(--resorte), border-color var(--transicion), background-color var(--transicion), box-shadow 250ms var(--ease-out-quart);
   }
-  .guia__opcion :global(svg) { grid-row: span 2; width: 44px; height: 44px; padding: 11px; border-radius: 14px; background: var(--muted); color: var(--verde-oscuro); transition: background-color var(--transicion), color var(--transicion); }
+  .guia__opcion :global(svg) { grid-row: span 2; width: 44px; height: 44px; padding: 11px; border-radius: var(--radio-md); background: var(--muted); color: var(--verde-oscuro); transition: background-color var(--transicion), color var(--transicion); }
   .guia__opcion strong { font-size: 1.0625rem; }
   .guia__opcion span { color: var(--muted-foreground); font-size: 0.9375rem; }
   .guia__opcion:hover { transform: translateX(4px); border-color: var(--borde-fuerte); box-shadow: var(--sombra-suave); }
   .guia__opcion[aria-pressed='true'] { border-color: var(--verde-oscuro); background: var(--verde-oscuro); color: var(--sobre-verde); box-shadow: var(--sombra); transform: translateX(6px); }
   .guia__opcion[aria-pressed='true'] span { color: var(--sobre-verde); }
   .guia__opcion[aria-pressed='true'] :global(svg) { background: var(--amarillo-copol); color: var(--tinta); }
-  .guia__resultados { display: grid; gap: 16px; align-content: start; min-height: 320px; }
-  .guia__vacio { display: flex; gap: 12px; align-items: center; justify-content: center; min-height: 320px; margin: 0; padding: 24px; border-radius: var(--radio-xl); border: 2px dashed var(--borde-fuerte); color: var(--verde-oscuro); font-weight: 700; text-align: center; }
+  .guia__resultados { display: grid; gap: 16px; align-content: start; }
+  @media (min-width: 900px) { .guia__resultados, .guia__vacio { min-height: 320px; } }
+  .guia__vacio { display: flex; gap: 12px; align-items: center; justify-content: center; margin: 0; padding: 24px; border-radius: var(--radio-xl); border: 2px dashed var(--borde-fuerte); color: var(--verde-oscuro); font-weight: 700; text-align: center; }
   .resultado {
     position: relative; display: grid; gap: 14px; justify-items: start; padding: clamp(24px, 3.4vw, 40px); border-radius: var(--radio-xl); overflow: hidden;
-    background: var(--card); box-shadow: var(--anillo-fuerte), var(--sombra);
+    background: var(--blanco); border: var(--card-borde); box-shadow: var(--sombra);
   }
   .resultado h3 { font-size: clamp(1.5rem, 2.8vw, 2rem); color: var(--verde-oscuro); }
   .resultado__pasos { margin: 0; padding: 0; list-style: none; display: grid; gap: 12px; }
@@ -216,7 +212,11 @@ const faqLd = {
   @media (min-width: 900px) { .faq { grid-template-columns: 1fr 1.4fr; align-items: start; } }
   .faq > div:first-child { display: grid; gap: 12px; }
 
-  .final { display: grid; gap: 14px; justify-items: center; text-align: center; padding: clamp(32px, 5vw, 64px); border-radius: var(--radio-xl); background: var(--verde-oscuro); color: var(--sobre-verde); }
+  .final { display: grid; gap: 14px; justify-items: center; text-align: center; padding: clamp(32px, 5vw, 64px); border-radius: var(--radio-xl); background: var(--tinta-campo); color: var(--sobre-verde); }
+  .final p { margin-inline: auto; }
+  /* Afiche: el cierre es un campo entintado a todo el ancho, con el título condensado grande. */
+  :global(:root[data-estilo='afiche']) .final h2 { font-size: clamp(2.25rem, 5vw, 4.25rem); max-width: 18ch; }
+  :global(:root[data-estilo='folleto']) .final { box-shadow: inset 0 0 0 6px var(--amarillo-copol); }
   .final h2 { color: var(--blanco); }
   .final__acciones { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; margin-top: 8px; }
 </style>

@@ -364,7 +364,7 @@ select.input { padding-right: 28px; }
 .asistente__modelo .input { min-height: 34px; padding-block: 4px; font-size: .875rem; }
 .asistente__nota { font-size: .8125rem; }
 .asistente__error[hidden] { display: none; }
-.propuesta { display: grid; gap: 10px; max-width: min(100%, 680px); padding: 14px 16px; border: 1px solid var(--ok-borde); border-left: 4px solid var(--primary); border-radius: var(--radius); background: var(--card); }
+.propuesta { display: grid; gap: 10px; max-width: min(100%, 680px); padding: 14px 16px; border: 1.5px solid var(--primary); border-radius: var(--radius); background: var(--card); }
 .propuesta__titulo { display: flex; gap: 8px; align-items: center; font-size: .9375rem; }
 .propuesta__lista { margin: 0; padding-left: 18px; display: grid; gap: 8px; max-height: min(55vh, 460px); overflow-y: auto; overscroll-behavior: contain; }
 .propuesta__lista ul { margin: 4px 0 0; padding-left: 18px; display: grid; gap: 2px; font-size: .875rem; }
@@ -687,3 +687,94 @@ details.card > summary { cursor: pointer; }
 .paleta__opcion .pers { padding: 6px 14px; border: 2px solid transparent; }
 .paleta__opcion input:checked + .pers { border-color: var(--foreground); box-shadow: 0 0 0 2px var(--card), 0 0 0 4px var(--foreground); }
 .paleta__opcion input:focus-visible + .pers { outline: 2px solid var(--marca); outline-offset: 3px; }
+
+/* ══ Estilos visuales del rediseño (28/10/2026): Afiche · Folleto · Estándar ═══════════════════════════════
+   Los mismos tres estilos del sitio público, elegidos con data-estilo (tema.js, clave copol-estilo). En el
+   panel se aplican con moderación: es una herramienta de trabajo, así que cambian el papel, la barra lateral,
+   los títulos y las formas, nunca la densidad de la tabla ni los colores de stock. Solo en modo claro. */
+@font-face { font-family: 'Archivo Variable'; src: url('/panel-recursos/archivo.woff2') format('woff2-variations'); font-weight: 100 900; font-stretch: 62% 125%; font-display: swap; }
+
+/* Comunes a los tres: letra base de 16 px (antes 15) y controles de 44 px en pantallas táctiles. */
+body { font-size: 1rem; }
+.tabla { font-size: .9375rem; }
+@media (pointer: coarse) {
+  .btn { min-height: 44px; }
+  .btn--sm { min-height: 40px; }
+  .input { min-height: 44px; }
+}
+
+/* Aviso de configuración plegable: antes ocupaba un tercio de la pantalla del celular en cada página. */
+.alert--sistema { display: block; padding: 0; font-weight: 600; }
+.alert--sistema summary { display: flex; gap: 10px; align-items: center; padding: 9px 14px; cursor: pointer; list-style: none; }
+.alert--sistema summary::-webkit-details-marker { display: none; }
+.alert--sistema summary::after { content: 'Ver'; margin-left: auto; font-size: .8125rem; text-decoration: underline; text-underline-offset: 3px; }
+.alert--sistema[open] summary::after { content: 'Ocultar'; }
+.alert--sistema p { padding: 0 14px 12px 40px; font-weight: 500; }
+
+/* Selector de estilo en la barra lateral */
+.estilo-panel { display: flex; align-items: center; gap: 2px; padding: 3px; border-radius: var(--radius-sm); background: var(--muted); }
+.estilo-panel__titulo { padding: 0 8px; font-size: .75rem; font-weight: 700; color: var(--muted-foreground); }
+.estilo-panel button { flex: 1; min-height: 30px; padding: 2px 6px; border: 0; border-radius: 6px; background: transparent; color: var(--muted-foreground); font: inherit; font-size: .8125rem; font-weight: 600; cursor: pointer; }
+.estilo-panel button:hover { color: var(--foreground); }
+.estilo-panel button[aria-pressed="true"] { background: var(--card); color: var(--foreground); box-shadow: var(--sombra); }
+
+/* ── Afiche: papel Blanco verdozo, barra lateral entintada en Verde oscuro, títulos condensados en mayúsculas
+   y esquinas rectas. ── */
+:root[data-estilo="afiche"]:not([data-tema="oscuro"]) {
+  --background: #eaf4ee; --muted: #dbece1; --accent: #d1e7d9; --border: #bcd7c5; --input: #8fb39c;
+  --fila-hover: #f3f9f5; --radius: 4px; --radius-sm: 3px; --radius-lg: 4px; --sombra: none;
+}
+:root[data-estilo="afiche"]:not([data-tema="oscuro"]) .sidebar { background: #006633; border-color: #006633; color: #d9ecdf; }
+:root[data-estilo="afiche"]:not([data-tema="oscuro"]) .sidebar__marca { border-color: rgb(255 255 255 / .16); }
+:root[data-estilo="afiche"]:not([data-tema="oscuro"]) .sidebar__marca img { background: #fff; padding: 4px 8px; box-sizing: content-box; }
+:root[data-estilo="afiche"]:not([data-tema="oscuro"]) .sidebar__marca span { color: #fff; }
+:root[data-estilo="afiche"]:not([data-tema="oscuro"]) .nav__item { color: #d9ecdf; }
+:root[data-estilo="afiche"]:not([data-tema="oscuro"]) .nav__item:hover { background: rgb(255 255 255 / .1); color: #fff; }
+:root[data-estilo="afiche"]:not([data-tema="oscuro"]) .nav__item[aria-current="page"] { background: #eaf4ee; color: #006633; }
+:root[data-estilo="afiche"]:not([data-tema="oscuro"]) .nav__titulo { color: #f8ea39; }
+:root[data-estilo="afiche"]:not([data-tema="oscuro"]) .nav__grupo + .nav__grupo,
+:root[data-estilo="afiche"]:not([data-tema="oscuro"]) .sidebar__pie { border-color: rgb(255 255 255 / .16); }
+:root[data-estilo="afiche"]:not([data-tema="oscuro"]) .sidebar :is(.perfil, .btn--ghost) { color: #d9ecdf; }
+:root[data-estilo="afiche"]:not([data-tema="oscuro"]) .sidebar :is(.perfil:hover, .perfil[aria-current="page"], .btn--ghost:hover) { background: rgb(255 255 255 / .1); color: #fff; }
+:root[data-estilo="afiche"]:not([data-tema="oscuro"]) .sidebar .perfil__texto small { color: #b9d5c3; }
+:root[data-estilo="afiche"]:not([data-tema="oscuro"]) .sidebar .avatar { background: #f8ea39; color: #12261a; }
+:root[data-estilo="afiche"]:not([data-tema="oscuro"]) .sidebar .estilo-panel { background: rgb(255 255 255 / .1); }
+:root[data-estilo="afiche"]:not([data-tema="oscuro"]) .sidebar .estilo-panel :is(span, button) { color: #d9ecdf; }
+:root[data-estilo="afiche"]:not([data-tema="oscuro"]) .sidebar .estilo-panel button[aria-pressed="true"] { background: #eaf4ee; color: #006633; }
+:root[data-estilo="afiche"]:not([data-tema="oscuro"]) .sidebar :focus-visible { outline-color: #f8ea39; }
+@media (max-width: 899px) {
+  :root[data-estilo="afiche"]:not([data-tema="oscuro"]) .sidebar__menu > summary { color: #fff; }
+}
+:root[data-estilo="afiche"] .main__cabecera h1,
+:root[data-estilo="afiche"] .simple .titulo {
+  font-family: 'Archivo Variable', var(--fuente); font-stretch: 70%; font-weight: 800; text-transform: uppercase;
+  font-size: clamp(1.875rem, 3vw, 2.5rem); line-height: .95; letter-spacing: 0;
+}
+:root[data-estilo="afiche"]:not([data-tema="oscuro"]) .main__cabecera { padding-bottom: 10px; border-bottom: 3px solid #12261a; }
+:root[data-estilo="afiche"]:not([data-tema="oscuro"]) :is(.card, .tabla-caja) { border-top: 2px solid #12261a; }
+:root[data-estilo="afiche"] .tabla th { text-transform: uppercase; letter-spacing: .04em; font-size: .75rem; }
+
+/* ── Folleto: barra lateral en Amarillo pleno, ítem actual en verde, tarjetas con borde verde y títulos anchos. ── */
+:root[data-estilo="folleto"]:not([data-tema="oscuro"]) {
+  --background: #fffdf0; --muted: #fbf3b8; --border: #e3dba0; --input: #b9ae55;
+  --radius: 12px; --radius-sm: 10px; --radius-lg: 18px; --sombra: none;
+}
+:root[data-estilo="folleto"]:not([data-tema="oscuro"]) .sidebar { background: #f8ea39; border-color: #006633; }
+:root[data-estilo="folleto"]:not([data-tema="oscuro"]) .sidebar__marca,
+:root[data-estilo="folleto"]:not([data-tema="oscuro"]) .nav__grupo + .nav__grupo,
+:root[data-estilo="folleto"]:not([data-tema="oscuro"]) .sidebar__pie { border-color: rgb(0 102 51 / .25); }
+:root[data-estilo="folleto"]:not([data-tema="oscuro"]) .nav__item { color: #12261a; }
+:root[data-estilo="folleto"]:not([data-tema="oscuro"]) .nav__item:hover { background: rgb(255 255 255 / .55); }
+:root[data-estilo="folleto"]:not([data-tema="oscuro"]) .nav__titulo { color: #006633; }
+:root[data-estilo="folleto"]:not([data-tema="oscuro"]) .nav__item[aria-current="page"] { background: #006633; color: #fff; }
+:root[data-estilo="folleto"]:not([data-tema="oscuro"]) .sidebar :is(.perfil:hover, .perfil[aria-current="page"], .btn--ghost:hover) { background: rgb(255 255 255 / .55); }
+:root[data-estilo="folleto"]:not([data-tema="oscuro"]) .sidebar .estilo-panel { background: rgb(255 255 255 / .5); }
+:root[data-estilo="folleto"]:not([data-tema="oscuro"]) :is(.card, .tabla-caja) { border: 2px solid #006633; }
+:root[data-estilo="folleto"] .main__cabecera h1,
+:root[data-estilo="folleto"] .simple .titulo {
+  font-family: 'Archivo Variable', var(--fuente); font-stretch: 108%; font-weight: 900; text-transform: uppercase;
+  font-size: clamp(1.5rem, 2.4vw, 2rem); letter-spacing: -.02em;
+}
+
+/* ── Estándar: el panel neutro de siempre, con títulos un poco más presentes. ── */
+:root[data-estilo="estandar"] .main__cabecera h1 { font-size: 1.75rem; font-weight: 800; color: var(--marca); }

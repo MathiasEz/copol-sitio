@@ -26,7 +26,6 @@ const abanico = [
 <section class="contenedor banda" aria-labelledby="banda-socio-titulo">
   <div class="banda__caja aparecer">
     <div class="banda__texto">
-      <span class="eyebrow">Hacete socio</span>
       <h2 id="banda-socio-titulo">{titulo}</h2>
       <p>{texto}</p>
       <div class="banda__acciones">
@@ -52,9 +51,10 @@ const abanico = [
     display: grid;
     gap: 8px;
     padding: 8px;
-    border-radius: 32px;
-    background: var(--card);
-    box-shadow: var(--anillo), 0 30px 60px -30px rgb(0 51 26 / 0.25);
+    border-radius: var(--radio-xl);
+    background: var(--blanco);
+    border: var(--card-borde);
+    box-shadow: 0 30px 60px -30px rgb(0 51 26 / 0.25);
     --spread: 0px;
   }
   @media (min-width: 900px) {
@@ -67,7 +67,7 @@ const abanico = [
   .banda__abanico {
     position: relative;
     min-height: 240px;
-    border-radius: 26px;
+    border-radius: max(0px, calc(var(--radio-xl) - 6px));
     background: var(--accent);
     overflow: hidden;
   }
@@ -78,7 +78,7 @@ const abanico = [
     left: calc((100% - var(--ancho)) * (0.12 + var(--k) * 0.25));
     width: var(--ancho);
     aspect-ratio: 4 / 3;
-    border-radius: 18px;
+    border-radius: var(--radio-md);
     overflow: hidden;
     background: var(--muted);
     box-shadow: 0 0 0 4px var(--blanco), 0 18px 30px -14px rgb(0 0 0 / 0.45);
@@ -93,4 +93,11 @@ const abanico = [
     .banda__caja:hover { --spread: 22px; }
     .banda__caja:hover .banda__foto { rotate: calc((var(--k) - 1.5) * 8deg); }
   }
+
+  /* Afiche: sin caja; la banda es un bloque impreso con filete grueso arriba y el abanico sobre campo verde. */
+  :global(:root[data-estilo='afiche']) .banda__caja { background: transparent; box-shadow: none; padding: 0; border-top: var(--filete-fuerte); gap: 0; }
+  :global(:root[data-estilo='afiche']) .banda__texto { padding-inline: 0 clamp(20px, 4vw, 48px); }
+  :global(:root[data-estilo='afiche']) .banda__abanico { background: var(--verde-oscuro); }
+  :global(:root[data-estilo='afiche']) .banda__foto { box-shadow: 0 0 0 5px var(--blanco-verdozo), 0 18px 30px -14px rgb(0 0 0 / 0.5); }
+  :global(:root[data-estilo='folleto']) .banda__caja { box-shadow: none; }
 </style>

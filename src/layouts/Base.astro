@@ -44,10 +44,24 @@ const organizacion = {
 };
 ---
 <!doctype html>
-<html lang="es-UY">
+<html lang="es-UY" data-estilo="afiche">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <script is:inline>
+    // Estilo del sitio (Afiche · Folleto · Estándar), antes de pintar para que no haya destello. ?estilo=folleto en
+    // la dirección lo elige y lo recuerda (sirve para compartir un enlace a cada versión). Ver SelectorEstilo.astro.
+    (() => {
+      const validos = ['afiche', 'folleto', 'estandar'];
+      let elegido = null;
+      try {
+        const pedido = new URLSearchParams(location.search).get('estilo');
+        if (validos.includes(pedido)) localStorage.setItem('copol-estilo', pedido);
+        elegido = localStorage.getItem('copol-estilo');
+      } catch { /* sin almacenamiento: queda el predeterminado */ }
+      if (validos.includes(elegido)) document.documentElement.dataset.estilo = elegido;
+    })();
+  </script>
   <title>{tituloCompleto}</title>
   <meta name="description" content={descripcion} />
   <link rel="canonical" href={canonica} />

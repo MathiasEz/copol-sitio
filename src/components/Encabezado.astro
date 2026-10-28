@@ -9,6 +9,7 @@ import logo from '../assets/brand/logo-copol.svg';
 import Icono from './Icono.astro';
 import Button from './ui/Button.astro';
 import Campana from './Campana.astro';
+import SelectorEstilo from './SelectorEstilo.astro';
 
 const ruta = Astro.url.pathname.replace(/\/?$/, '/');
 const activo = (href: string) => (href === '/' ? ruta === '/' : ruta.startsWith(href));
@@ -18,6 +19,7 @@ const actual = (href: string) => ruta === href;
   <div class="contenedor barra-superior__fila">
     <p class="barra-superior__lema">{SITIO.lema}</p>
     <div class="barra-superior__acciones">
+      <SelectorEstilo />
       <a href={whatsapp(CONTACTO.whatsappGeneral.numero)} class="barra-superior__enlace" rel="noopener">
         <Icono nombre="whatsapp" tamano={16} />
         <span><span class="visualmente-oculto">WhatsApp </span>{CONTACTO.whatsappGeneral.texto}</span>
@@ -221,6 +223,10 @@ const actual = (href: string) => ruta === href;
     requestAnimationFrame(() => resalte.classList.remove('sin-transicion'));
   });
   window.addEventListener('resize', () => moverA(activoActual()));
+  // La campana (server island) y la fuente llegan después de la primera medición y corren el menú:
+  // se vuelve a medir cada vez que cambia el tamaño de la lista (antes el resalte quedaba junto al logo).
+  if ('ResizeObserver' in window) new ResizeObserver(() => moverA(activoActual())).observe(encabezado);
+  document.fonts?.ready.then(() => moverA(activoActual()));
 </script>
 
 <style>
@@ -237,6 +243,22 @@ const actual = (href: string) => ruta === href;
   .barra-superior__enlace:hover { color: var(--amarillo-copol); }
   .barra-superior__acceso { background: var(--amarillo-copol); color: var(--tinta); padding: 4px 14px; border-radius: var(--radio-pill); font-weight: 700; transition: transform 300ms var(--resorte); }
   .barra-superior__acceso:hover { color: var(--tinta); background: #ece032; transform: translateY(-1px); }
+  /* Celular: una sola fila (el lema ya está en el pie y en la cabecera); WhatsApp queda como ícono. */
+  @media (max-width: 699px) {
+    .barra-superior__lema { display: none; }
+    .barra-superior__fila { justify-content: flex-end; }
+    .barra-superior__acciones { width: 100%; justify-content: space-between; gap: 8px; }
+  }
+  @media (max-width: 479px) {
+    .barra-superior__enlace > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+    .barra-superior__enlace { min-width: 36px; justify-content: center; }
+    .barra-superior__acceso { padding-inline: 10px; gap: 6px; }
+    .barra-superior__acceso :global(svg) { display: none; }
+  }
+  /* De 380 px en adelante entra todo en una fila; en teléfonos más angostos se permite un segundo renglón. */
+  @media (min-width: 380px) and (max-width: 479px) {
+    .barra-superior__acciones { flex-wrap: nowrap; }
+  }
 
   .encabezado {
     position: sticky; top: 0; z-index: 50;
@@ -350,7 +372,7 @@ const actual = (href: string) => ruta === href;
     .nav__sub {
       position: absolute; top: calc(100% + 8px); left: 0; z-index: 5;
       min-width: 300px; padding: 8px;
-      background: var(--background); border-radius: 20px;
+      background: var(--background); border-radius: var(--radio-lg);
       box-shadow: var(--anillo), var(--sombra);
       opacity: 0; visibility: hidden;
       transform: translateY(-6px) scale(0.97); transform-origin: top left;
@@ -376,4 +398,39 @@ const actual = (href: string) => ruta === href;
     .nav__enlace { padding-inline: 14px; }
   }
   :global(html.sin-scroll) { overflow: hidden; }
+
+  /* ── Encabezado por estilo ─────────────────────────────────────────────────────────────── */
+  /* Afiche: cabezal impreso sobre papel con filete de tinta; menú condensado en mayúsculas, el ítem actual
+     subrayado con una barra de tinta y "Hacete socio" como la única acción en Amarillo. */
+  :global(:root[data-estilo='afiche']) .encabezado { box-shadow: 0 3px 0 var(--tinta); }
+  :global(:root[data-estilo='afiche']) .barra-superior__acceso { background: transparent; color: var(--blanco); box-shadow: inset 0 0 0 1.5px rgb(255 255 255 / 0.7); }
+  :global(:root[data-estilo='afiche']) .barra-superior__acceso:hover { background: rgb(255 255 255 / 0.12); color: var(--blanco); }
+  @media (min-width: 1100px) {
+    :global(:root[data-estilo='afiche']) .nav__enlace {
+      font-family: var(--fuente-titulo); font-stretch: 78%; text-transform: uppercase; letter-spacing: 0.02em;
+      font-weight: 750; font-size: 1.0625rem; color: var(--tinta);
+    }
+    :global(:root[data-estilo='afiche']) .nav__resalte { top: auto; bottom: 2px; height: 4px; translate: var(--x, 0) 0; border-radius: 0; background: var(--verde-oscuro); }
+  }
+  :global(:root[data-estilo='afiche']) .nav__item--cta .nav__enlace {
+    background: var(--amarillo-copol); color: var(--tinta); border-radius: var(--radio-boton);
+    font-family: var(--fuente-titulo); font-stretch: 84%; text-transform: uppercase; letter-spacing: 0.03em; font-weight: 800;
+  }
+  :global(:root[data-estilo='afiche']) .nav__item--cta .nav__enlace:hover,
+  :global(:root[data-estilo='afiche']) .nav__item--cta .nav__enlace.activo { background: #ece032; color: var(--tinta); }
+  :global(:root[data-estilo='afiche']) .encabezado__menu { border-radius: var(--radio-boton); border: 2px solid var(--tinta); }
+
+  /* Folleto: cabezal en Amarillo pleno, como la tapa del folleto, con el menú en negrita verde. */
+  :global(:root[data-estilo='folleto']) .encabezado::before { background: var(--amarillo-copol); backdrop-filter: none; }
+  :global(:root[data-estilo='folleto']) .encabezado { box-shadow: 0 3px 0 var(--verde-oscuro); }
+  :global(:root[data-estilo='folleto']) .nav__item:not(.nav__item--cta) .nav__enlace { font-weight: 800; color: var(--verde-oscuro); }
+  :global(:root[data-estilo='folleto']) .nav__item--cta .nav__enlace { font-weight: 800; }
+  @media (min-width: 1100px) {
+    :global(:root[data-estilo='folleto']) .nav__resalte { background: var(--blanco); box-shadow: inset 0 0 0 2px var(--verde-oscuro); }
+  }
+  :global(:root[data-estilo='folleto']) .encabezado__menu { background: var(--blanco); border: 2px solid var(--verde-oscuro); }
+  :global(:root[data-estilo='folleto']) .barra-superior__acceso { background: var(--blanco); color: var(--verde-oscuro); }
+
+  /* Estándar: cabezal blanco con línea fina y resalte verde muy claro. */
+  :global(:root[data-estilo='estandar']) .encabezado::before { background: color-mix(in srgb, #ffffff 94%, transparent); }
 </style>

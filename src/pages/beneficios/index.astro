@@ -1,4 +1,4 @@
-﻿---
+---
 import Base from '../../layouts/Base.astro';
 import EncabezadoPagina from '../../components/EncabezadoPagina.astro';
 import AperturasCredito from '../../components/AperturasCredito.astro';
@@ -8,9 +8,12 @@ import { CONVENIOS } from '../../lib/datos';
 import { foto } from '../../lib/imagenes';
 import { SERVICIOS } from '../../data/confirmado/servicios';
 import Button from '../../components/ui/Button.astro';
-import Card from '../../components/ui/Card.astro';
 
 const departamentos = new Set(CONVENIOS.map((c) => c.departamento)).size;
+// Rubros con más comercios adheridos (se calculan del listado, así siguen al día si cambia).
+const porRubro = new Map<string, number>();
+CONVENIOS.forEach((c) => porRubro.set(c.rubro, (porRubro.get(c.rubro) ?? 0) + 1));
+const rubros = [...porRubro.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6);
 ---
 <Base titulo="Beneficios" descripcion="Beneficios para socios de COPOL: servicios sociales, Parque Vacacional Pinecoop, aperturas de crédito y convenios con comercios en todo el país.">
   <EncabezadoPagina
@@ -26,19 +29,21 @@ const departamentos = new Set(CONVENIOS.map((c) => c.departamento)).size;
 
   <section class="contenedor seccion" aria-labelledby="areas-titulo">
     <h2 id="areas-titulo" class="visualmente-oculto">Áreas de beneficios</h2>
-    <div class="grilla grilla--ajustada escalonar" style="--min: 340px">
-      <Card href="/beneficios/servicios-sociales/" class="area">
-        <span class="card__icono card__icono--accent"><Icono nombre="corazon" tamano={26} /></span>
-        <h3>Servicios sociales</h3>
-        <p>{SERVICIOS.length} servicios: {SERVICIOS.map((s) => s.titulo).join(', ')}.</p>
+    <div class="areas escalonar">
+      <a href="/beneficios/servicios-sociales/" class="area">
+        <span class="area__icono"><Icono nombre="corazon" tamano={26} /></span>
+        <h3 class="area__titulo">Servicios sociales</h3>
+        <p class="area__resumen">{SERVICIOS.length} servicios para socios y sus familias.</p>
+        <ul class="area__lista">{SERVICIOS.map((s) => <li>{s.titulo}</li>)}</ul>
         <span class="enlace-flecha">Ver servicios sociales <Icono nombre="flecha" tamano={18} /></span>
-      </Card>
-      <Card href="/beneficios/convenios/" class="area">
-        <span class="card__icono card__icono--accent"><Icono nombre="convenio" tamano={26} /></span>
-        <h3>Convenios</h3>
-        <p>{CONVENIOS.length} comercios adheridos en {departamentos} departamentos: farmacias, ópticas, supermercados, zapaterías y más.</p>
+      </a>
+      <a href="/beneficios/convenios/" class="area">
+        <span class="area__icono"><Icono nombre="convenio" tamano={26} /></span>
+        <h3 class="area__titulo">Convenios</h3>
+        <p class="area__resumen">{CONVENIOS.length} comercios adheridos en {departamentos} departamentos.</p>
+        <ul class="area__lista">{rubros.map(([rubro, n]) => <li>{rubro} <span class="area__n">{n}</span></li>)}</ul>
         <span class="enlace-flecha">Buscar convenios <Icono nombre="flecha" tamano={18} /></span>
-      </Card>
+      </a>
     </div>
   </section>
 
@@ -50,5 +55,36 @@ const departamentos = new Set(CONVENIOS.map((c) => c.departamento)).size;
 </Base>
 
 <style>
-  .grilla :global(.area) { padding: clamp(24px, 3vw, 36px); border-radius: var(--radio-xl); }
+  .areas { display: grid; gap: 20px; }
+  @media (min-width: 860px) { .areas { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  .area {
+    display: grid; align-content: start; justify-items: start; gap: 14px;
+    padding: clamp(24px, 3.4vw, 44px); border-radius: var(--radio-xl); border: var(--card-borde);
+    background: var(--blanco); color: var(--foreground); text-decoration: none;
+    transition: box-shadow 250ms var(--ease-out-quart), background-color 180ms var(--ease-out-quart), color 180ms var(--ease-out-quart);
+  }
+  .area:hover { color: var(--foreground); box-shadow: var(--sombra-suave); }
+  .area__icono { display: grid; place-items: center; width: 56px; height: 56px; border-radius: var(--radio-md); background: var(--amarillo-copol); color: var(--verde-oscuro); }
+  .area__titulo { font-size: var(--h2); font-weight: var(--titulo-peso); text-transform: var(--titulo-caja); line-height: var(--titulo-interlineado); letter-spacing: var(--titulo-tracking); }
+  .area__resumen { font-size: 1.125rem; color: var(--muted-foreground); }
+  .area__lista { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+  .area__lista li { display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px; border-radius: var(--radio-pill); background: var(--muted); color: var(--verde-oscuro); font-weight: 600; font-size: 0.9375rem; }
+  .area__n { font-variant-numeric: tabular-nums; color: var(--muted-foreground); font-weight: 700; }
+  .area .enlace-flecha { margin-top: 6px; }
+
+  /* Afiche: dos columnas de un mismo pliego, separadas por un filete; la lista es texto corrido entre barras. */
+  :global(:root[data-estilo='afiche']) .areas { gap: 0; border-top: var(--filete-fuerte); }
+  :global(:root[data-estilo='afiche']) .area { background: transparent; border: 0; border-radius: 0; padding-inline: 0; }
+  @media (min-width: 860px) {
+    :global(:root[data-estilo='afiche']) .area + .area { border-left: var(--filete); padding-left: clamp(24px, 3.4vw, 44px); }
+    :global(:root[data-estilo='afiche']) .area:first-child { padding-right: clamp(24px, 3.4vw, 44px); }
+  }
+  @media (max-width: 859px) { :global(:root[data-estilo='afiche']) .area + .area { border-top: var(--filete); } }
+  :global(:root[data-estilo='afiche']) .area:hover { box-shadow: none; }
+  :global(:root[data-estilo='afiche']) .area:hover .area__titulo { text-decoration: underline; text-decoration-thickness: 4px; text-underline-offset: 6px; }
+  :global(:root[data-estilo='afiche']) .area__icono { background: var(--verde-oscuro); color: var(--blanco-verdozo); border-radius: 0; }
+  :global(:root[data-estilo='afiche']) .area__lista li { background: none; padding: 0; border-radius: 0; color: var(--tinta); }
+  :global(:root[data-estilo='afiche']) .area__lista li:not(:last-child)::after { content: '/'; color: var(--borde-fuerte); margin-left: 4px; }
+  :global(:root[data-estilo='folleto']) .area:hover { background: var(--amarillo-copol); box-shadow: none; }
+  :global(:root[data-estilo='folleto']) .area:hover .area__lista li { background: var(--blanco); }
 </style>

@@ -188,8 +188,8 @@ const canales = [
   .canal__enlace:hover { transform: translateY(-5px); box-shadow: var(--sombra); }
   .canal__enlace:hover::after { transform: translateX(120%); }
   .canal__enlace:active { transform: translateY(-1px) scale(0.99); }
-  .canal__icono { width: 56px; height: 56px; border-radius: 18px; display: grid; place-items: center; transition: transform 500ms var(--resorte); }
-  .canal--whatsapp .canal__icono { width: 72px; height: 72px; border-radius: 22px; }
+  .canal__icono { width: 56px; height: 56px; border-radius: var(--radio-md); display: grid; place-items: center; transition: transform 500ms var(--resorte); }
+  .canal--whatsapp .canal__icono { width: 72px; height: 72px; border-radius: var(--radio-md); }
   .canal__enlace:hover .canal__icono { transform: rotate(-8deg) scale(1.08); }
   .canal__texto { display: grid; gap: 4px; }
   .canal__titulo { font-size: 0.8125rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; }
@@ -215,7 +215,7 @@ const canales = [
   /* Horarios: dentro de la columna del formulario */
   .horarios { display: grid; gap: 12px; width: 100%; margin-top: 10px; }
   .horarios__titulo { display: flex; align-items: center; gap: 10px; font-size: 1.25rem; color: var(--verde-oscuro); }
-  .horarios__icono { width: 38px; height: 38px; border-radius: 12px; display: grid; place-items: center; background: var(--accent); color: var(--tinta); }
+  .horarios__icono { width: 38px; height: 38px; border-radius: var(--radio-md); display: grid; place-items: center; background: var(--accent); color: var(--tinta); }
   .horarios__grupo { display: grid; gap: 6px; padding: 16px 20px; border-radius: var(--radio-lg); background: var(--card); box-shadow: var(--anillo); transition: transform 400ms var(--resorte), box-shadow 250ms var(--ease-out-quart); }
   .horarios__grupo:hover { transform: translateY(-2px); box-shadow: var(--anillo-fuerte), var(--sombra-suave); }
   .horarios__grupo h4 { font-size: 1rem; color: var(--verde-oscuro); }

@@ -33,7 +33,6 @@ const rubros = [
   <section class="contenedor seccion" aria-labelledby="rubros-titulo">
     <div class="encabezado-seccion">
       <div>
-        <span class="eyebrow">Nuestras secciones</span>
         <h2 id="rubros-titulo">Lo que podés encontrar</h2>
         <p class="lead">Recorré cada piso con acceso fácil y cómodo por escaleras mecánicas.</p>
       </div>
@@ -83,7 +82,6 @@ const rubros = [
     <div class="cta-bazar grupo-hover aparecer">
       <Media src={foto('motos-bazar')} alt="" widths={[400, 640, 840]} sizes="(min-width: 900px) 420px, 100vw" />
       <div>
-        <span class="eyebrow">Bazar</span>
         <h2 id="bazar-cta">¿Buscás tecnología o artículos para el hogar?</h2>
         <p class="lead">Explorá el catálogo del Bazar y consultá stock por WhatsApp.</p>
         <Button href="/hipermercado/bazar/">Ver el Bazar <Icono nombre="flecha" tamano={18} /></Button>
@@ -108,7 +106,7 @@ const rubros = [
       }
   .rubro a:hover { transform: translateY(-6px); box-shadow: var(--sombra); }
   .rubro a:active { transform: translateY(-2px) scale(0.99); }
-  .rubro__icono { width: 60px; height: 60px; border-radius: 18px; display: grid; place-items: center; transition: transform 500ms var(--resorte); }
+  .rubro__icono { width: 60px; height: 60px; border-radius: var(--radio-md); display: grid; place-items: center; transition: transform 500ms var(--resorte); }
   .rubro a:hover .rubro__icono { transform: rotate(-8deg) scale(1.1); }
   .rubro__texto { display: grid; gap: 4px; }
   .rubro__texto strong { font-size: clamp(1.375rem, 2.2vw, 1.75rem); line-height: 1.1; }
@@ -131,14 +129,14 @@ const rubros = [
   .info { display: grid; gap: 18px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); }
   .info__bloque { gap: 12px; align-items: flex-start; padding: 26px; border-radius: var(--radio-xl); transition: transform 450ms var(--resorte), box-shadow 300ms var(--ease-out-quart); }
   .info__bloque:hover { transform: translateY(-4px); box-shadow: var(--anillo-fuerte), var(--sombra-suave); }
-  .info__icono { width: 50px; height: 50px; border-radius: 16px; display: grid; place-items: center; background: var(--muted); color: var(--verde-oscuro); transition: transform 450ms var(--resorte); }
+  .info__icono { width: 50px; height: 50px; border-radius: var(--radio-md); display: grid; place-items: center; background: var(--muted); color: var(--verde-oscuro); transition: transform 450ms var(--resorte); }
   .info__bloque:hover .info__icono { transform: scale(1.08) rotate(-6deg); }
   .info__bloque h2 { font-size: 1.5rem; }
   .info__bloque dl { margin: 0; display: grid; gap: 4px; }
   .info__bloque dt { font-weight: 700; color: var(--verde-oscuro); margin-top: 8px; }
   .info__bloque dd { margin: 0; color: var(--tinta-suave); }
   .info__bloque dd strong { color: var(--tinta); }
-  .cta-bazar { display: grid; gap: clamp(16px, 4vw, 48px); align-items: center; padding: 8px; border-radius: 32px; background: var(--card); box-shadow: var(--anillo), var(--sombra-suave); }
+  .cta-bazar { display: grid; gap: clamp(16px, 4vw, 48px); align-items: center; padding: 8px; border-radius: var(--radio-xl); background: var(--card); box-shadow: var(--anillo), var(--sombra-suave); }
   @media (min-width: 900px) { .cta-bazar { grid-template-columns: 440px 1fr; } }
   .cta-bazar > div { display: grid; gap: 14px; justify-items: start; padding: clamp(16px, 3vw, 32px); }
 </style>

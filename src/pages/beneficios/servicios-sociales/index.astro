@@ -29,7 +29,6 @@ const resto = SERVICIOS.filter((s) => s.slug !== 'pinecoop');
     <article class="pinecoop grupo-hover aparecer">
       <Media src={foto('pinecoop-salinas')} alt="Vista aérea de la piscina y las cabañas del Parque Vacacional Pinecoop" widths={[480, 720, 960, 1200]} sizes="(min-width: 900px) 640px, 100vw" radio="var(--radio-lg)" />
       <div class="pinecoop__texto">
-        <span class="eyebrow">{pinecoop.categoria}</span>
         <h2 id="pinecoop-titulo">{pinecoop.titulo}</h2>
         <p class="lead">{pinecoop.descripcion}</p>
         <div class="pinecoop__acciones">
@@ -52,8 +51,8 @@ const resto = SERVICIOS.filter((s) => s.slug !== 'pinecoop');
         <li>
           <Card href={`/beneficios/servicios-sociales/${s.slug}/`} class="servicio">
             <span class="card__icono"><Icono nombre={s.icono} tamano={26} /></span>
-            <span class="eyebrow">{s.categoria}</span>
             <h3>{s.titulo}</h3>
+            <span class="servicio__categoria">{s.categoria}</span>
             <p>{s.resumen}</p>
             <span class="enlace-flecha">Ver más<span class="visualmente-oculto"> sobre {s.titulo}</span> <Icono nombre="flecha" tamano={18} /></span>
           </Card>
@@ -67,7 +66,7 @@ const resto = SERVICIOS.filter((s) => s.slug !== 'pinecoop');
 
 <style>
   .pinecoop {
-    display: grid; gap: 8px; padding: 8px; border-radius: 32px; background: var(--card); box-shadow: var(--anillo), var(--sombra-suave);
+    display: grid; gap: 8px; padding: 8px; border-radius: var(--radio-xl); background: var(--card); border: var(--card-borde); box-shadow: var(--card-sombra);
   }
   @media (min-width: 900px) { .pinecoop { grid-template-columns: 1.15fr 1fr; align-items: center; } }
   .pinecoop__texto { display: grid; gap: 16px; justify-items: start; align-content: center; padding: clamp(20px, 4vw, 44px); }
@@ -75,9 +74,13 @@ const resto = SERVICIOS.filter((s) => s.slug !== 'pinecoop');
 
   .servicios {
     list-style: none; margin: 0; padding: 0; display: grid; gap: 18px;
-    grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr));
+    grid-template-columns: 1fr;
   }
+  /* 6 servicios: 2 × 3 en tableta y 3 × 2 en computadora (sin fila incompleta). */
+  @media (min-width: 640px) { .servicios { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (min-width: 1000px) { .servicios { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
   .servicios > li { display: flex; }
   .servicios :global(.servicio) { flex: 1; gap: 10px; }
   .servicios :global(.servicio .card__icono) { margin-bottom: 6px; }
+  .servicio__categoria { margin-top: -6px; font-size: 0.875rem; font-weight: 600; color: var(--muted-foreground); }
 </style>

@@ -9,6 +9,8 @@ const anio = new Date().getFullYear();
 const secciones = NAVEGACION.filter((n) => n.hijos);
 ---
 <footer class="pie sobre-verde">
+  <!-- Lema impreso a todo el ancho (Afiche y Folleto); el texto ya está en .pie__lema para lectores de pantalla. -->
+  <div class="pie__cartel" aria-hidden="true"><div class="contenedor">{SITIO.lema}</div></div>
   <div class="contenedor pie__grilla">
     <div class="pie__marca">
       <a href="/" class="pie__logo" aria-label="COPOL — Inicio"><img src={logo.src} width="150" height="69" alt="" /></a>
@@ -91,5 +93,23 @@ const secciones = NAVEGACION.filter((n) => n.hijos);
   .pie__legal {
     display: flex; flex-wrap: wrap; gap: 8px 24px; justify-content: space-between;
     padding-block: 20px; border-top: 1px solid rgb(255 255 255 / 0.15); font-size: 0.875rem;
+  }
+
+  .pie__cartel { display: none; }
+  /* Afiche: el pie remata la hoja con el lema en tipografía condensada, de borde a borde. */
+  :global(:root[data-estilo='afiche']) .pie { margin-top: var(--seccion); border-top: var(--filete-fuerte); }
+  :global(:root[data-estilo='afiche']) .pie__cartel {
+    display: block; padding-top: clamp(32px, 5vw, 64px);
+    font-family: var(--fuente-titulo); font-stretch: 62%; font-weight: 850; text-transform: uppercase;
+    font-size: clamp(2.75rem, 10.4vw, 11rem); line-height: 0.84; letter-spacing: -0.01em; color: var(--blanco-verdozo);
+    text-wrap: balance;
+  }
+  :global(:root[data-estilo='afiche']) .pie__logo { border-radius: 0; }
+  :global(:root[data-estilo='afiche']) .pie__redes a { border-radius: var(--radio-md); }
+  /* Folleto: banda amarilla con el lema en negro ancho, como el cierre del folleto. */
+  :global(:root[data-estilo='folleto']) .pie__cartel {
+    display: block; background: var(--amarillo-copol); color: var(--verde-oscuro); padding-block: clamp(18px, 2.4vw, 28px);
+    font-family: var(--fuente-titulo); font-stretch: 112%; font-weight: 900; text-transform: uppercase;
+    font-size: clamp(1.5rem, 3.6vw, 3rem); line-height: 1; letter-spacing: -0.02em; border-bottom: 3px solid var(--verde-oscuro);
   }
 </style>

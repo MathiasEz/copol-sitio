@@ -891,18 +891,18 @@ const secciones = catalogo.categorias.map((c) => ({ ...c, modelos: MODELOS.filte
   .ficha__imagen { aspect-ratio: 1; border-radius: var(--radio-lg); background: #fff; box-shadow: var(--anillo); display: grid; place-items: center; overflow: hidden; }
   .ficha__imagen img { width: 100%; height: 100%; object-fit: contain; padding: 10px; mix-blend-mode: multiply; }
   .ficha[data-estado='sin-stock'] .ficha__imagen img { filter: grayscale(1); opacity: 0.7; }
-  .ficha__imagen :global(.ficha__ampliar) {
+  .ficha__imagen .ficha__ampliar {
     position: relative; display: grid; width: 100%; height: 100%; padding: 0; border: 0; background: none; cursor: zoom-in; border-radius: inherit;
   }
-  .ficha__imagen :global(.ficha__ampliar:focus-visible) { outline: 3px solid var(--ring); outline-offset: -3px; }
-  .ficha__imagen :global(.ficha__ampliar-etiqueta) {
+  .ficha__imagen .ficha__ampliar:focus-visible { outline: 3px solid var(--ring); outline-offset: -3px; }
+  .ficha__imagen .ficha__ampliar-etiqueta {
     position: absolute; right: 8px; bottom: 8px; padding: 3px 10px; border-radius: var(--radio-pill);
     background: rgb(18 38 26 / 0.75); color: var(--blanco); font-size: 0.75rem; font-weight: 700;
     opacity: 0; transition: opacity var(--transicion);
   }
-  .ficha__imagen :global(.ficha__ampliar:hover .ficha__ampliar-etiqueta),
-  .ficha__imagen :global(.ficha__ampliar:focus-visible .ficha__ampliar-etiqueta) { opacity: 1; }
-  @media (hover: none) { .ficha__imagen :global(.ficha__ampliar-etiqueta) { opacity: 1; } }
+  .ficha__imagen .ficha__ampliar:hover .ficha__ampliar-etiqueta,
+  .ficha__imagen .ficha__ampliar:focus-visible .ficha__ampliar-etiqueta { opacity: 1; }
+  @media (hover: none) { .ficha__imagen .ficha__ampliar-etiqueta { opacity: 1; } }
   .ficha__titulos { display: grid; gap: 6px; }
   .ficha__titulo { font-size: clamp(1.25rem, 2.6vw, 1.5rem); line-height: 1.2; }
   .ficha__resumen { color: var(--muted-foreground); font-size: 0.9375rem; }
@@ -978,7 +978,7 @@ const secciones = catalogo.categorias.map((c) => ({ ...c, modelos: MODELOS.filte
   .reco__accion { font-size: 0.8125rem; font-weight: 800; color: var(--verde-oscuro); }
   .consulta { max-width: min(520px, 94vw); }
   .consulta__cuerpo { display: grid; gap: 12px; justify-items: start; padding: 4px 4px 8px; }
-  .consulta__icono { width: 56px; height: 56px; border-radius: 18px; display: grid; place-items: center; background: var(--accent); color: var(--tinta); }
+  .consulta__icono { width: 56px; height: 56px; border-radius: var(--radio-md); display: grid; place-items: center; background: var(--accent); color: var(--tinta); }
   .consulta__producto { margin: 0; font-weight: 700; color: var(--verde-oscuro); }
   .consulta__acciones { display: grid; gap: 10px; padding-top: 8px; }
   .consulta__acciones .btn { width: 100%; justify-content: center; }

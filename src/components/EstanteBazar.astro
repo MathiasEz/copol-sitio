@@ -36,6 +36,8 @@ const lista = destacados(catalogo, cantidad);
 
 <style is:global>
   .estante-bazar { display: grid; gap: clamp(16px, 2.2vw, 24px); }
+  /* Elemento de grilla con desplazamiento propio: sin min-width 0 crecía hasta el ancho de sus tarjetas (desborde a 320 px). */
+  .estante-bazar > * { min-width: 0; }
   .estante { list-style: none; margin: 0; padding: 0; display: grid; gap: clamp(12px, 1.6vw, 20px); grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
   .estante > li { display: flex; min-width: 0; }
   .estante > li > .producto { flex: 1; }

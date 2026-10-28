@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><title>Afiche cooperativo</title>
+<style>
+  :root { --verde:#006633; --amarillo:#F8EA39; --papel:#EAF4EE; --tinta:#12261A; }
+  * { box-sizing:border-box; margin:0; }
+  body { width:1440px; height:900px; overflow:hidden; background:var(--papel); color:var(--tinta); font-family:'Segoe UI',system-ui,sans-serif; }
+  .barra { height:72px; display:flex; align-items:center; gap:40px; padding:0 48px; border-bottom:3px solid var(--verde); }
+  .logo { width:120px; height:40px; border-radius:20px; background:#fff; border:2px solid var(--verde); }
+  .barra nav { display:flex; gap:32px; font-weight:700; font-size:17px; }
+  .barra .socio { margin-left:auto; background:var(--verde); color:#fff; padding:12px 22px; border-radius:999px; font-weight:800; }
+  .hoja { display:grid; grid-template-columns: 1.05fr 1fr; height:600px; }
+  .lema { background:var(--verde); color:var(--papel); padding:56px 48px; display:flex; flex-direction:column; justify-content:space-between; }
+  .lema h1 { font-family:'Arial Narrow','Roboto Condensed',sans-serif; font-stretch:condensed; font-weight:900; font-size:132px; line-height:.86; letter-spacing:-.02em; text-transform:uppercase; }
+  .lema h1 em { font-style:normal; color:var(--amarillo); }
+  .busca { display:flex; background:var(--papel); border-radius:999px; padding:6px; }
+  .busca span { flex:1; padding:16px 22px; color:#3d5a49; font-size:19px; }
+  .busca b { background:var(--amarillo); color:var(--tinta); padding:16px 30px; border-radius:999px; font-size:19px; }
+  .imagen { position:relative; background:linear-gradient(160deg,#7fb08f,#2d6b47 60%,#173a26); }
+  .imagen::after { content:'Banner editable · foto real'; position:absolute; left:24px; bottom:24px; background:var(--papel); padding:8px 14px; border-radius:999px; font-weight:700; }
+  .valores { display:grid; grid-template-columns:repeat(6,1fr); border-top:3px solid var(--tinta); height:228px; }
+  .valor { padding:22px 28px; border-right:1.5px solid var(--tinta); display:flex; flex-direction:column; justify-content:space-between; }
+  .valor small { font-size:15px; font-weight:800; text-transform:uppercase; letter-spacing:.06em; color:var(--verde); }
+  .valor strong { font-family:'Arial Narrow',sans-serif; font-stretch:condensed; font-weight:900; font-size:64px; line-height:.9; color:var(--verde); }
+  .valor span { font-size:16px; }
+  .valor.ws { background:var(--amarillo); }
+</style></head><body>
+  <div class="barra"><div class="logo"></div><nav><span>Sobre nosotros</span><span>Beneficios</span><span>Hipermercado</span><span>Contacto</span></nav><span class="socio">Hacete socio</span></div>
+  <div class="hoja">
+    <div class="lema"><h1>Por un verdadero <em>cooperativismo</em></h1>
+      <div class="busca"><span>Buscá en el Bazar: heladera, celular, bicicleta…</span><b>Buscar</b></div></div>
+    <div class="imagen"></div>
+  </div>
+  <div class="valores">
+    <div class="valor"><small>Crédito</small><strong>10 nov</strong><span>Próxima apertura</span></div>
+    <div class="valor"><small>Bazar</small><strong>486</strong><span>Productos con stock</span></div>
+    <div class="valor"><small>Locales</small><strong>19</strong><span>En todo el país</span></div>
+    <div class="valor"><small>Pinecoop</small><strong>2</strong><span>Parques vacacionales</span></div>
+    <div class="valor"><small>Convenios</small><strong>159</strong><span>Comercios adheridos</span></div>
+    <div class="valor ws"><small>WhatsApp</small><strong>098 872 727</strong><span>Escribinos</span></div>
+  </div>
+</body></html>

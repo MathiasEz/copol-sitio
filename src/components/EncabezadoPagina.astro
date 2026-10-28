@@ -1,6 +1,8 @@
 ---
-// Cabecera de páginas secundarias: migas, antetítulo (si no repite las migas), H1 (sube desde una máscara), bajada,
-// acciones e imagen opcional. La imagen conserva su proporción (sin recortes forzados).
+// Cabecera de páginas secundarias: migas, H1 (sube desde una máscara), bajada, un dato propio de la página
+// (p. ej. "Desde 1917" o "Abierto a todo público", si no repite las migas), acciones e imagen opcional.
+// Cada estilo la imprime distinto: Afiche = campo entintado en Verde oscuro; Folleto = tapa en Amarillo pleno
+// con el dato como sello; Estándar = blanca con línea inferior. La imagen conserva su proporción.
 import type { ImageMetadata } from 'astro';
 import Migas from './Migas.astro';
 import Media from './ui/Media.astro';
@@ -17,20 +19,20 @@ interface Props {
   posicionImagen?: string;
 }
 const { titulo, antetitulo, bajada, migas, imagen, altImagen = '', ratioImagen, posicionImagen } = Astro.props;
-// El antetítulo no repite lo que ya dicen las migas ("Beneficios", "Hipermercado · Bazar"…): solo queda la parte
+// El dato no repite lo que ya dicen las migas ("Beneficios", "Hipermercado · Bazar"…): solo queda la parte
 // que aporta algo propio, como "Desde 1917" o "Abierto a todo público".
 const normalizar = (t: string) => t.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
 const enMigas = new Set([...migas.map((m) => normalizar(m.texto)), normalizar(titulo)]);
-const antetituloPropio = antetitulo?.split(' · ').filter((p) => !enMigas.has(normalizar(p))).join(' · ');
+const dato = antetitulo?.split(' · ').filter((p) => !enMigas.has(normalizar(p))).join(' · ');
 ---
-<section class="cabecera">
+<section class:list={['cabecera', { 'cabecera--imagen': imagen }]}>
   <div class="contenedor">
     <Migas items={migas} />
-    <div class:list={['cabecera__cuerpo', { 'cabecera__cuerpo--imagen': imagen }]}>
+    <div class="cabecera__cuerpo">
       <div class="cabecera__texto">
-        {antetituloPropio && <span class="eyebrow">{antetituloPropio}</span>}
         <h1 class="cabecera__titulo"><span>{titulo}</span></h1>
-        {bajada && <p class="lead">{bajada}</p>}
+        {bajada && <p class="lead cabecera__bajada">{bajada}</p>}
+        {dato && <p class="cabecera__dato">{dato}</p>}
         {Astro.slots.has('default') && <div class="cabecera__acciones"><slot /></div>}
       </div>
       {imagen && (
@@ -40,9 +42,8 @@ const antetituloPropio = antetitulo?.split(' · ').filter((p) => !enMigas.has(no
           ratio={ratioImagen}
           posicion={posicionImagen}
           widths={[480, 720, 960, 1200]}
-          sizes="(min-width: 900px) 560px, 100vw"
+          sizes="(min-width: 900px) 46vw, 100vw"
           prioridad
-          radio="96px var(--radio-xl) var(--radio-xl) var(--radio-xl)"
           class="cabecera__imagen"
         />
       )}
@@ -52,21 +53,37 @@ const antetituloPropio = antetitulo?.split(' · ').filter((p) => !enMigas.has(no
 
 <style>
   .cabecera {
-    border-bottom: 1px solid var(--border);
-    padding-block: clamp(16px, 3vw, 28px) clamp(40px, 6vw, 72px);
+    --cab-fondo: transparent;
+    --cab-titulo: var(--verde-oscuro);
+    --cab-texto: var(--muted-foreground);
+    background: var(--cab-fondo);
+    border-bottom: var(--filete);
+    padding-block: clamp(12px, 2vw, 20px) clamp(40px, 6vw, 80px);
   }
   .cabecera__cuerpo {
     display: grid;
-    gap: clamp(24px, 4vw, 56px);
+    gap: clamp(28px, 4vw, 64px);
     align-items: center;
-    margin-top: clamp(16px, 3vw, 32px);
+    margin-top: clamp(20px, 3.4vw, 48px);
   }
   @media (min-width: 900px) {
-    .cabecera__cuerpo--imagen { grid-template-columns: 1.05fr 1fr; }
+    .cabecera--imagen .cabecera__cuerpo { grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); }
   }
-  .cabecera__texto { display: grid; gap: 16px; justify-items: start; }
-  .cabecera__titulo { overflow: hidden; padding-bottom: 0.18em; margin-bottom: -0.18em; }
+  .cabecera__texto { display: grid; gap: 18px; justify-items: start; }
+  .cabecera__titulo { color: var(--cab-titulo); overflow: hidden; padding-bottom: 0.12em; margin-bottom: -0.12em; max-width: 18ch; }
   .cabecera__titulo > span { display: block; }
+  .cabecera__bajada { color: var(--cab-texto); max-width: 56ch; font-size: clamp(1.0625rem, 1.5vw, 1.3125rem); }
+  .cabecera__dato {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-weight: 700; font-size: 0.9375rem; color: var(--cab-titulo);
+  }
+  .cabecera__dato::before { content: ''; width: 24px; height: 2px; background: currentColor; }
+  .cabecera__acciones { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 6px; }
+  .cabecera :global(.cabecera__imagen) { width: 100%; max-height: 520px; }
+  @media (max-width: 599px) {
+    .cabecera__acciones { width: 100%; }
+    .cabecera__acciones > :global(.btn) { flex: 1 1 100%; }
+  }
   @media (prefers-reduced-motion: no-preference) {
     .cabecera__titulo > span { animation: subir 900ms var(--ease-out-quart) both; }
     .cabecera__texto > :not(.cabecera__titulo) { animation: entrar 700ms var(--ease-out-quart) both; animation-delay: 120ms; }
@@ -74,9 +91,42 @@ const antetituloPropio = antetitulo?.split(' · ').filter((p) => !enMigas.has(no
   }
   @keyframes subir { from { transform: translateY(105%); } to { transform: none; } }
   @keyframes entrar { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
-  .cabecera__acciones { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 8px; }
-  .cabecera :global(.cabecera__imagen) { width: 100%; max-height: 460px; }
-  @media (max-width: 899px) {
-    .cabecera :global(.cabecera__imagen) { --media-radio: 56px var(--radio-lg) var(--radio-lg) var(--radio-lg) !important; }
+
+  /* Afiche: la cabecera es un campo entintado en Verde oscuro; título en papel, imagen como plancha impresa. */
+  :global(:root[data-estilo='afiche']) .cabecera {
+    --cab-fondo: var(--verde-oscuro);
+    --cab-titulo: var(--blanco-verdozo);
+    --cab-texto: var(--sobre-verde);
+    border-bottom: 0;
   }
+  :global(:root[data-estilo='afiche']) .cabecera :global(.migas ol),
+  :global(:root[data-estilo='afiche']) .cabecera :global(.migas a),
+  :global(:root[data-estilo='afiche']) .cabecera :global(.migas [aria-current]) { color: var(--sobre-verde); }
+  :global(:root[data-estilo='afiche']) .cabecera :global(.migas li + li::before) { color: rgb(255 255 255 / 0.4); }
+  :global(:root[data-estilo='afiche']) .cabecera :global(.btn--default) { background: var(--blanco-verdozo); color: var(--verde-oscuro); }
+  :global(:root[data-estilo='afiche']) .cabecera :global(.btn--default:hover) { background: var(--blanco); color: var(--verde-oscuro); }
+  :global(:root[data-estilo='afiche']) .cabecera :global(:is(.btn--outline, .btn--secondary)) { background: transparent; color: var(--blanco); border-color: rgb(255 255 255 / 0.7); box-shadow: none; }
+  :global(:root[data-estilo='afiche']) .cabecera :global(:is(.btn--outline, .btn--secondary):hover) { background: rgb(255 255 255 / 0.12); color: var(--blanco); }
+  :global(:root[data-estilo='afiche']) .cabecera :global(:focus-visible) { outline-color: var(--amarillo-copol); }
+  :global(:root[data-estilo='afiche']) .cabecera :global(.cabecera__imagen) { box-shadow: 0 0 0 6px var(--blanco-verdozo); }
+  :global(:root[data-estilo='afiche']) .cabecera :global(.cabecera__imagen::after) { box-shadow: none; }
+  :global(:root[data-estilo='afiche']) .cabecera__dato { color: var(--amarillo-copol); text-transform: uppercase; letter-spacing: 0.04em; font-family: var(--fuente-titulo); font-stretch: 84%; font-size: 1.0625rem; }
+
+  /* Folleto: tapa en Amarillo pleno; el dato es un sello redondo y la foto lleva marco verde grueso. */
+  :global(:root[data-estilo='folleto']) .cabecera {
+    --cab-fondo: var(--amarillo-copol);
+    --cab-titulo: var(--verde-oscuro);
+    --cab-texto: var(--tinta);
+    border-bottom: 3px solid var(--verde-oscuro);
+  }
+  :global(:root[data-estilo='folleto']) .cabecera :global(.migas ol),
+  :global(:root[data-estilo='folleto']) .cabecera :global(.migas a) { color: var(--tinta); }
+  :global(:root[data-estilo='folleto']) .cabecera :global(.migas li + li::before) { color: var(--verde-oscuro); }
+  :global(:root[data-estilo='folleto']) .cabecera :global(.btn--outline) { background: var(--blanco); }
+  :global(:root[data-estilo='folleto']) .cabecera :global(.cabecera__imagen) { box-shadow: 0 0 0 4px var(--verde-oscuro); }
+  :global(:root[data-estilo='folleto']) .cabecera__dato {
+    background: var(--verde-oscuro); color: var(--blanco); padding: 8px 18px; border-radius: var(--radio-pill);
+    rotate: -3deg; font-family: var(--fuente-titulo); font-stretch: 108%; font-weight: 900; text-transform: uppercase; font-size: 0.9375rem;
+  }
+  :global(:root[data-estilo='folleto']) .cabecera__dato::before { display: none; }
 </style>

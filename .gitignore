@@ -31,3 +31,7 @@ skills-lock.json
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# Impeccable: capturas de revisión y estado local de las rondas de decisión (se regeneran)
+.impeccable/review/
+.impeccable/questions/

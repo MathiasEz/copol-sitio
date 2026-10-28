@@ -115,7 +115,7 @@ import Button from '../components/ui/Button.astro';
   }
   a.acceso--socios:hover { background-position: 100% 50%; box-shadow: inset 0 0 0 3px var(--amarillo-copol), var(--sombra); color: var(--sobre-verde); }
   .acceso--socios h3 { color: var(--blanco); }
-  .acceso--socios .acceso__icono { width: 80px; height: 80px; border-radius: 24px; background: var(--amarillo-copol); color: var(--tinta); }
+  .acceso--socios .acceso__icono { width: 80px; height: 80px; border-radius: var(--radio-md); background: var(--amarillo-copol); color: var(--tinta); }
   .acceso--socios .acceso__cta { background: var(--amarillo-copol); color: var(--tinta); font-size: 1.25rem; padding: 14px 28px; }
   .acceso--socios .acceso__lista { font-size: 1.1875rem; }
   .acceso--socios .acceso__lista :global(svg) { color: var(--amarillo-copol); }
@@ -123,10 +123,10 @@ import Button from '../components/ui/Button.astro';
   .acceso__aro::after { content: ''; position: absolute; inset: 70px; border-radius: 50%; background: rgb(255 255 255 / 0.05); }
 
   /* Empleados: grande, pero con un tratamiento más sobrio que el de socio */
-  .acceso--empleados { min-height: clamp(220px, 24vw, 280px); background: var(--card); color: var(--foreground); box-shadow: var(--anillo-fuerte), var(--sombra-suave); border-left: 8px solid var(--verde-copol); }
+  .acceso--empleados { min-height: clamp(220px, 24vw, 280px); background: var(--blanco); color: var(--foreground); border: var(--card-borde); box-shadow: inset 0 0 0 2px var(--verde-copol), var(--sombra-suave); }
   a.acceso--empleados:hover { box-shadow: inset 0 0 0 2px var(--verde-oscuro), var(--sombra); color: var(--foreground); }
   .acceso--empleados h3 { color: var(--verde-oscuro); }
-  .acceso--empleados .acceso__icono { width: 68px; height: 68px; border-radius: 20px; background: var(--muted); color: var(--verde-oscuro); }
+  .acceso--empleados .acceso__icono { width: 68px; height: 68px; border-radius: var(--radio-md); background: var(--muted); color: var(--verde-oscuro); }
   .acceso--empleados .acceso__cta { background: var(--verde-oscuro); color: var(--blanco); }
   .acceso--empleados .acceso__lista :global(svg) { color: var(--verde-copol); }
 

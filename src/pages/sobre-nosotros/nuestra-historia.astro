@@ -35,8 +35,7 @@ const hitos = HITOS_PUBLICADOS.map((h) => (h.id === 'hoy'
   <section class="contenedor seccion" aria-labelledby="linea-titulo">
     <div class="encabezado-seccion">
       <div>
-        <span class="eyebrow">De 1917 a hoy</span>
-        <h2 id="linea-titulo"><span class="mascara"><span>Nuestra línea de tiempo</span></span></h2>
+        <h2 id="linea-titulo"><span class="mascara"><span>De 1917 a hoy</span></span></h2>
         <p class="lead">{MANUAL.origen}</p>
       </div>
     </div>
@@ -48,7 +47,6 @@ const hitos = HITOS_PUBLICADOS.map((h) => (h.id === 'hoy'
     <div class="estatutos aparecer">
       <span class="estatutos__icono"><Icono nombre="documento" tamano={34} /></span>
       <div class="estatutos__texto">
-        <span class="eyebrow">Documento oficial</span>
         <h2 id="estatutos-titulo">Estatutos de la Cooperativa Policial</h2>
         <p>Consultá el documento oficial de los estatutos de la Cooperativa Policial.</p>
       </div>
@@ -59,11 +57,11 @@ const hitos = HITOS_PUBLICADOS.map((h) => (h.id === 'hoy'
   <section class="contenedor seccion mv" aria-labelledby="mv-titulo">
     <h2 id="mv-titulo" class="visualmente-oculto">Misión y visión</h2>
     <Card as="article" variant="muted" class="mv__bloque aparecer">
-      <span class="eyebrow">Misión</span>
+      <h2>Misión</h2>
       {MANUAL.mision.map((p) => <p>{p}</p>)}
     </Card>
     <Card as="article" variant="primary" class="mv__bloque sobre-verde aparecer">
-      <span class="eyebrow">Visión</span>
+      <h2>Visión</h2>
       {MANUAL.vision.map((p) => <p>{p}</p>)}
     </Card>
   </section>
@@ -76,7 +74,6 @@ const hitos = HITOS_PUBLICADOS.map((h) => (h.id === 'hoy'
   @media (min-width: 900px) { .mv { grid-template-columns: 1fr 1fr; } }
   .mv :global(.mv__bloque) { padding: clamp(24px, 4vw, 44px); border-radius: var(--radio-xl); }
   .mv :global(.card--muted p) { color: var(--foreground); }
-  .mv :global(.card--primary .eyebrow) { color: var(--amarillo-copol); }
 
   .estatutos {
     display: grid; gap: 20px 28px; align-items: center; padding: clamp(28px, 4.5vw, 56px); border-radius: var(--radio-xl);
@@ -86,7 +83,6 @@ const hitos = HITOS_PUBLICADOS.map((h) => (h.id === 'hoy'
   @media (min-width: 900px) { .estatutos { grid-template-columns: auto 1fr auto; } }
   .estatutos__icono { width: 72px; height: 72px; border-radius: var(--radio-lg); display: grid; place-items: center; background: var(--amarillo-copol); color: var(--tinta); }
   .estatutos__texto { display: grid; gap: 8px; }
-  .estatutos__texto .eyebrow { color: var(--amarillo-copol); }
   .estatutos h2 { font-size: clamp(1.625rem, 3.2vw, 2.5rem); color: var(--blanco); line-height: 1.1; }
   .estatutos p { color: var(--sobre-verde); font-size: 1.125rem; max-width: 54ch; }
 </style>

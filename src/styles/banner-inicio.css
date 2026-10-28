@@ -15,7 +15,7 @@
   --bi-amarillo: #f8ea39;
   --bi-tinta: #12261a;
   --bi-tinta-suave: #3d5a49;
-  --bi-radio: 28px;
+  --bi-radio: var(--radio-xl, 28px);
   --bi-ease: cubic-bezier(0.25, 1, 0.5, 1);
   --bi-resorte: linear(0, 0.22 6%, 0.6 14%, 0.86 22%, 1.02 32%, 1.03 40%, 1.008 54%, 1 70%, 1);
   --bi-segundos: 6s;
@@ -140,7 +140,7 @@
 
 /* ── Pantallas angostas: imagen arriba, texto debajo (nunca encima) ── */
 @container bi (max-width: 719.98px) {
-  .bi { --bi-radio: 22px; }
+  .bi { --bi-radio: var(--radio-xl, 22px); }
   .bi__diapo { grid-template-rows: auto 1fr; align-content: start; }
   .bi__media { aspect-ratio: 16 / 10; }
   .bi__texto { align-content: start; padding: 20px 20px 24px; gap: 12px; }

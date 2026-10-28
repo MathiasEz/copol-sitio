@@ -1,0 +1,57 @@
+---
+// Selector de estilo del sitio (rediseño del 28/10/2026): tres propuestas sobre el mismo contenido, para
+// compararlas y elegir una. Cambia data-estilo en <html> sin recargar y lo recuerda en este navegador
+// (clave copol-estilo, la misma que usa el panel). El estilo inicial lo aplica el script de Base.astro.
+const OPCIONES = [
+  { valor: 'afiche', texto: 'Afiche' },
+  { valor: 'folleto', texto: 'Folleto' },
+  { valor: 'estandar', texto: 'Estándar' },
+];
+---
+<div class="estilo" role="group" aria-label="Estilo del sitio">
+  <span class="estilo__titulo" aria-hidden="true">Estilo</span>
+  {OPCIONES.map((o) => (
+    <button type="button" class="estilo__opcion" data-estilo-opcion={o.valor} aria-pressed={o.valor === 'afiche' ? 'true' : 'false'}>{o.texto}</button>
+  ))}
+</div>
+
+<script>
+  const raiz = document.documentElement;
+  const pintar = () => {
+    document.querySelectorAll<HTMLButtonElement>('[data-estilo-opcion]').forEach((b) => {
+      b.setAttribute('aria-pressed', String(b.dataset.estiloOpcion === raiz.dataset.estilo));
+    });
+  };
+  pintar();
+  document.addEventListener('click', (e) => {
+    const boton = (e.target as Element).closest?.<HTMLButtonElement>('[data-estilo-opcion]');
+    if (!boton?.dataset.estiloOpcion) return;
+    raiz.dataset.estilo = boton.dataset.estiloOpcion;
+    try { localStorage.setItem('copol-estilo', boton.dataset.estiloOpcion); } catch { /* vale solo para esta página */ }
+    pintar();
+    // El resalte del menú y otros elementos medidos se recolocan con el nuevo tamaño de letra.
+    dispatchEvent(new Event('resize'));
+  });
+</script>
+
+<style>
+  .estilo {
+    display: inline-flex; align-items: center; gap: 2px; padding: 3px;
+    border-radius: var(--radio-pill); background: rgb(255 255 255 / 0.12);
+  }
+  .estilo__titulo { padding-inline: 10px 6px; font-weight: 600; color: var(--sobre-verde); }
+  .estilo__opcion {
+    min-height: 30px; padding: 2px 12px; border: 0; border-radius: var(--radio-pill);
+    background: transparent; color: var(--blanco); font-weight: 650; font-size: 0.8125rem; cursor: pointer;
+    transition: background-color var(--transicion), color var(--transicion);
+  }
+  .estilo__opcion:hover { background: rgb(255 255 255 / 0.16); }
+  .estilo__opcion[aria-pressed='true'] { background: var(--blanco); color: var(--verde-oscuro); }
+  /* Área táctil de 44 px sin agrandar la barra: el botón crece hacia afuera de forma invisible. */
+  .estilo__opcion { position: relative; }
+  .estilo__opcion::after { content: ''; position: absolute; inset: -7px -2px; }
+  @media (max-width: 479px) {
+    .estilo__titulo { display: none; }
+    .estilo__opcion { padding-inline: 8px; }
+  }
+</style>

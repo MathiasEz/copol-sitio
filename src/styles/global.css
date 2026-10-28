@@ -11,14 +11,20 @@
    Componentes en src/components/ui/.
    ========================================================================== */
 @import '@fontsource-variable/figtree';
+/* Archivo con eje de ancho (62–125 %): titulares condensados del estilo Afiche y anchos del Folleto.
+   El navegador solo la descarga cuando el estilo elegido la usa. */
+@import '@fontsource-variable/archivo/wdth.css';
 
+/* ── Tres estilos sobre el mismo HTML (rediseño del 28/10/2026, ver docs/rediseno-integral.md) ──────────
+   <html data-estilo="afiche | folleto | estandar">: el selector de la barra superior lo cambia y lo recuerda
+   (clave copol-estilo, compartida con el panel). Los colores son siempre los del manual; cambian el papel,
+   la voz de los títulos, la forma de los contenedores y cómo se separan las secciones. */
 :root {
   /* Paleta oficial del manual */
   --verde-oscuro: #006633;
   --verde-copol: #008d36;
   --amarillo-copol: #f8ea39;
   --blanco-verdozo: #eaf4ee;
-  /* Amarillo del manual mezclado con blanco (14 %): fondo de página cálido, elegido en Claude Design. */
   --blanco-amarillo: #fefce3;
 
   /* Derivados funcionales (tonos del verde oscuro) */
@@ -31,47 +37,70 @@
   --blanco: #ffffff;
   --sobre-verde: #d9ecdf;
 
-  /* Fondo de página uniforme: amarillo tenue (Amarillo del manual al 14 %), único fondo desde el 14/10/2026.
-     Tarjetas y secciones se distinguen con espaciado, bordes y sombras sutiles, no con bloques de color. */
-  --fondo-pagina: var(--blanco-amarillo);
-
-  /* Tokens semánticos estilo shadcn/ui, mapeados a la marca */
+  /* ── Estándar (valores base) ── */
+  --fondo-pagina: #ffffff;
   --background: var(--fondo-pagina);
   --foreground: var(--tinta);
   --card: var(--blanco);
   --card-foreground: var(--tinta);
-  /* Chips, íconos y botones secundarios: tintes del mismo amarillo, para distinguirse del fondo. */
-  --muted: #fbf4c2;
+  --muted: #edf5f0;
   --muted-foreground: var(--tinta-suave);
   --border: var(--borde);
   --input: var(--borde-fuerte);
   --ring: var(--verde-oscuro);
   --primary: var(--verde-oscuro);
   --primary-foreground: var(--blanco);
-  --secondary: #f9eea6;
+  --secondary: #e2efe7;
   --secondary-foreground: var(--verde-oscuro);
   --accent: var(--amarillo-copol);
   --accent-foreground: var(--tinta);
   --destructive: #b3261e;
-  --radius: 0.875rem;
+  --radius: 0.75rem;
+  /* Superficie "entintada": bloques de color pleno (créditos, socio, pie). */
+  --tinta-campo: var(--verde-oscuro);
+  --sobre-campo: var(--blanco);
+  --sobre-campo-suave: var(--sobre-verde);
 
   --fuente: 'Figtree Variable', 'Segoe UI', system-ui, sans-serif;
+  --fuente-titulo: var(--fuente);
+  --titulo-ancho: 100%;
+  --titulo-peso: 800;
+  --titulo-caja: none;
+  --titulo-tracking: -0.025em;
+  --titulo-interlineado: 1.06;
+  --h1: clamp(2.25rem, 4.6vw, 3.75rem);
+  --h2: clamp(1.75rem, 3vw, 2.5rem);
+  --h3: 1.25rem;
+  --h3-caja: none;
 
   --radio-pill: 999px;
-  /* Contenedores (tarjetas, cajas de imagen, paneles, banners): 28 px en todo el sitio. */
-  --radio-xl: 28px;
-  --radio-lg: 28px;
-  --radio-md: 14px;
+  --radio-xl: 20px;
+  --radio-lg: 16px;
+  --radio-md: 12px;
+  --radio-boton: var(--radio-pill);
+  --radio-media: var(--radio-lg);
 
   --sombra: 0 24px 48px -12px rgb(0 51 26 / 0.18);
-  --sombra-suave: 0 8px 24px -8px rgb(0 51 26 / 0.12);
+  --sombra-suave: 0 10px 28px -12px rgb(0 51 26 / 0.18);
   --anillo: inset 0 0 0 1px rgb(0 51 26 / 0.1);
-  --anillo-fuerte: inset 0 0 0 1px rgb(0 51 26 / 0.2);
+  --anillo-fuerte: inset 0 0 0 1px rgb(0 51 26 / 0.22);
+  /* Tarjetas: fondo, borde y elevación por estilo. */
+  --card-borde: 1px solid var(--border);
+  --card-sombra: 0 1px 2px rgb(0 51 26 / 0.04);
+  --card-sombra-hover: var(--sombra-suave);
+  --card-relleno: clamp(20px, 2.2vw, 28px);
+  /* Separación entre secciones: estándar = espacio + línea fina. */
+  --filete: 1px solid var(--border);
+  --filete-fuerte: 1px solid var(--border);
 
-  /* Ancho del contenido (diseño extendido; el anterior, de 1280 px, quedó en la marca diseno-anterior-2026-10-23). */
+  /* Escala de espaciado (base 4/8) */
+  --e-1: 4px; --e-2: 8px; --e-3: 12px; --e-4: 16px; --e-5: 24px; --e-6: 32px; --e-7: 48px; --e-8: 64px; --e-9: 96px;
+  /* Medida de lectura: párrafos largos nunca pasan de ~70 caracteres por línea. */
+  --medida: 68ch;
+
   --ancho: 1520px;
   --gutter: clamp(16px, 4vw, 32px);
-  --seccion: clamp(56px, 8vw, 104px);
+  --seccion: clamp(56px, 7vw, 104px);
 
   /* Movimiento: salida rápida y resorte con un rebote mínimo */
   --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
@@ -79,6 +108,80 @@
   --resorte: linear(0, 0.22 6%, 0.6 14%, 0.86 22%, 1.02 32%, 1.03 40%, 1.008 54%, 1 70%, 1);
   --transicion: 180ms var(--ease-out-quart);
   color-scheme: light;
+}
+
+/* ── Afiche: papel Blanco verdozo, tinta Verde oscuro en campos enteros, titulares condensados en
+   mayúsculas, filetes de tinta en lugar de cajas y el Amarillo solo para la acción principal. ── */
+:root[data-estilo='afiche'] {
+  --fondo-pagina: var(--blanco-verdozo);
+  --card: transparent;
+  --muted: #d6e9dd;
+  --secondary: #d6e9dd;
+  --border: #b9d5c3;
+  --input: #6f9a80;
+  --fuente-titulo: 'Archivo Variable', var(--fuente);
+  --titulo-ancho: 70%;
+  --titulo-peso: 800;
+  --titulo-caja: uppercase;
+  --titulo-tracking: -0.005em;
+  --titulo-interlineado: 0.92;
+  --h1: clamp(2.875rem, 7.2vw, 6rem);
+  --h2: clamp(2.125rem, 4.4vw, 3.75rem);
+  --h3: 1.5rem;
+  --h3-caja: uppercase;
+  --radio-xl: 0px;
+  --radio-lg: 0px;
+  --radio-md: 4px;
+  --radio-media: 0px;
+  --card-borde: 0;
+  --card-sombra: none;
+  --card-sombra-hover: none;
+  --card-relleno: clamp(18px, 2vw, 26px);
+  --filete: 2px solid var(--tinta);
+  --filete-fuerte: 4px solid var(--tinta);
+  /* Botones como rótulos impresos: rectangulares, condensados y en mayúsculas. */
+  --radio-boton: 4px;
+  --fuente-boton: 'Archivo Variable', var(--fuente);
+  --boton-ancho: 84%;
+  --boton-caja: uppercase;
+  --boton-tracking: 0.03em;
+}
+
+/* ── Folleto: blanco con bandas de Amarillo pleno, titulares anchos y negros, bordes verdes gruesos y
+   sellos redondos, como el folleto semanal del supermercado. ── */
+:root[data-estilo='folleto'] {
+  --fondo-pagina: #ffffff;
+  --muted: #fdf7c4;
+  --secondary: #fbf19a;
+  --border: #e6e0a4;
+  --fuente-titulo: 'Archivo Variable', var(--fuente);
+  --titulo-ancho: 112%;
+  --titulo-peso: 900;
+  --titulo-caja: uppercase;
+  --titulo-tracking: -0.02em;
+  --titulo-interlineado: 0.96;
+  --h1: clamp(2.375rem, 5.4vw, 4.5rem);
+  --h2: clamp(1.75rem, 3.4vw, 2.875rem);
+  --h3: 1.25rem;
+  --radio-xl: 28px;
+  --radio-lg: 22px;
+  --radio-md: 14px;
+  --radio-media: 22px;
+  --card-borde: 3px solid var(--verde-oscuro);
+  --card-sombra: none;
+  --card-sombra-hover: none;
+  --filete: 3px solid var(--verde-oscuro);
+  --filete-fuerte: 10px solid var(--amarillo-copol);
+  --fuente-boton: 'Archivo Variable', var(--fuente);
+  --boton-ancho: 104%;
+  --boton-caja: none;
+}
+
+/* Títulos con la voz de cada estilo */
+h1, h2, h3, h4,
+.titulo {
+  font-family: var(--fuente-titulo);
+  font-stretch: var(--titulo-ancho);
 }
 
 *,
@@ -150,15 +253,15 @@ h2,
 h3,
 h4 {
   margin: 0;
-  line-height: 1.08;
-  letter-spacing: -0.025em;
+  line-height: var(--titulo-interlineado);
+  letter-spacing: var(--titulo-tracking);
   color: var(--verde-oscuro);
   text-wrap: balance;
 }
 
-h1 { font-size: clamp(2.25rem, 5vw, 3.75rem); font-weight: 800; }
-h2 { font-size: clamp(1.75rem, 3.2vw, 2.5rem); font-weight: 750; }
-h3 { font-size: 1.1875rem; font-weight: 700; letter-spacing: -0.01em; }
+h1 { font-size: var(--h1); font-weight: var(--titulo-peso); text-transform: var(--titulo-caja); }
+h2 { font-size: var(--h2); font-weight: var(--titulo-peso); text-transform: var(--titulo-caja); }
+h3 { font-size: var(--h3); font-weight: 750; letter-spacing: -0.01em; line-height: 1.12; text-transform: var(--h3-caja); }
 
 p { margin: 0; text-wrap: pretty; }
 
@@ -224,20 +327,13 @@ input, textarea { caret-color: var(--verde-oscuro); }
 }
 .saltar:focus { top: 12px; }
 
-.eyebrow {
-  display: inline-block;
-  font-size: 0.8125rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--verde-oscuro);
-}
-
 .lead {
   font-size: clamp(1.0625rem, 1.6vw, 1.25rem);
   color: var(--muted-foreground);
   max-width: 62ch;
 }
+/* Párrafos de lectura: nunca más anchos que la medida, aunque el contenedor ocupe toda la pantalla. */
+main p { max-width: var(--medida); }
 
 .encabezado-seccion {
   display: flex;
@@ -248,6 +344,18 @@ input, textarea { caret-color: var(--verde-oscuro); }
   margin-bottom: clamp(24px, 3vw, 40px);
 }
 .encabezado-seccion > div { display: grid; gap: 10px; max-width: 720px; }
+.encabezado-seccion p { color: var(--muted-foreground); max-width: 60ch; }
+
+/* Cabeceras de sección por estilo. Afiche: todas se apoyan en la misma línea de base impresa (filete grueso).
+   Folleto: el título lleva una franja amarilla debajo, como el resaltador del folleto. */
+:root[data-estilo='afiche'] .encabezado-seccion,
+:root[data-estilo='afiche'] .bloque__cabecera { border-top: var(--filete-fuerte); padding-top: 14px; }
+:root[data-estilo='folleto'] .encabezado-seccion h2,
+:root[data-estilo='folleto'] .bloque__cabecera h2 {
+  width: fit-content;
+  background: linear-gradient(transparent 62%, var(--amarillo-copol) 62%, var(--amarillo-copol) 92%, transparent 92%);
+  padding-inline: 0.08em;
+}
 
 .enlace-flecha {
   display: inline-flex;
@@ -270,11 +378,15 @@ input, textarea { caret-color: var(--verde-oscuro); }
   gap: 10px;
   min-height: 48px;
   padding: 12px 24px;
-  border-radius: var(--radio-pill);
+  border-radius: var(--radio-boton);
   border: 1.5px solid transparent;
   font-weight: 700;
   font-size: 1rem;
   line-height: 1.2;
+  font-family: var(--fuente-boton, var(--fuente));
+  font-stretch: var(--boton-ancho, 100%);
+  text-transform: var(--boton-caja, none);
+  letter-spacing: var(--boton-tracking, 0);
   text-decoration: none;
   white-space: nowrap;
   cursor: pointer;
@@ -284,15 +396,17 @@ input, textarea { caret-color: var(--verde-oscuro); }
 .btn:disabled,
 .btn[aria-disabled='true'] { opacity: 0.6; pointer-events: none; }
 .btn svg { flex: none; }
-.btn--sm { min-height: 40px; padding: 8px 16px; font-size: 0.9375rem; gap: 8px; }
+.btn--sm { min-height: 44px; padding: 8px 18px; font-size: 0.9375rem; gap: 8px; }
 .btn--lg { min-height: 54px; padding: 14px 30px; font-size: 1.0625rem; }
 .btn--icon { width: 44px; min-height: 44px; padding: 0; }
 .btn--block { width: 100%; }
+/* Teléfonos muy angostos: un rótulo largo puede partir en dos líneas antes que desbordar la pantalla. */
+@media (max-width: 399px) { .btn { white-space: normal; text-align: center; } }
 
 .btn--default { background: var(--primary); color: var(--primary-foreground); }
 .btn--default:hover { background: var(--verde-hover); color: var(--primary-foreground); box-shadow: 0 10px 24px -10px rgb(0 102 51 / 0.6); }
 .btn--secondary { background: var(--secondary); color: var(--secondary-foreground); }
-.btn--secondary:hover { background: #d9ebe0; color: var(--secondary-foreground); }
+.btn--secondary:hover { background: var(--muted); color: var(--secondary-foreground); box-shadow: inset 0 0 0 1.5px var(--secondary-foreground); }
 .btn--outline { background: var(--background); color: var(--verde-oscuro); border-color: var(--verde-oscuro); }
 .btn--outline:hover { background: var(--muted); color: var(--verde-oscuro); }
 .btn--ghost { background: transparent; color: var(--verde-oscuro); }
@@ -331,22 +445,36 @@ input, textarea { caret-color: var(--verde-oscuro); }
   background: var(--card);
   color: var(--card-foreground);
   border-radius: var(--radio-lg);
-  padding: clamp(20px, 2.4vw, 28px);
-  box-shadow: var(--anillo);
-  transition: box-shadow 250ms var(--ease-out-quart), transform 400ms var(--resorte);
+  border: var(--card-borde);
+  padding: var(--card-relleno);
+  box-shadow: var(--card-sombra);
+  transition: box-shadow 250ms var(--ease-out-quart), transform 400ms var(--resorte), background-color 200ms var(--ease-out-quart), color 200ms var(--ease-out-quart), border-color 200ms var(--ease-out-quart);
 }
-.card--muted { background: var(--card); }
-.card--primary { background: var(--primary); color: var(--sobre-verde); }
+.card--muted { background: var(--muted); }
+.card--primary { background: var(--tinta-campo); color: var(--sobre-campo-suave); border-color: var(--tinta-campo); }
 .card--primary h2,
-.card--primary h3 { color: var(--blanco); }
+.card--primary h3 { color: var(--sobre-campo); }
 .card--dashed { box-shadow: none; border: 2px dashed var(--borde-fuerte); }
 a.card { text-decoration: none; }
 a.card:hover,
-.card--interactiva:hover { box-shadow: var(--anillo-fuerte), var(--sombra-suave); color: var(--card-foreground); }
-a.card--primary:hover { color: var(--sobre-verde); box-shadow: inset 0 0 0 2px var(--amarillo-copol), var(--sombra); }
+.card--interactiva:hover { box-shadow: var(--card-sombra-hover); color: var(--card-foreground); border-color: var(--borde-fuerte); }
+a.card--primary:hover { color: var(--sobre-campo-suave); box-shadow: inset 0 0 0 2px var(--amarillo-copol), var(--sombra); }
 @media (prefers-reduced-motion: no-preference) {
-  a.card:hover { transform: translateY(-3px); }
+  :root:not([data-estilo='afiche']) a.card:hover { transform: translateY(-3px); }
 }
+
+/* Afiche: la tarjeta es un bloque impreso entre filetes; al pasar el puntero se "entinta". */
+:root[data-estilo='afiche'] .card { border-top: var(--filete); padding-inline: 0; }
+:root[data-estilo='afiche'] .card--primary,
+:root[data-estilo='afiche'] .card--muted { padding-inline: var(--card-relleno); border-top: 0; }
+:root[data-estilo='afiche'] a.card:not(.card--primary):hover { background: var(--verde-oscuro); color: var(--blanco); padding-inline: var(--card-relleno); }
+:root[data-estilo='afiche'] a.card:not(.card--primary):hover :is(h2, h3, strong, p, span) { color: inherit; }
+:root[data-estilo='afiche'] a.card:not(.card--primary):hover .card__icono { background: var(--amarillo-copol); color: var(--tinta); }
+@media (prefers-reduced-motion: no-preference) {
+  :root[data-estilo='afiche'] a.card { transition: background-color 160ms var(--ease-out-quart), color 160ms var(--ease-out-quart), padding 260ms var(--ease-out-quart); }
+}
+/* Folleto: al pasar el puntero, la tarjeta se pinta de Amarillo, como una etiqueta de oferta. */
+:root[data-estilo='folleto'] a.card:not(.card--primary):hover { background: var(--amarillo-copol); }
 .card__icono {
   width: 52px;
   height: 52px;
@@ -492,7 +620,7 @@ a.card:hover .card__icono { background: var(--primary); color: var(--accent); tr
 .media {
   position: relative;
   overflow: hidden;
-  border-radius: var(--media-radio, var(--radio-lg));
+  border-radius: var(--media-radio, var(--radio-media));
   background: var(--muted);
   isolation: isolate;
 }
@@ -611,6 +739,31 @@ a:hover > .media::after { box-shadow: var(--anillo-fuerte); }
     padding-right: clamp(24px, 3vw, 48px);
   }
   .banner-inicio .bi__diapo--tarjeta .bi__texto { margin-left: max(var(--gutter), calc((100vw - var(--ancho)) / 2 + var(--gutter))); }
+}
+
+/* Banner por estilo (el contenido viene del panel; solo cambia cómo se imprime). */
+:root[data-estilo='afiche'] .bi__diapo { background: var(--verde-oscuro); box-shadow: none; }
+:root[data-estilo='afiche'] .bi__titulo {
+  font-family: var(--fuente-titulo); font-stretch: 66%; font-weight: 800; text-transform: uppercase;
+  letter-spacing: -0.005em; line-height: 0.9; font-size: clamp(2.375rem, 5.4cqi, 4.75rem);
+}
+:root[data-estilo='afiche'] .bi__resaltado { border-radius: 0; }
+:root[data-estilo='afiche'] .bi__antetitulo { background: none; box-shadow: none; padding: 0; color: var(--sobre-verde); }
+:root[data-estilo='afiche'] .bi__etiqueta { border-radius: 0; }
+:root[data-estilo='afiche'] .bi__boton {
+  border-radius: var(--radio-boton); font-family: var(--fuente-titulo); font-stretch: 84%;
+  text-transform: uppercase; letter-spacing: 0.03em; font-size: 1rem;
+}
+:root[data-estilo='folleto'] .bi__diapo:not(.bi__diapo--tarjeta) { background: var(--amarillo-copol); color: var(--verde-oscuro); }
+:root[data-estilo='folleto'] .bi__diapo:not(.bi__diapo--tarjeta) .bi__bajada { color: var(--tinta); }
+:root[data-estilo='folleto'] .bi__diapo:not(.bi__diapo--tarjeta) .bi__antetitulo { color: var(--verde-oscuro); background: var(--blanco); box-shadow: inset 0 0 0 2px var(--verde-oscuro); }
+:root[data-estilo='folleto'] .bi__diapo:not(.bi__diapo--tarjeta) .bi__resaltado { background: var(--verde-oscuro); color: var(--blanco); }
+:root[data-estilo='folleto'] .bi__diapo:not(.bi__diapo--tarjeta) .bi__boton--principal { background: var(--verde-oscuro); color: var(--blanco); }
+:root[data-estilo='folleto'] .bi__diapo:not(.bi__diapo--tarjeta) .bi__boton--secundario { color: var(--verde-oscuro); box-shadow: inset 0 0 0 2px var(--verde-oscuro); }
+:root[data-estilo='folleto'] .bi__diapo:not(.bi__diapo--tarjeta) .bi__boton:focus-visible { outline-color: var(--verde-oscuro); }
+:root[data-estilo='folleto'] .bi__titulo {
+  font-family: var(--fuente-titulo); font-stretch: 110%; font-weight: 900; text-transform: uppercase;
+  letter-spacing: -0.02em; line-height: 0.96; font-size: clamp(1.875rem, 3.6cqi, 3.375rem);
 }
 
 /* ── Bloques de Inicio (banner + contenido); globales porque los usan también las server islands ── */
