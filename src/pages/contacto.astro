@@ -169,7 +169,7 @@ const canales = [
 <style>
   /* Canales: mosaico con un tratamiento distinto por canal (WhatsApp destacado) */
   .canales { list-style: none; margin: 24px 0 0; padding: 0; display: grid; gap: 14px; grid-template-columns: 1fr; }
-  @media (min-width: 640px) { .canales { grid-template-columns: repeat(2, minmax(0, 1fr)); } .canal--whatsapp { grid-column: 1 / -1; } }
+  @media (min-width: 640px) { .canales { grid-template-columns: repeat(2, minmax(0, 1fr)); } .canal--whatsapp, .canal--ubicacion { grid-column: 1 / -1; } }
   @media (min-width: 1000px) {
     .canales { grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 18px; }
     .canal--whatsapp { grid-column: span 7; grid-row: span 2; }
@@ -207,6 +207,8 @@ const canales = [
   .canal--blanco .canal__accion, .canal--amarillo .canal__accion, .canal--oscuro .canal__accion { background: var(--muted); color: var(--verde-oscuro); }
   .canal__enlace:hover .canal__accion { background: var(--verde-oscuro); color: var(--blanco); }
   .canal--verde .canal__enlace { background-image: linear-gradient(135deg, var(--verde-oscuro), var(--verde-copol)); color: var(--sobre-verde); }
+  /* Afiche: tinta plana, sin degradé (como una plancha impresa). */
+  :global(:root[data-estilo='afiche']) .canal--verde .canal__enlace { background-image: none; background-color: var(--verde-oscuro); border-radius: 0; }
   .canal--verde .canal__icono { background: var(--amarillo-copol); color: var(--tinta); }
   .canal--verde .canal__accion { background: var(--amarillo-copol); color: var(--tinta); }
   .canal--verde .canal__enlace:hover .canal__accion { background: var(--amarillo-copol); color: var(--tinta); }
