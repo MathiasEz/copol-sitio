@@ -3,7 +3,7 @@
 // Los enlaces externos (http) reciben rel="noopener" automáticamente.
 import type { HTMLAttributes } from 'astro/types';
 
-type Variante = 'default' | 'secondary' | 'outline' | 'ghost' | 'accent' | 'inverse' | 'link';
+type Variante = 'default' | 'secondary' | 'outline' | 'ghost' | 'accent' | 'inverse' | 'link' | 'socio';
 type Tamano = 'sm' | 'default' | 'lg' | 'icon';
 
 interface Props extends Omit<HTMLAttributes<'a'>, 'class'>, Omit<HTMLAttributes<'button'>, 'class' | keyof HTMLAttributes<'a'>> {

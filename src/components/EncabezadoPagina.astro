@@ -23,7 +23,7 @@ const normalizar = (t: string) => t.normalize('NFD').replace(/[̀-ͯ]/g, '').toL
 const enMigas = new Set([...migas.map((m) => normalizar(m.texto)), normalizar(titulo)]);
 const antetituloPropio = antetitulo?.split(' · ').filter((p) => !enMigas.has(normalizar(p))).join(' · ');
 ---
-<section class="cabecera">
+<section class="cabecera sobre-verde">
   <div class="contenedor">
     <Migas items={migas} />
     <div class:list={['cabecera__cuerpo', { 'cabecera__cuerpo--imagen': imagen }]}>
@@ -79,4 +79,21 @@ const antetituloPropio = antetitulo?.split(' · ').filter((p) => !enMigas.has(no
   @media (max-width: 899px) {
     .cabecera :global(.cabecera__imagen) { --media-radio: 56px var(--radio-lg) var(--radio-lg) var(--radio-lg) !important; }
   }
+
+  /* Cabecera verde (tomada del rediseño del 28/10/2026): bloque Verde oscuro de borde a borde, como el banner
+     principal de Inicio, con el título en el color del fondo de la página y los textos en verde claro. */
+  .cabecera { background: var(--verde-oscuro); color: var(--sobre-verde); border-bottom: 0; }
+  .cabecera .cabecera__titulo { color: var(--fondo-pagina); }
+  .cabecera :global(.lead) { color: var(--sobre-verde); }
+  .cabecera .eyebrow { color: var(--amarillo-copol); }
+  .cabecera :global(.migas ol),
+  .cabecera :global(.migas a),
+  .cabecera :global(.migas [aria-current]) { color: var(--sobre-verde); }
+  .cabecera :global(.migas a:hover) { color: var(--blanco); }
+  .cabecera :global(.migas li + li::before) { color: rgb(255 255 255 / 0.4); }
+  /* Botones sobre el verde: el principal en color papel y los de contorno en claro. */
+  .cabecera :global(.btn--default) { background: var(--fondo-pagina); color: var(--verde-oscuro); }
+  .cabecera :global(.btn--default:hover) { background: var(--blanco); color: var(--verde-oscuro); }
+  .cabecera :global(:is(.btn--outline, .btn--secondary)) { background: transparent; color: var(--blanco); border-color: rgb(255 255 255 / 0.7); }
+  .cabecera :global(:is(.btn--outline, .btn--secondary):hover) { background: var(--fondo-pagina); color: var(--verde-oscuro); border-color: var(--fondo-pagina); }
 </style>

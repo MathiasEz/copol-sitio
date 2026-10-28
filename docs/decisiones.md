@@ -134,3 +134,15 @@ Movimiento: transiciones cortas, aparición progresiva al hacer scroll (solo con
 | Mi perfil para todos los roles | Mi perfil (contraseña, correo, color) pide el permiso «empleados», que tienen todos los roles; antes un usuario solo con «Carga de registros» no podía abrirlo ni cambiar su contraseña temporal. |
 | «Cargado por» | Lleva el usuario con el que se ingresó (por ejemplo `B. Pereira`), no el nombre de la cuenta: en el administrador principal ese nombre es genérico. Los registros ya cargados no se reescriben. |
 | Fecha en la hoja | Google guarda la fecha como número; si una fila nueva no hereda el formato se vería 46322,64. En cada alta se vuelve a fijar el formato fecha y hora de la columna A, y al abrir la planilla cualquier número de serie se muestra como fecha y se repara el formato en la hoja. |
+
+## Piezas tomadas del rediseño integral (28/10/2026)
+
+El usuario descartó el rediseño completo (rama `rediseno-integral`, que queda como referencia) y pidió llevar solo estas piezas a la página actual:
+
+| Pedido | Resolución |
+|---|---|
+| Marcar palabras como "tu familia" | En el banner de Inicio, las palabras resaltadas van en un recuadro recto color papel (#FEFCE3) con letra verde; en el diseño "tarjeta" (recuadro claro) se invierte. |
+| Bazar arriba | La sección Bazar (banner y productos) va justo debajo del banner principal. Nuevo orden de Inicio: banner, Bazar, beneficios, accesos, créditos, Servicios sociales, Pinecoop y Hacete socio. |
+| Cabecera de páginas con fondo | Las páginas internas (incluido el Catálogo del Bazar) tienen la cabecera en un bloque Verde oscuro de borde a borde, con el título en color papel. |
+| Botones Hacete socio | Cápsula con borde verde que se rellena de verde al pasar el puntero (`variant="socio"`); sobre fondos verdes, borde claro que se rellena de color papel. Menú, pie, Beneficios, Inicio y banda Sumate a COPOL. |
+| Logo del pie | Sin la cápsula blanca, solo el logo (a pedido del usuario, aunque el manual sugiere la cápsula blanca sobre verde). |

@@ -52,6 +52,16 @@ const accesos = [
     <div slot="fallback" class="contenedor banner-inicio" aria-hidden="true"><div class="banner-esqueleto"></div></div>
   </BannerInicio>
 
+  <!-- ── Bazar: banner + estante de productos, justo debajo del banner principal (pedido del 28/10/2026) ── -->
+  <section class="contenedor bloque" aria-labelledby="bazar-titulo">
+    <BannerSeccion src={bannerBazar} movil={bannerBazarMovil} href="/hipermercado/bazar/" alt="Bazar: todo para ti y tu hogar. Hasta 15 cuotas sin recargo. Ver el catálogo del Bazar." />
+    <h2 id="bazar-titulo" class="visualmente-oculto">Lo más buscado del Bazar</h2>
+    <!-- Stock vigente: se genera en cada visita a partir de la base del panel -->
+    <EstanteBazar server:defer cantidad={10}>
+      <div slot="fallback" class="estante-esqueleto" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span></div>
+    </EstanteBazar>
+  </section>
+
   <div class="contenedor banner-beneficios">
     <BannerSeccion
       src={bannerBeneficios}
@@ -100,16 +110,6 @@ const accesos = [
       </ul>
   </section>
 
-  <!-- ── Bazar: banner + estante de productos ── -->
-  <section class="contenedor bloque" aria-labelledby="bazar-titulo">
-    <BannerSeccion src={bannerBazar} movil={bannerBazarMovil} href="/hipermercado/bazar/" alt="Bazar: todo para ti y tu hogar. Hasta 15 cuotas sin recargo. Ver el catálogo del Bazar." />
-    <h2 id="bazar-titulo" class="visualmente-oculto">Lo más buscado del Bazar</h2>
-    <!-- Stock vigente: se genera en cada visita a partir de la base del panel -->
-    <EstanteBazar server:defer cantidad={10}>
-      <div slot="fallback" class="estante-esqueleto" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span></div>
-    </EstanteBazar>
-  </section>
-
   <!-- ── Pinecoop: banner + detalle ── -->
   <section class="contenedor bloque" aria-labelledby="pinecoop-titulo">
     <BannerSeccion src={bannerPinecoop} movil={bannerPinecoopMovil} href="/beneficios/servicios-sociales/pinecoop/" alt="Pinecoop: piscina, reposeras y sombrillas del Parque Vacacional. Ver más sobre Pinecoop." />
@@ -149,7 +149,7 @@ const accesos = [
         ))}
       </ul>
       <div class="socio__acciones">
-        <Button href="/hacete-socio/">Cómo hacerte socio <Icono nombre="flecha" tamano={18} /></Button>
+        <Button href="/hacete-socio/" variant="socio">Cómo hacerte socio <Icono nombre="flecha" tamano={18} /></Button>
         <Button href={whatsapp(CONTACTO.whatsappSocios.numero, 'Hola, quiero info para asociarme')} variant="outline"><Icono nombre="whatsapp" tamano={18} /> {CONTACTO.whatsappSocios.texto}</Button>
       </div>
   </section>
