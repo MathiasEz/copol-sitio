@@ -146,3 +146,5 @@ El usuario descartó el rediseño completo (rama `rediseno-integral`, que queda 
 | Cabecera de páginas con fondo | Las páginas internas (incluido el Catálogo del Bazar) tienen la cabecera en un bloque Verde oscuro de borde a borde, con el título en color papel. |
 | Botones Hacete socio | Cápsula con borde verde que se rellena de verde al pasar el puntero (`variant="socio"`); sobre fondos verdes, borde claro que se rellena de color papel. Menú, pie, Beneficios, Inicio y banda Sumate a COPOL. |
 | Logo del pie | Sin la cápsula blanca, solo el logo (a pedido del usuario, aunque el manual sugiere la cápsula blanca sobre verde). |
+| Hacete socio comercial | "Qué ganás como socio" pasa a un bloque con llamado a asociarse (WhatsApp) y cuatro fichas parejas que se rellenan de Verde oscuro al pasar el puntero; las opciones de la guía también se rellenan y la caja punteada vacía se reemplazó por un panel verde con WhatsApp de socios. |
+| Logo | Encabezado y pie usan el PNG con fondo transparente entregado por el usuario (`src/assets/brand/logo-copol.png`); el SVG recortaba la rueda de colores. |
