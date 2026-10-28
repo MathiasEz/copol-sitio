@@ -737,7 +737,7 @@ body { font-size: 1rem; }
 :root[data-estilo="afiche"]:not([data-tema="oscuro"]) .sidebar :is(.perfil, .btn--ghost) { color: #d9ecdf; }
 :root[data-estilo="afiche"]:not([data-tema="oscuro"]) .sidebar :is(.perfil:hover, .perfil[aria-current="page"], .btn--ghost:hover) { background: rgb(255 255 255 / .1); color: #fff; }
 :root[data-estilo="afiche"]:not([data-tema="oscuro"]) .sidebar .perfil__texto small { color: #b9d5c3; }
-:root[data-estilo="afiche"]:not([data-tema="oscuro"]) .sidebar .avatar { background: #f8ea39; color: #12261a; }
+:root[data-estilo="afiche"]:not([data-tema="oscuro"]) .sidebar .avatar { background: #eaf4ee; color: #006633; }
 :root[data-estilo="afiche"]:not([data-tema="oscuro"]) .sidebar .estilo-panel { background: rgb(255 255 255 / .1); }
 :root[data-estilo="afiche"]:not([data-tema="oscuro"]) .sidebar .estilo-panel :is(span, button) { color: #d9ecdf; }
 :root[data-estilo="afiche"]:not([data-tema="oscuro"]) .sidebar .estilo-panel button[aria-pressed="true"] { background: #eaf4ee; color: #006633; }

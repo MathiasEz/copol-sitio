@@ -68,3 +68,26 @@ Compartido: escala de espaciado (4/8/12/16/24/32/48/64/96), medida de lectura de
 - El selector cambia el estilo sin recargar, se recuerda y no produce destello al cargar.
 - `npm run verificar` pasa igual que antes del rediseño.
 - Rutas, formularios, filtros del Bazar, carrito, mapa, carruseles y panel funcionan igual.
+
+## Resultado (28/10/2026)
+
+**Cómo comparar:** el selector "Estilo" de la barra superior (y del panel, junto a Modo oscuro) cambia entre Afiche, Folleto y Estándar sin recargar. También se puede abrir cada versión con `?estilo=afiche`, `?estilo=folleto` o `?estilo=estandar` al final de cualquier dirección.
+
+**Validación ejecutada:**
+- `astro check`: 0 errores (7 sugerencias previas).
+- `npm run build`: correcto (con `.env.local` apartado para no tocar Turso de producción).
+- `npm test`: 21 páginas sin errores.
+- `npm run panel:test`: 85/85.
+- `npm run qa:panel` (Edge sin ventana, base local): todo en orden, después de actualizar la prueba de novedades a la campana del encabezado.
+- Capturas de las 18 rutas en los tres estilos a 390 y 1440 px, y de 7 rutas clave a 320, 768 y 1920 px (171 en total): sin errores de JavaScript ni desborde horizontal tras las correcciones.
+- Revisión final independiente de Impeccable: dos rondas de veredicto; todas las correcciones resueltas salvo la del primer pantallazo (ver pendientes).
+
+**Arreglos de problemas previos encontrados en el camino:**
+- Ficha del Bazar: los estilos del botón "Ampliar" no se aplicaban (`:global()` dentro de `<style is:global>`).
+- Estante del Bazar en Inicio: desbordaba a 320 px.
+- Bordes laterales de acento en Acceso web y en las propuestas del asistente del panel.
+
+**Pendientes para decidir:**
+1. Elegir el estilo. Después se borran los otros dos (bloques `:root[data-estilo=…]`, reglas por estilo en componentes y en `panel.css`), el selector y la fuente Archivo si se elige Estándar.
+2. Primer pantallazo de Afiche: el índice de accesos queda debajo del banner "Consultá acá". Subirlo arriba del banner cambia el orden de Inicio que se decidió el 27/10; queda a decisión de la cooperativa.
+3. Siguen pendientes de contenido: catálogo del Hipermercado (hoy de demostración rotulada) y destino del formulario de contacto (`PUBLIC_FORM_ENDPOINT`).

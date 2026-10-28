@@ -1,0 +1,773 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-28T16:12:55.085Z",
+  "title": "Design System: COPOL · Cooperativa Policial",
+  "extensions": {
+    "colorMeta": {
+      "verde-oscuro": {
+        "role": "primary",
+        "displayName": "Verde oscuro",
+        "canonical": "oklch(44.7% 0.116 152)",
+        "tonalRamp": [
+          "#001004",
+          "#022d14",
+          "#044d26",
+          "#14703c",
+          "#41945e",
+          "#67ba81",
+          "#8de1a6",
+          "#d2fadc"
+        ]
+      },
+      "verde-hover": {
+        "role": "primary",
+        "displayName": "Verde hover",
+        "canonical": "oklch(36.8% 0.094 153)",
+        "tonalRamp": [
+          "#001004",
+          "#012d14",
+          "#014d26",
+          "#2b6d44",
+          "#509165",
+          "#75b689",
+          "#9addae",
+          "#d8f8e0"
+        ]
+      },
+      "verde-profundo": {
+        "role": "primary",
+        "displayName": "Verde profundo",
+        "canonical": "oklch(28.2% 0.069 155)",
+        "tonalRamp": [
+          "#001004",
+          "#002d16",
+          "#1c4a30",
+          "#3b694d",
+          "#5e8d6f",
+          "#82b292",
+          "#a7d9b8",
+          "#ddf6e5"
+        ]
+      },
+      "amarillo-copol": {
+        "role": "secondary",
+        "displayName": "Amarillo Copol",
+        "canonical": "oklch(92.0% 0.181 104)",
+        "tonalRamp": [
+          "#0e0c00",
+          "#282500",
+          "#464104",
+          "#676001",
+          "#8c8305",
+          "#b3a81d",
+          "#dccf2a",
+          "#f7f2ab"
+        ]
+      },
+      "amarillo-hover": {
+        "role": "secondary",
+        "displayName": "Amarillo de hover",
+        "canonical": "oklch(88.9% 0.177 105)",
+        "tonalRamp": [
+          "#0e0c00",
+          "#282500",
+          "#464207",
+          "#666007",
+          "#8b8410",
+          "#b3a900",
+          "#dcd00a",
+          "#f7f3ad"
+        ]
+      },
+      "verde-copol": {
+        "role": "tertiary",
+        "displayName": "Verde Copol",
+        "canonical": "oklch(56.1% 0.163 147)",
+        "tonalRamp": [
+          "#001002",
+          "#022d0d",
+          "#034e1b",
+          "#12712e",
+          "#1e9942",
+          "#4fbf66",
+          "#78e78c",
+          "#cafed0"
+        ]
+      },
+      "blanco-verdozo": {
+        "role": "neutral",
+        "displayName": "Blanco verdozo",
+        "canonical": "oklch(95.8% 0.013 159)",
+        "tonalRamp": [
+          "#070d09",
+          "#1f2622",
+          "#3a423d",
+          "#58605b",
+          "#7a837d",
+          "#9ea7a2",
+          "#c4cdc7",
+          "#ebf0ed"
+        ]
+      },
+      "blanco": {
+        "role": "neutral",
+        "displayName": "Blanco",
+        "canonical": "oklch(100.0% 0.000 89)",
+        "tonalRamp": [
+          "#0b0b0b",
+          "#242424",
+          "#404040",
+          "#5d5d5d",
+          "#808080",
+          "#a4a4a4",
+          "#cacaca",
+          "#eeeeee"
+        ]
+      },
+      "tinta": {
+        "role": "neutral",
+        "displayName": "Tinta",
+        "canonical": "oklch(24.7% 0.035 156)",
+        "tonalRamp": [
+          "#000f06",
+          "#15291d",
+          "#304538",
+          "#4e6456",
+          "#708778",
+          "#94ac9c",
+          "#b9d2c1",
+          "#e6f2ea"
+        ]
+      },
+      "tinta-suave": {
+        "role": "neutral",
+        "displayName": "Tinta suave",
+        "canonical": "oklch(43.9% 0.045 158)",
+        "tonalRamp": [
+          "#001005",
+          "#0e2a1c",
+          "#2b4737",
+          "#486654",
+          "#6a8976",
+          "#8eae9a",
+          "#b3d4c0",
+          "#e3f3e9"
+        ]
+      },
+      "sobre-verde": {
+        "role": "neutral",
+        "displayName": "Sobre verde",
+        "canonical": "oklch(92.5% 0.027 155)",
+        "tonalRamp": [
+          "#030e07",
+          "#19281f",
+          "#35443a",
+          "#526257",
+          "#74857a",
+          "#98aa9e",
+          "#bdd0c3",
+          "#e8f1eb"
+        ]
+      },
+      "borde": {
+        "role": "neutral",
+        "displayName": "Borde",
+        "canonical": "oklch(92.2% 0.017 159)",
+        "tonalRamp": [
+          "#050d09",
+          "#1d2721",
+          "#38433c",
+          "#56615a",
+          "#78847c",
+          "#9ca8a1",
+          "#c1cec6",
+          "#eaf0ec"
+        ]
+      },
+      "borde-fuerte": {
+        "role": "neutral",
+        "displayName": "Borde fuerte",
+        "canonical": "oklch(78.8% 0.060 155)",
+        "tonalRamp": [
+          "#001004",
+          "#032c17",
+          "#234932",
+          "#41684f",
+          "#638b71",
+          "#87b095",
+          "#acd7ba",
+          "#e0f5e6"
+        ]
+      },
+      "rojo-error": {
+        "role": "error",
+        "displayName": "Rojo de error",
+        "canonical": "oklch(50.1% 0.178 28)",
+        "tonalRamp": [
+          "#200000",
+          "#4c0000",
+          "#7a0b08",
+          "#ac1d17",
+          "#d64a3d",
+          "#fb7666",
+          "#feb6ab",
+          "#fee9e5"
+        ]
+      },
+      "aviso-papel": {
+        "role": "neutral",
+        "displayName": "Papel de aviso",
+        "canonical": "oklch(98.2% 0.048 102)",
+        "tonalRamp": [
+          "#0e0b00",
+          "#292505",
+          "#454122",
+          "#635f3f",
+          "#868260",
+          "#aaa684",
+          "#d0cca9",
+          "#f1efdd"
+        ]
+      },
+      "aviso-trazo": {
+        "role": "neutral",
+        "displayName": "Trazo de aviso",
+        "canonical": "oklch(58.8% 0.124 103)",
+        "tonalRamp": [
+          "#0e0c00",
+          "#292500",
+          "#474105",
+          "#685f04",
+          "#8e830a",
+          "#b2a841",
+          "#d9ce69",
+          "#f5f1c1"
+        ]
+      },
+      "estandar-muted": {
+        "role": "neutral",
+        "displayName": "Verde muy claro (Estándar)",
+        "canonical": "oklch(96.3% 0.011 158)",
+        "tonalRamp": [
+          "#080d09",
+          "#202622",
+          "#3b423e",
+          "#59605b",
+          "#7b827e",
+          "#9fa7a2",
+          "#c5cdc8",
+          "#ecf0ed"
+        ]
+      },
+      "estandar-secondary": {
+        "role": "neutral",
+        "displayName": "Verde claro (Estándar)",
+        "canonical": "oklch(94.0% 0.017 159)",
+        "tonalRamp": [
+          "#050d09",
+          "#1d2721",
+          "#38433c",
+          "#56615a",
+          "#78847c",
+          "#9ca8a1",
+          "#c2cec6",
+          "#eaf0ec"
+        ]
+      },
+      "afiche-muted": {
+        "role": "neutral",
+        "displayName": "Papel entintado (Afiche)",
+        "canonical": "oklch(91.7% 0.026 158)",
+        "tonalRamp": [
+          "#030e07",
+          "#19281f",
+          "#34443b",
+          "#526258",
+          "#74857a",
+          "#98aa9f",
+          "#bdd0c4",
+          "#e8f1eb"
+        ]
+      },
+      "afiche-border": {
+        "role": "neutral",
+        "displayName": "Filete claro (Afiche)",
+        "canonical": "oklch(84.7% 0.039 157)",
+        "tonalRamp": [
+          "#001005",
+          "#122a1c",
+          "#2e4638",
+          "#4c6555",
+          "#6e8877",
+          "#91ac9b",
+          "#b7d3c1",
+          "#e4f3e9"
+        ]
+      },
+      "afiche-input": {
+        "role": "neutral",
+        "displayName": "Borde de campo (Afiche)",
+        "canonical": "oklch(64.7% 0.061 157)",
+        "tonalRamp": [
+          "#001005",
+          "#002d18",
+          "#204933",
+          "#3f6850",
+          "#618c72",
+          "#85b196",
+          "#aad7bb",
+          "#dff5e7"
+        ]
+      },
+      "folleto-muted": {
+        "role": "neutral",
+        "displayName": "Amarillo pálido (Folleto)",
+        "canonical": "oklch(96.8% 0.066 101)",
+        "tonalRamp": [
+          "#0e0b00",
+          "#292501",
+          "#474111",
+          "#655f31",
+          "#888253",
+          "#ada776",
+          "#d3cd9b",
+          "#f2f0d7"
+        ]
+      },
+      "folleto-secondary": {
+        "role": "neutral",
+        "displayName": "Amarillo claro (Folleto)",
+        "canonical": "oklch(94.7% 0.108 102)",
+        "tonalRamp": [
+          "#0e0b00",
+          "#292500",
+          "#484104",
+          "#695f00",
+          "#8d8229",
+          "#b1a752",
+          "#d8ce78",
+          "#f5f1c7"
+        ]
+      },
+      "folleto-border": {
+        "role": "neutral",
+        "displayName": "Borde amarillo (Folleto)",
+        "canonical": "oklch(89.7% 0.078 103)",
+        "tonalRamp": [
+          "#0e0b00",
+          "#292500",
+          "#474100",
+          "#665f26",
+          "#89824a",
+          "#ada76d",
+          "#d3cd92",
+          "#f3f0d3"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display-afiche": {
+        "displayName": "Display Afiche",
+        "purpose": "H1 y título del banner en Afiche; Archivo condensado al 70 %, mayúsculas."
+      },
+      "headline-afiche": {
+        "displayName": "Headline Afiche",
+        "purpose": "H2 de sección en Afiche, mayúsculas, sobre un filete de 4 px."
+      },
+      "title-afiche": {
+        "displayName": "Title Afiche",
+        "purpose": "H3 y títulos de tarjeta en Afiche, mayúsculas."
+      },
+      "numeral-afiche": {
+        "displayName": "Numeral Afiche",
+        "purpose": "Cifras protagonistas del índice de accesos y fechas de crédito; tabulares."
+      },
+      "display-folleto": {
+        "displayName": "Display Folleto",
+        "purpose": "H1 en Folleto; Archivo ancho al 112 %, 900, mayúsculas."
+      },
+      "headline-folleto": {
+        "displayName": "Headline Folleto",
+        "purpose": "H2 de sección en Folleto, con franja amarilla debajo."
+      },
+      "display-estandar": {
+        "displayName": "Display Estándar",
+        "purpose": "H1 en Estándar; Figtree 800 en caja normal."
+      },
+      "headline-estandar": {
+        "displayName": "Headline Estándar",
+        "purpose": "H2 de sección en Estándar."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "H3 en Estándar y Folleto."
+      },
+      "lead": {
+        "displayName": "Lead",
+        "purpose": "Bajadas de cabecera y de sección, 56–62ch."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Texto de lectura, máximo 68ch. Figtree, provisoria de Articulat CF."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Etiquetas de campo."
+      },
+      "button": {
+        "displayName": "Button",
+        "purpose": "Rótulo de botón (Archivo 84 % en mayúsculas en Afiche; 104 % en Folleto)."
+      },
+      "caption": {
+        "displayName": "Caption",
+        "purpose": "Badges, etiquetas de stock y datos chicos."
+      }
+    },
+    "shadows": [
+      {
+        "name": "card-reposo",
+        "value": "0 1px 2px rgb(0 51 26 / 0.04)",
+        "purpose": "Tarjeta en reposo, solo Estándar."
+      },
+      {
+        "name": "sombra-suave",
+        "value": "0 10px 28px -12px rgb(0 51 26 / 0.18)",
+        "purpose": "Hover de tarjetas e índice en Estándar."
+      },
+      {
+        "name": "sombra",
+        "value": "0 24px 48px -12px rgb(0 51 26 / 0.18)",
+        "purpose": "Submenú de escritorio y tarjeta primaria en hover."
+      },
+      {
+        "name": "anillo",
+        "value": "inset 0 0 0 1px rgb(0 51 26 / 0.1)",
+        "purpose": "Borde interior de imágenes (Media); 0.22 en hover."
+      },
+      {
+        "name": "filete-cabezal-afiche",
+        "value": "0 3px 0 #12261a",
+        "purpose": "Línea impresa bajo el encabezado en Afiche (no es elevación)."
+      },
+      {
+        "name": "filete-cabezal-folleto",
+        "value": "0 3px 0 #006633",
+        "purpose": "Línea bajo el cabezal amarillo en Folleto (no es elevación)."
+      },
+      {
+        "name": "filete-afiche",
+        "value": "2px solid #12261a",
+        "purpose": "--filete en Afiche: separa bloques, tarjetas e índice."
+      },
+      {
+        "name": "filete-fuerte-afiche",
+        "value": "4px solid #12261a",
+        "purpose": "--filete-fuerte en Afiche: sobre cada cabecera de sección y el pie."
+      },
+      {
+        "name": "filete-folleto",
+        "value": "3px solid #006633",
+        "purpose": "--filete y borde de tarjeta en Folleto."
+      },
+      {
+        "name": "filete-fuerte-folleto",
+        "value": "10px solid #f8ea39",
+        "purpose": "--filete-fuerte en Folleto: banda amarilla."
+      },
+      {
+        "name": "foco",
+        "value": "outline: 3px solid #006633; outline-offset: 3px",
+        "purpose": "Foco visible; Amarillo sobre fondos verdes."
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease-out-quart",
+        "value": "cubic-bezier(0.25, 1, 0.5, 1)",
+        "purpose": "Salida rápida para cambios de estado y entradas."
+      },
+      {
+        "name": "ease-in-out",
+        "value": "cubic-bezier(0.65, 0, 0.35, 1)",
+        "purpose": "Gestos de íconos."
+      },
+      {
+        "name": "resorte",
+        "value": "linear(0, 0.22 6%, 0.6 14%, 0.86 22%, 1.02 32%, 1.03 40%, 1.008 54%, 1 70%, 1)",
+        "purpose": "Resorte con ~3 % de rebote: botones al presionar, fichas, menú, resalte."
+      },
+      {
+        "name": "transicion",
+        "value": "180ms cubic-bezier(0.25, 1, 0.5, 1)",
+        "purpose": "Transición base de color y borde."
+      },
+      {
+        "name": "escalonado",
+        "value": "60ms por ítem",
+        "purpose": "Aparición escalonada de grillas (.escalonar)."
+      },
+      {
+        "name": "vista",
+        "value": "View Transitions: salida 140ms, entrada 320ms",
+        "purpose": "Cambio de página con el encabezado quieto."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "380",
+        "value": "380px"
+      },
+      {
+        "name": "480",
+        "value": "480px"
+      },
+      {
+        "name": "560",
+        "value": "560px"
+      },
+      {
+        "name": "600",
+        "value": "600px"
+      },
+      {
+        "name": "640",
+        "value": "640px"
+      },
+      {
+        "name": "700",
+        "value": "700px"
+      },
+      {
+        "name": "720",
+        "value": "720px"
+      },
+      {
+        "name": "banner-ancho",
+        "value": "784px"
+      },
+      {
+        "name": "900",
+        "value": "900px"
+      },
+      {
+        "name": "1000",
+        "value": "1000px"
+      },
+      {
+        "name": "menu-escritorio",
+        "value": "1100px"
+      },
+      {
+        "name": "1180",
+        "value": "1180px"
+      },
+      {
+        "name": "1280",
+        "value": "1280px"
+      }
+    ],
+    "estilos": {
+      "activo": "pendiente",
+      "predeterminado": "afiche",
+      "atributo": "data-estilo en <html>; clave localStorage 'copol-estilo'; parámetro ?estilo=",
+      "opciones": {
+        "afiche": {
+          "papel": "blanco-verdozo",
+          "titulares": "display-afiche",
+          "radios": [
+            "afiche-recto",
+            "afiche-boton"
+          ],
+          "separacion": "filete-afiche / filete-fuerte-afiche",
+          "elevacion": "ninguna"
+        },
+        "folleto": {
+          "papel": "blanco",
+          "titulares": "display-folleto",
+          "radios": [
+            "folleto-md",
+            "folleto-lg",
+            "folleto-xl",
+            "pill"
+          ],
+          "separacion": "filete-folleto / filete-fuerte-folleto",
+          "elevacion": "ninguna"
+        },
+        "estandar": {
+          "papel": "blanco",
+          "titulares": "display-estandar",
+          "radios": [
+            "estandar-md",
+            "estandar-lg",
+            "estandar-xl",
+            "pill"
+          ],
+          "separacion": "1px solid borde",
+          "elevacion": "card-reposo / sombra-suave / sombra"
+        }
+      },
+      "alElegir": [
+        "En `src/styles/global.css`: pasar los valores del estilo elegido al bloque `:root` y borrar los bloques `:root[data-estilo='…']` de los otros dos, junto con cada regla `:root[data-estilo='…']` de componentes (cabeceras de sección, tarjetas, banner).",
+        "Las reglas `:global(:root[data-estilo='…'])` de los estilos descartados en `Encabezado.astro`, `EncabezadoPagina.astro`, `Pie.astro`, `AperturasCredito.astro`, `BandaSocio.astro` y `src/pages/index.astro` (las del elegido pasan a ser las reglas base, sin el prefijo).",
+        "`SelectorEstilo.astro` y su uso en `Encabezado.astro`; el script de estilo y el atributo `data-estilo` de `Base.astro`.",
+        "En el panel: el bloque \"Estilos visuales del rediseño\" al final de `public/panel-recursos/panel.css` (menos las mejoras comunes: letra de 16 px, controles de 44 px táctiles y el aviso plegable), el selector `.estilo-panel` y la parte de estilo de `tema.js`.",
+        "Si se elige Estándar: el `@import` de Archivo en `global.css` y el `@font-face` de `archivo.woff2` del panel.",
+        "En este archivo: las claves `afiche-*`, `folleto-*` o `estandar-*` que ya no existan, la tabla de arriba y esta lista; actualizar `docs/sistema-visual.md`."
+      ]
+    }
+  },
+  "components": [
+    {
+      "name": "Botón principal",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Acción principal en Estándar y Folleto: cápsula Verde oscuro de 48 px.",
+      "html": "<button class=\"ds-btn-primary\">Cómo hacerte socio <svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M5 12h14M13 6l6 6-6 6\"/></svg></button>",
+      "css": ".ds-btn-primary { display: inline-flex; align-items: center; gap: 10px; min-height: 48px; padding: 12px 24px; border: 1.5px solid transparent; border-radius: 999px; background: #006633; color: #fff; font-family: 'Figtree Variable', 'Segoe UI', system-ui, sans-serif; font-weight: 700; font-size: 1rem; line-height: 1.2; cursor: pointer; transition: background-color 180ms cubic-bezier(0.25,1,0.5,1), box-shadow 180ms cubic-bezier(0.25,1,0.5,1), transform 300ms cubic-bezier(0.25,1,0.5,1); } .ds-btn-primary:hover { background: #004d26; box-shadow: 0 10px 24px -10px rgb(0 102 51 / 0.6); } .ds-btn-primary:active { transform: scale(0.97); } .ds-btn-primary:focus-visible { outline: 3px solid #006633; outline-offset: 3px; }"
+    },
+    {
+      "name": "Botón amarillo",
+      "kind": "button",
+      "refersTo": "button-accent",
+      "description": "La acción que hay que tocar primero (Hacete socio, Acceso web, Consultá tu crédito).",
+      "html": "<button class=\"ds-btn-accent\">Hacete socio</button>",
+      "css": ".ds-btn-accent { display: inline-flex; align-items: center; gap: 10px; min-height: 48px; padding: 12px 24px; border: 0; border-radius: 999px; background: #f8ea39; color: #12261a; font-family: 'Figtree Variable', 'Segoe UI', system-ui, sans-serif; font-weight: 700; font-size: 1rem; line-height: 1.2; cursor: pointer; transition: background-color 180ms ease, box-shadow 180ms ease, transform 300ms ease; } .ds-btn-accent:hover { background: #ece032; box-shadow: 0 10px 24px -12px rgb(120 110 0 / 0.6); } .ds-btn-accent:active { transform: scale(0.97); } .ds-btn-accent:focus-visible { outline: 3px solid #006633; outline-offset: 3px; }"
+    },
+    {
+      "name": "Botón contorno",
+      "kind": "button",
+      "refersTo": "button-outline",
+      "description": "Acción secundaria junto a la principal (WhatsApp, Consultá disponibilidad).",
+      "html": "<button class=\"ds-btn-outline\">098 631 414</button>",
+      "css": ".ds-btn-outline { display: inline-flex; align-items: center; gap: 10px; min-height: 48px; padding: 12px 24px; border: 1.5px solid #006633; border-radius: 999px; background: #fff; color: #006633; font-family: 'Figtree Variable', 'Segoe UI', system-ui, sans-serif; font-weight: 700; font-size: 1rem; cursor: pointer; transition: background-color 180ms ease; } .ds-btn-outline:hover { background: #edf5f0; } .ds-btn-outline:focus-visible { outline: 3px solid #006633; outline-offset: 3px; }"
+    },
+    {
+      "name": "Botón Afiche",
+      "kind": "button",
+      "refersTo": "button-primary-afiche",
+      "description": "Rótulo impreso: rectangular, Archivo condensado al 84 %, mayúsculas.",
+      "html": "<button class=\"ds-btn-afiche\">Conocé Pinecoop</button>",
+      "css": ".ds-btn-afiche { display: inline-flex; align-items: center; min-height: 48px; padding: 12px 24px; border: 0; border-radius: 4px; background: #006633; color: #fff; font-family: 'Archivo Variable', 'Figtree Variable', sans-serif; font-stretch: 84%; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; font-size: 1rem; cursor: pointer; transition: background-color 180ms ease, transform 300ms ease; } .ds-btn-afiche:hover { background: #004d26; } .ds-btn-afiche:active { transform: scale(0.97); } .ds-btn-afiche:focus-visible { outline: 3px solid #006633; outline-offset: 3px; }"
+    },
+    {
+      "name": "Campo de texto",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Campo de 48 px con borde de 1,5 px y halo verde al enfocar.",
+      "html": "<label class=\"ds-campo\"><span class=\"ds-label\">Nombre</span><input class=\"ds-input\" placeholder=\"Tu nombre completo\"></label>",
+      "css": ".ds-campo { display: grid; gap: 8px; font-family: 'Figtree Variable', 'Segoe UI', system-ui, sans-serif; } .ds-label { font-weight: 700; font-size: 0.9375rem; color: #12261a; } .ds-input { font-family: 'Figtree Variable', 'Segoe UI', system-ui, sans-serif; font-size: 1.0625rem; min-height: 48px; padding: 10px 16px; border-radius: 12px; border: 1.5px solid #9cc6aa; background: #fff; color: #12261a; transition: border-color 180ms ease, box-shadow 180ms ease; } .ds-input::placeholder { color: #6a8274; } .ds-input:hover { border-color: #008d36; } .ds-input:focus-visible { outline: none; border-color: #006633; box-shadow: 0 0 0 4px rgb(0 102 51 / 0.18); }"
+    },
+    {
+      "name": "Toggle de filtro",
+      "kind": "chip",
+      "refersTo": "toggle-selected",
+      "description": "Filtro del Bazar y Locales: cápsula con contador; seleccionado en verde con contador amarillo.",
+      "html": "<div class=\"ds-toggles\"><button class=\"ds-toggle ds-toggle--on\">Todos <span class=\"ds-toggle__n\">806</span></button><button class=\"ds-toggle\">Hogar <span class=\"ds-toggle__n\">120</span></button></div>",
+      "css": ".ds-toggles { display: flex; gap: 8px; flex-wrap: wrap; } .ds-toggle { display: inline-flex; align-items: center; gap: 8px; min-height: 42px; padding: 6px 8px 6px 16px; border-radius: 999px; border: 1px solid #dce9e1; background: #fff; color: #12261a; font-family: 'Figtree Variable', 'Segoe UI', system-ui, sans-serif; font-weight: 600; font-size: 0.9375rem; cursor: pointer; transition: background-color 250ms ease, border-color 250ms ease; } .ds-toggle:hover { border-color: #9cc6aa; background: #edf5f0; } .ds-toggle__n { min-width: 28px; padding: 2px 8px; border-radius: 999px; background: #edf5f0; color: #3d5a49; font-size: 0.8125rem; font-weight: 700; font-variant-numeric: tabular-nums; } .ds-toggle--on { background: #006633; border-color: #006633; color: #fff; } .ds-toggle--on .ds-toggle__n { background: #f8ea39; color: #12261a; } .ds-toggle:focus-visible { outline: 3px solid #006633; outline-offset: 3px; }"
+    },
+    {
+      "name": "Tarjeta por estilo",
+      "kind": "card",
+      "refersTo": "card-estandar",
+      "description": "La misma tarjeta enlazada en Estándar (sombra), Folleto (borde verde, hover amarillo) y Afiche (filete, hover entintado).",
+      "html": "<div class=\"ds-tarjetas\"><a href=\"#\" class=\"ds-card ds-card--estandar\"><strong>Psicólogo Copol</strong><span>Acompañamiento emocional para vos y tu familia.</span></a><a href=\"#\" class=\"ds-card ds-card--folleto\"><strong>Psicólogo Copol</strong><span>Acompañamiento emocional para vos y tu familia.</span></a><a href=\"#\" class=\"ds-card ds-card--afiche\"><strong>Psicólogo Copol</strong><span>Acompañamiento emocional para vos y tu familia.</span></a></div>",
+      "css": ".ds-tarjetas { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; font-family: 'Figtree Variable', 'Segoe UI', system-ui, sans-serif; } .ds-card { display: grid; gap: 6px; padding: 22px; text-decoration: none; color: #12261a; transition: background-color 180ms ease, box-shadow 250ms ease, transform 400ms ease, padding 260ms ease; } .ds-card strong { color: #006633; } .ds-card span { color: #3d5a49; font-size: 0.9375rem; } .ds-card--estandar { background: #fff; border: 1px solid #dce9e1; border-radius: 16px; box-shadow: 0 1px 2px rgb(0 51 26 / 0.04); } .ds-card--estandar:hover { box-shadow: 0 10px 28px -12px rgb(0 51 26 / 0.18); border-color: #9cc6aa; transform: translateY(-3px); } .ds-card--folleto { background: #fff; border: 3px solid #006633; border-radius: 22px; } .ds-card--folleto:hover { background: #f8ea39; } .ds-card--afiche { background: transparent; border-top: 2px solid #12261a; border-radius: 0; padding-inline: 0; } .ds-card--afiche strong { font-family: 'Archivo Variable', 'Figtree Variable', sans-serif; font-stretch: 70%; font-weight: 800; text-transform: uppercase; font-size: 1.5rem; line-height: 0.95; } .ds-card--afiche:hover { background: #006633; padding-inline: 22px; } .ds-card--afiche:hover :is(strong, span) { color: #fff; } .ds-card:focus-visible { outline: 3px solid #006633; outline-offset: 3px; }"
+    },
+    {
+      "name": "Índice de accesos (Afiche)",
+      "kind": "custom",
+      "refersTo": "card-afiche",
+      "description": "Fila impresa entre filetes; la cifra real es la protagonista y el bloque se entinta en hover.",
+      "html": "<ul class=\"ds-indice\"><li><a href=\"#\" class=\"ds-indice__item\"><span class=\"ds-indice__cifra\">19</span><strong>Locales</strong><span class=\"ds-indice__dato\">Casa Central, sucursales y agencias</span></a></li><li><a href=\"#\" class=\"ds-indice__item\"><span class=\"ds-indice__cifra\">159</span><strong>Convenios</strong><span class=\"ds-indice__dato\">comercios en todo el país</span></a></li><li><a href=\"#\" class=\"ds-indice__item\"><span class=\"ds-indice__cifra\">15</span><strong>Bazar</strong><span class=\"ds-indice__dato\">cuotas sin recargo, como máximo</span></a></li></ul>",
+      "css": ".ds-indice { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); background: #eaf4ee; border-bottom: 2px solid #12261a; font-family: 'Figtree Variable', 'Segoe UI', system-ui, sans-serif; } .ds-indice > li { display: flex; border-top: 2px solid #12261a; } .ds-indice > li + li .ds-indice__item { box-shadow: inset 2px 0 0 #12261a; } .ds-indice__item { flex: 1; display: grid; align-content: start; gap: 4px; padding: 18px 18px 22px; color: #12261a; text-decoration: none; transition: background-color 180ms ease, color 180ms ease; } .ds-indice__cifra { font-family: 'Archivo Variable', 'Figtree Variable', sans-serif; font-stretch: 66%; font-weight: 800; font-size: 3.5rem; line-height: 0.86; color: #006633; font-variant-numeric: tabular-nums; margin-bottom: 8px; } .ds-indice__item strong { font-family: 'Archivo Variable', 'Figtree Variable', sans-serif; font-stretch: 72%; font-weight: 800; text-transform: uppercase; font-size: 1.5rem; line-height: 0.95; color: #006633; } .ds-indice__dato { font-size: 0.875rem; color: #3d5a49; } .ds-indice__item:hover { background: #006633; } .ds-indice__item:hover :is(.ds-indice__cifra, strong) { color: #eaf4ee; } .ds-indice__item:hover .ds-indice__dato { color: #d9ecdf; } .ds-indice__item:focus-visible { outline: 3px solid #006633; outline-offset: 3px; }"
+    },
+    {
+      "name": "Aperturas de crédito",
+      "kind": "custom",
+      "refersTo": "campo-entintado",
+      "description": "Campo entintado con fechas como fichas; en Afiche, tiras de papel con numerales condensados.",
+      "html": "<section class=\"ds-creditos\"><div><h3>Aperturas de crédito</h3><p><strong>Lo que queda de 2026.</strong> Consultá tu crédito desde Acceso web.</p></div><ul><li><b>10</b><small>noviembre</small></li><li><b>08</b><small>diciembre</small></li></ul><button class=\"ds-creditos__btn\">Consultá tu crédito</button></section>",
+      "css": ".ds-creditos { display: flex; flex-wrap: wrap; gap: 24px 36px; align-items: center; justify-content: space-between; padding: 36px; background: #006633; color: #d9ecdf; font-family: 'Figtree Variable', 'Segoe UI', system-ui, sans-serif; } .ds-creditos h3 { margin: 0 0 8px; color: #fff; font-family: 'Archivo Variable', 'Figtree Variable', sans-serif; font-stretch: 70%; font-weight: 800; text-transform: uppercase; font-size: 2.25rem; line-height: 0.92; } .ds-creditos p { margin: 0; max-width: 40ch; } .ds-creditos strong { color: #fff; } .ds-creditos ul { display: flex; gap: 14px; list-style: none; margin: 0; padding: 0; } .ds-creditos li { display: grid; justify-items: center; padding: 14px 22px 12px; min-width: 128px; background: #eaf4ee; color: #006633; } .ds-creditos b { font-family: 'Archivo Variable', 'Figtree Variable', sans-serif; font-stretch: 70%; font-weight: 800; font-size: 4.25rem; line-height: 0.86; font-variant-numeric: tabular-nums; } .ds-creditos small { font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; font-size: 0.875rem; } .ds-creditos__btn { min-height: 48px; padding: 12px 24px; border: 0; border-radius: 4px; background: #f8ea39; color: #12261a; font-family: 'Archivo Variable', 'Figtree Variable', sans-serif; font-stretch: 84%; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; font-size: 1rem; cursor: pointer; transition: background-color 180ms ease; } .ds-creditos__btn:hover { background: #ece032; } .ds-creditos__btn:focus-visible { outline: 3px solid #f8ea39; outline-offset: 3px; }"
+    },
+    {
+      "name": "Barra superior y selector de estilo",
+      "kind": "nav",
+      "refersTo": "barra-superior",
+      "description": "Barra Verde oscuro de 44 px con lema, selector Afiche · Folleto · Estándar y Acceso web.",
+      "html": "<div class=\"ds-barra\"><span class=\"ds-barra__lema\">Por un verdadero cooperativismo</span><div class=\"ds-barra__acciones\"><div class=\"ds-estilo\" role=\"group\" aria-label=\"Estilo del sitio\"><button aria-pressed=\"true\">Afiche</button><button aria-pressed=\"false\">Folleto</button><button aria-pressed=\"false\">Estándar</button></div><a href=\"#\" class=\"ds-barra__acceso\">Acceso web</a></div></div>",
+      "css": ".ds-barra { display: flex; flex-wrap: wrap; gap: 4px 16px; align-items: center; justify-content: space-between; min-height: 44px; padding: 4px 20px; background: #006633; color: #fff; font-size: 0.875rem; font-family: 'Figtree Variable', 'Segoe UI', system-ui, sans-serif; } .ds-barra__lema { font-weight: 700; letter-spacing: 0.02em; } .ds-barra__acciones { display: flex; gap: 18px; align-items: center; } .ds-estilo { display: inline-flex; gap: 2px; padding: 3px; border-radius: 999px; background: rgb(255 255 255 / 0.12); } .ds-estilo button { min-height: 30px; padding: 2px 12px; border: 0; border-radius: 999px; background: transparent; color: #fff; font-family: 'Figtree Variable', 'Segoe UI', system-ui, sans-serif; font-weight: 650; font-size: 0.8125rem; cursor: pointer; transition: background-color 180ms ease, color 180ms ease; } .ds-estilo button:hover { background: rgb(255 255 255 / 0.16); } .ds-estilo button[aria-pressed='true'] { background: #fff; color: #006633; } .ds-estilo button:focus-visible { outline: 3px solid #f8ea39; outline-offset: 3px; } .ds-barra__acceso { display: inline-flex; align-items: center; min-height: 36px; padding: 4px 14px; border-radius: 999px; background: #f8ea39; color: #12261a; font-weight: 700; text-decoration: none; } .ds-barra__acceso:hover { background: #ece032; } .ds-barra__acceso:focus-visible { outline: 3px solid #f8ea39; outline-offset: 3px; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "El afiche cooperativo en dos tintas",
+    "overview": "COPOL habla como lo que es: una cooperativa de consumo de la familia policial con más de un siglo, que imprime sus avisos para que se lean de lejos. El sistema toma los cuatro colores del Manual de marca COPOL 2026 y el logotipo sin tocar, y los usa como tinta y papel: campos enteros de Verde oscuro, filetes en lugar de cajas, titulares que se leen como carteles y el Amarillo Copol guardado para lo que hay que tocar. Todo termina en una persona (WhatsApp, teléfono, local), así que la acción siempre está a mano y nunca compite con otra del mismo peso.\n\nLa densidad es de tienda y de servicio, no de revista: el socio llega desde el celular, a veces con un equipo modesto, y tiene que encontrar crédito, producto, servicio o local en uno o dos toques. Por eso la estructura se repite (encabezado, banner, índice de accesos, bloques \"banner + contenido\", pie) y lo que cambia entre estilos es la voz de los títulos, el papel, la forma de los contenedores y cómo se separan las secciones. Los datos reales (19 locales, 159 convenios, 15 cuotas, fechas de apertura) son la decoración: se muestran grandes y con cifras tabulares, nunca se inventan.\n\nRechazos confirmados: la grilla de tarjetas blancas idénticas con un ícono en un cuadrito amarillo (la línea base del rediseño, ver `docs/rediseno-integral.md`), los antetítulos en mayúsculas encima de cada título y los párrafos que cruzan toda la pantalla.",
+    "keyCharacteristics": [
+      "Un solo HTML, tres estilos: `data-estilo=\"afiche | folleto | estandar\"` en `<html>`; Afiche es el predeterminado.",
+      "Colores siempre del manual; los derivados son tonos del Verde oscuro, no colores nuevos.",
+      "Logotipo intacto; sobre verde va en una cápsula blanca.",
+      "Figtree (provisoria de Articulat CF) para todo el texto; Archivo con eje de ancho para los titulares de Afiche y Folleto.",
+      "Separación por filetes y campos de color antes que por cajas con sombra (Afiche y Folleto).",
+      "Objetivos táctiles de 44 px, foco de 3 px, `prefers-reduced-motion` respetado, un `<h1>` por página."
+    ],
+    "rules": [
+      {
+        "name": "La Regla de las Dos Tintas",
+        "body": "Ningún color que no salga del manual. Si hace falta un tono para texto, estado o borde, es un tono del Verde oscuro (o del Amarillo, en Folleto); nunca un azul, un gris neutro de sistema ni un acento nuevo.",
+        "section": "colors"
+      },
+      {
+        "name": "La Regla del Amarillo que se Toca",
+        "body": "En Afiche el Amarillo pleno es solo para la acción principal de cada campo; íconos, sellos, badges y resaltados van en tinta o papel. En ningún estilo hay texto amarillo sobre blanco.",
+        "section": "colors"
+      },
+      {
+        "name": "La Regla del Verde que No Habla Chico",
+        "body": "El Verde Copol nunca lleva texto de cuerpo ni texto blanco por debajo de 24 px (o 19 px en negrita).",
+        "section": "colors"
+      },
+      {
+        "name": "La Regla del Dato en Letra de Texto",
+        "body": "Los nombres de producto, códigos y datos de catálogo van siempre en Figtree, en caja normal, sin la voz del estilo. El titular es del estilo; el dato es del socio.",
+        "section": "typography"
+      },
+      {
+        "name": "La Regla de la Medida",
+        "body": "Ningún párrafo de lectura supera 68ch, aunque el contenedor ocupe toda la pantalla.",
+        "section": "typography"
+      },
+      {
+        "name": "La Regla de la Cifra Quieta",
+        "body": "Toda cifra que cambia o que se compara (contadores, cantidades, fechas) usa cifras tabulares.",
+        "section": "typography"
+      },
+      {
+        "name": "La Regla del Plano Impreso",
+        "body": "En Afiche y Folleto `--card-sombra` y `--card-sombra-hover` valen `none`: la profundidad se marca con tinta, nunca con sombra.",
+        "section": "elevation"
+      },
+      {
+        "name": "La Regla de la Sombra que Responde",
+        "body": "En Estándar la sombra marcada aparece por estado (hover, menú abierto); en reposo la tarjeta apenas se separa del papel.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "**Do** usar solo los tokens: `--primary`, `--accent`, `--muted`, `--border`, `--radio-*`, `--filete`, `--card-*` y `--fuente-titulo`, para que el mismo componente se imprima bien en los tres estilos.",
+      "**Do** separar secciones con `--filete` / `--filete-fuerte` y campos de Verde oscuro antes que con cajas, en Afiche y Folleto.",
+      "**Do** mostrar el dato real como protagonista (cantidades, horarios, fechas) en cifras tabulares, y el ícono solo donde no hay cifra.",
+      "**Do** mantener 44 px de área táctil mínima, foco de 3 px y contraste AA (≥ 4,5:1) en los tres estilos.",
+      "**Do** mostrar completos los banners entregados por la cooperativa, con su versión 5:4 por debajo de 640 px.",
+      "**Do** probar cada componente nuevo con `?estilo=afiche`, `?estilo=folleto` y `?estilo=estandar` mientras la elección siga pendiente."
+    ],
+    "donts": [
+      "**Don't** modificar, recolorear ni recortar el logotipo; sobre verde va en una cápsula blanca.",
+      "**Don't** usar colores fuera del manual ni texto amarillo sobre blanco; el Verde Copol no va en texto chico.",
+      "**Don't** volver a la grilla de tarjetas blancas idénticas con un ícono en un cuadrito amarillo como única estructura.",
+      "**Don't** poner antetítulos en mayúsculas encima de los títulos ni numerar las secciones.",
+      "**Don't** usar sombras de elevación en Afiche ni en Folleto (las sombras interiores sin desenfoque que dibujan filetes y bordes sí valen); ni Amarillo pleno en íconos, sellos o badges de Afiche.",
+      "**Don't** aplicar la voz del titular (Archivo, mayúsculas) a nombres de producto, códigos o párrafos.",
+      "**Don't** dejar párrafos de más de 68ch ni grillas con una tarjeta huérfana.",
+      "**Don't** inventar datos, precios, testimonios ni imágenes (nada de IA ni de bancos de imágenes)."
+    ]
+  }
+}
