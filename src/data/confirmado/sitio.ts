@@ -7,7 +7,7 @@ export const SITIO = {
   lema: 'Por un verdadero cooperativismo',
   fundacion: 1917,
   descripcion:
-    'COPOL, la Cooperativa Policial: créditos, Tienda, Bazar, servicios sociales y turismo para socios y sus familias, con 19 locales en todo el país.',
+    'COPOL, la Cooperativa Policial: crédito de socio, Tienda, Bazar, servicios sociales y turismo para socios y sus familias, con 19 locales en todo el país.',
 } as const;
 
 /** Textos del Manual de marca COPOL 2026 (págs. 3–5). */

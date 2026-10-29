@@ -5,7 +5,8 @@
 // - Móvil: panel lateral tipo Sheet (shadcn/ui) con fondo atenuado, foco atrapado y Escape.
 import { NAVEGACION } from '../data/navegacion';
 import { CONTACTO, SITIO, whatsapp } from '../data/confirmado/sitio';
-import logo from '../assets/brand/logo-copol.svg';
+// Logo en PNG con fondo transparente, entregado por el usuario el 28/10/2026 (el SVG recortaba la rueda de colores).
+import logo from '../assets/brand/logo-copol.png';
 import Icono from './Icono.astro';
 import Button from './ui/Button.astro';
 import Campana from './Campana.astro';
@@ -283,9 +284,10 @@ const actual = (href: string) => ruta === href;
   .nav__sub-enlace span { font-size: 0.875rem; color: var(--muted-foreground); }
   .nav__sub-enlace:hover,
   .nav__sub-enlace[aria-current='page'] { background: var(--muted); }
-  .nav__item--cta .nav__enlace { background: var(--primary); color: var(--primary-foreground); padding-inline: 20px; transition: background-color var(--transicion), transform 300ms var(--resorte); }
+  /* Hacete socio: cápsula con borde verde que se rellena al pasar el puntero (como .btn--socio). */
+  .nav__item--cta .nav__enlace { background: transparent; color: var(--verde-oscuro); box-shadow: inset 0 0 0 2px var(--verde-oscuro); font-weight: 700; padding-inline: 20px; transition: background-color var(--transicion), color var(--transicion), transform 300ms var(--resorte); }
   .nav__item--cta .nav__enlace:hover,
-  .nav__item--cta .nav__enlace.activo { background: var(--verde-hover); color: var(--primary-foreground); }
+  .nav__item--cta .nav__enlace.activo { background: var(--verde-oscuro); color: var(--primary-foreground); }
   .nav__item--cta .nav__enlace:active { transform: scale(0.97); }
   .nav__resalte { display: none; }
   .nav__cabecera-movil { display: none; }

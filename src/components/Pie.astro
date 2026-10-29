@@ -1,7 +1,8 @@
 ---
 import { NAVEGACION } from '../data/navegacion';
 import { CONTACTO, HORARIOS, MANUAL, REDES, SITIO, whatsapp } from '../data/confirmado/sitio';
-import logo from '../assets/brand/logo-copol.svg';
+// Logo en PNG con fondo transparente, entregado por el usuario el 28/10/2026 (el SVG recortaba la rueda de colores).
+import logo from '../assets/brand/logo-copol.png';
 import Icono from './Icono.astro';
 import Button from './ui/Button.astro';
 
@@ -39,7 +40,7 @@ const secciones = NAVEGACION.filter((n) => n.hijos);
         {HORARIOS.casaCentral.map((h) => <li class="pie__horario">{h.dias}: {h.horas}</li>)}
       </ul>
       <div class="pie__acciones">
-        <Button href="/hacete-socio/" variant="accent">Hacete socio</Button>
+        <Button href="/hacete-socio/" variant="socio">Hacete socio</Button>
         <Button href="/acceso-web/" variant="inverse"><Icono nombre="candado" tamano={18} /> Acceso web</Button>
       </div>
     </div>
@@ -69,7 +70,8 @@ const secciones = NAVEGACION.filter((n) => n.hijos);
     .pie__grilla { grid-template-columns: 1.6fr 1fr 1fr 1fr 1.4fr; }
     .pie__marca { grid-column: auto; }
   }
-  .pie__logo { justify-self: start; background: var(--blanco); padding: 10px 14px; border-radius: 18px; }
+  /* Solo el logo, sin la cápsula blanca (pedido del 28/10/2026). */
+  .pie__logo { justify-self: start; border-radius: 6px; }
   .pie__logo img { height: 40px; width: auto; }
   .pie__lema { color: var(--amarillo-copol); font-weight: 700; }
   .pie__texto { font-size: 0.9375rem; }

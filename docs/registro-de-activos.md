@@ -6,8 +6,9 @@ Permiso: la cooperativa autorizó el 12/10/2026 descargar y reutilizar los recur
 
 | Recurso | Archivo | Origen | Uso | Notas |
 |---|---|---|---|---|
-| Logotipo | `src/assets/brand/logo-copol.svg` | `cooperativapolicial.com.uy/web/image/website/1/logo` | Encabezado, pie, imagen OG | Vectorial, sin modificar. Coincide con el manual. |
+| Logotipo | `src/assets/brand/logo-copol.svg` | `cooperativapolicial.com.uy/web/image/website/1/logo` | Imagen OG (ya no en encabezado ni pie) | Vectorial, sin modificar. Coincide con el manual. |
 | Logotipo PNG | `assets-source/original/logo-copol-alt.png` | sitio, ID 1293 | Respaldo (no usado) | |
+| Logotipo PNG (en uso) | `src/assets/brand/logo-copol.png` | Entregado por el usuario el 28/10/2026 | Encabezado y pie | 479 × 220, fondo transparente. Reemplaza al SVG, que recortaba la rueda de colores. |
 | Isotipo | `assets-source/manual/isotipo-manual.png` → `public/favicon.png`, `public/apple-touch-icon.png` | Manual de marca, pág. 8 (recorte) | Favicon | Conviene recibir el isotipo en SVG. |
 | Ilustración "Cooperativismo" | `src/assets/brand/ilustracion-cooperativismo.webp` | Manual, pág. 13 (recorte; se cubrió la palabra "Ilustración" del margen) | Inicio, "Nuestra esencia" | Conviene recibir el archivo vectorial original. |
 | Trama de íconos | `src/assets/brand/trama-iconos.webp` | Manual, pág. 12 | Disponible | |

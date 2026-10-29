@@ -302,6 +302,12 @@ input, textarea { caret-color: var(--verde-oscuro); }
 .btn--inverse { background: transparent; color: var(--blanco); border-color: rgb(255 255 255 / 0.6); }
 .btn--inverse:hover { background: rgb(255 255 255 / 0.12); color: var(--blanco); }
 .btn--link { min-height: 44px; padding: 0; background: none; color: var(--verde-oscuro); text-decoration: underline; text-underline-offset: 4px; }
+/* Hacete socio (tomado del rediseño del 28/10/2026): cápsula con borde verde que se rellena al pasar el puntero.
+   Sobre fondos verdes (pie, cabeceras) se invierte: borde claro que se rellena del color del fondo de la página. */
+.btn--socio { background: transparent; color: var(--verde-oscuro); border: 2px solid var(--verde-oscuro); }
+.btn--socio:hover { background: var(--verde-oscuro); color: var(--blanco); box-shadow: 0 10px 24px -10px rgb(0 102 51 / 0.6); }
+.sobre-verde .btn--socio { color: var(--blanco); border-color: var(--fondo-pagina); }
+.sobre-verde .btn--socio:hover { background: var(--fondo-pagina); color: var(--verde-oscuro); box-shadow: none; }
 
 /* Badge — default · secondary · outline · accent */
 .badge {

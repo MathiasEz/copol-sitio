@@ -16,12 +16,12 @@ const departamentos = new Set(CONVENIOS.map((c) => c.departamento)).size;
   <EncabezadoPagina
     titulo="Beneficios para socios"
     antetitulo="Beneficios"
-    bajada="Servicios sociales, turismo, créditos y comercios adheridos en todo el país, pensados para vos y tu familia."
+    bajada="Servicios sociales, turismo, crédito de socio y convenios adheridos en todo el país, pensados para vos y tu familia."
     migas={[{ texto: 'Beneficios' }]}
     imagen={foto('pinecoop-salinas')}
     altImagen="Piscina y cabañas del Parque Vacacional Pinecoop"
   >
-    <Button href="/hacete-socio/">Hacete socio <Icono nombre="flecha" tamano={18} /></Button>
+    <Button href="/hacete-socio/" variant="socio">Hacete socio <Icono nombre="flecha" tamano={18} /></Button>
   </EncabezadoPagina>
 
   <section class="contenedor seccion" aria-labelledby="areas-titulo">

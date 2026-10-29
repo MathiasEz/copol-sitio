@@ -9,7 +9,6 @@ import { BENEFICIOS_SOCIO } from '../data/confirmado/beneficios-socio';
 import { PREGUNTAS_SOCIO } from '../data/confirmado/hacete-socio';
 import Button from '../components/ui/Button.astro';
 import Badge from '../components/ui/Badge.astro';
-import Card from '../components/ui/Card.astro';
 import Accordion from '../components/ui/Accordion.astro';
 
 // Contenido: página "Cómo hacerte socio" del sitio anterior (revisada el 12/10/2026).
@@ -29,23 +28,35 @@ const faqLd = {
   <EncabezadoPagina
     titulo="Te asociás y ya sos parte"
     antetitulo="Hacete socio"
-    bajada="Ser socio de COPOL es más fácil de lo que pensás. Accedé a créditos, servicios sociales, convenios y mucho más."
+    bajada="Ser socio de COPOL es más fácil de lo que pensás. Accedé al crédito de socio para el supermercado y los convenios adheridos, a servicios sociales y mucho más."
     migas={[{ texto: 'Hacete socio' }]}
   >
     <Button href={ws('Hola, quiero info para asociarme')}><Icono nombre="whatsapp" tamano={18} /> Quiero asociarme</Button>
     <Button href="#como-funciona" variant="outline">Cómo funciona</Button>
   </EncabezadoPagina>
 
-  <section class="contenedor seccion" aria-labelledby="beneficios-titulo">
-    <h2 id="beneficios-titulo"><span class="mascara"><span>Qué ganás como socio</span></span></h2>
+  <!-- Qué ganás: bloque comercial. A la izquierda el llamado a asociarse; a la derecha cuatro fichas que se
+       rellenan de verde al pasar el puntero (como los botones Hacete socio, rediseño del 28/10/2026). -->
+  <section class="contenedor seccion ganas" aria-labelledby="beneficios-titulo">
+    <div class="ganas__intro">
+      <h2 id="beneficios-titulo"><span class="mascara"><span>Qué ganás como socio</span></span></h2>
+      <p class="lead">Crédito de socio para el supermercado y los convenios adheridos, servicios sociales y {LOCALES.length} locales para atenderte en todo el país. Asociarte es simple y te acompañamos en cada paso.</p>
+      <div class="ganas__acciones">
+        <Button href={ws('Hola, quiero info para asociarme')} size="lg"><Icono nombre="whatsapp" tamano={18} /> Quiero asociarme</Button>
+        <Button href="#como-funciona" variant="socio" size="lg">Cómo funciona <Icono nombre="flecha" tamano={18} /></Button>
+      </div>
+    </div>
     <ul class="ventajas escalonar">
       {beneficios.map((b) => (
         <li>
-          <Card href={b.href} class="ventaja">
-            <span class="card__icono card__icono--accent"><Icono nombre={b.icono} tamano={26} /></span>
-            <h3>{b.titulo}</h3>
-            <p>{b.texto}</p>
-          </Card>
+          <a href={b.href} class="ventaja">
+            <span class="ventaja__icono"><Icono nombre={b.icono} tamano={26} /></span>
+            <span class="ventaja__texto">
+              <strong>{b.titulo}</strong>
+              <span>{b.texto}</span>
+            </span>
+            <span class="ventaja__ir" aria-hidden="true"><Icono nombre="flecha" tamano={20} /></span>
+          </a>
         </li>
       ))}
     </ul>
@@ -69,7 +80,11 @@ const faqLd = {
       </div>
 
       <div class="guia__resultados" aria-live="polite" data-guia-resultados>
-        <p class="guia__vacio" data-guia-vacio hidden><Icono nombre="flecha" tamano={22} /> Elegí una opción para ver tus pasos.</p>
+        <div class="guia__vacio sobre-verde" data-guia-vacio hidden>
+          <p class="guia__vacio-titulo">Elegí una opción y te mostramos tus pasos.</p>
+          <p>¿Preferís hablar con alguien? Te atendemos por WhatsApp.</p>
+          <Button href={ws('Hola, quiero info para asociarme')} variant="socio"><Icono nombre="whatsapp" tamano={18} /> Escribinos al {CONTACTO.whatsappSocios.texto}</Button>
+        </div>
 
         <article class="resultado resultado--si" data-resultado="si">
           <Badge variant="default">¿Tenés convenio? Sí</Badge>
@@ -159,15 +174,47 @@ const faqLd = {
 </script>
 
 <style>
-  .ventajas { list-style: none; margin: 24px 0 0; padding: 0; display: grid; gap: 16px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr)); }
+  /* Qué ganás como socio */
+  .ganas { display: grid; gap: clamp(28px, 4vw, 56px); align-items: center; }
+  @media (min-width: 1000px) { .ganas { grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.4fr); } }
+  .ganas__intro { display: grid; gap: 16px; justify-items: start; }
+  .ganas__acciones { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 8px; }
+  @media (max-width: 599px) { .ganas__acciones { width: 100%; } .ganas__acciones > :global(.btn) { flex: 1 1 100%; } }
+  .ventajas { list-style: none; margin: 0; padding: 0; display: grid; gap: 16px; grid-template-columns: 1fr; }
+  @media (min-width: 600px) { .ventajas { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
   .ventajas > li { display: flex; }
-  .ventajas :global(.ventaja) { flex: 1; gap: 8px; transition: transform 450ms var(--resorte), box-shadow 300ms var(--ease-out-quart), background-color 300ms; }
-  .ventajas > li:nth-child(4n + 1) :global(.ventaja) { background: linear-gradient(135deg, var(--verde-oscuro), var(--verde-copol)); color: var(--sobre-verde); }
-  .ventajas > li:nth-child(4n + 1) :global(.ventaja h3) { color: var(--blanco); }
-  .ventajas > li:nth-child(4n + 1) :global(.ventaja p) { color: var(--sobre-verde); }
-  .ventajas > li:nth-child(4n + 3) :global(.ventaja) { background: var(--accent); }
-  .ventajas > li:nth-child(4n + 3) :global(.ventaja p) { color: var(--tinta); }
-  .ventajas > li:nth-child(4n + 3) :global(.ventaja .card__icono) { background: var(--verde-oscuro); color: var(--amarillo-copol); }
+  /* Ficha que se rellena: borde verde sobre blanco; al pasar el puntero o enfocarla, se pinta de Verde oscuro. */
+  .ventaja {
+    flex: 1; display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 16px;
+    min-height: 120px; padding: 22px 22px 22px 20px; border-radius: var(--radio-lg);
+    background: var(--blanco); border: 2px solid var(--verde-oscuro); color: var(--foreground); text-decoration: none;
+    transition: background-color 220ms var(--ease-out-quart), color 220ms var(--ease-out-quart), box-shadow 300ms var(--ease-out-quart), transform 400ms var(--resorte);
+  }
+  .ventaja__icono {
+    display: grid; place-items: center; width: 60px; height: 60px; border-radius: 50%;
+    background: var(--amarillo-copol); color: var(--verde-oscuro); transition: transform 400ms var(--resorte);
+  }
+  .ventaja__texto { display: grid; gap: 4px; }
+  .ventaja__texto strong { font-size: 1.25rem; line-height: 1.2; color: var(--verde-oscuro); transition: color 220ms var(--ease-out-quart); }
+  .ventaja__texto span { color: var(--muted-foreground); transition: color 220ms var(--ease-out-quart); }
+  .ventaja__ir {
+    display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%;
+    color: var(--verde-oscuro); box-shadow: inset 0 0 0 2px currentColor; transition: transform 400ms var(--resorte), color 220ms var(--ease-out-quart);
+  }
+  .ventaja:hover, .ventaja:focus-visible { background: var(--verde-oscuro); color: var(--blanco); box-shadow: 0 18px 36px -18px rgb(0 51 26 / 0.6); }
+  .ventaja:hover .ventaja__texto strong, .ventaja:focus-visible .ventaja__texto strong { color: var(--fondo-pagina); }
+  .ventaja:hover .ventaja__texto span, .ventaja:focus-visible .ventaja__texto span { color: var(--sobre-verde); }
+  .ventaja:hover .ventaja__ir, .ventaja:focus-visible .ventaja__ir { color: var(--amarillo-copol); transform: translateX(4px); }
+  .ventaja:focus-visible { outline: 3px solid var(--amarillo-copol); outline-offset: 3px; }
+  @media (prefers-reduced-motion: no-preference) {
+    .ventaja:hover { transform: translateY(-3px); }
+    .ventaja:hover .ventaja__icono { transform: rotate(-6deg) scale(1.06); }
+  }
+  @media (max-width: 479px) {
+    .ventaja { grid-template-columns: auto 1fr; padding: 18px 16px; min-height: 0; }
+    .ventaja__ir { display: none; }
+    .ventaja__icono { width: 52px; height: 52px; }
+  }
 
   /* Asistente para socios */
   .guia { display: grid; gap: clamp(24px, 4vw, 48px); align-items: start; }
@@ -184,12 +231,24 @@ const faqLd = {
   .guia__opcion :global(svg) { grid-row: span 2; width: 44px; height: 44px; padding: 11px; border-radius: 14px; background: var(--muted); color: var(--verde-oscuro); transition: background-color var(--transicion), color var(--transicion); }
   .guia__opcion strong { font-size: 1.0625rem; }
   .guia__opcion span { color: var(--muted-foreground); font-size: 0.9375rem; }
-  .guia__opcion:hover { transform: translateX(4px); border-color: var(--borde-fuerte); box-shadow: var(--sombra-suave); }
+  .guia__opcion { border-color: var(--verde-oscuro); background: var(--blanco); }
+  .guia__opcion:hover { transform: translateX(4px); border-color: var(--verde-oscuro); background: var(--verde-oscuro); color: var(--sobre-verde); box-shadow: var(--sombra-suave); }
+  .guia__opcion:hover span { color: var(--sobre-verde); }
+  .guia__opcion:hover :global(svg) { background: var(--amarillo-copol); color: var(--tinta); }
   .guia__opcion[aria-pressed='true'] { border-color: var(--verde-oscuro); background: var(--verde-oscuro); color: var(--sobre-verde); box-shadow: var(--sombra); transform: translateX(6px); }
   .guia__opcion[aria-pressed='true'] span { color: var(--sobre-verde); }
   .guia__opcion[aria-pressed='true'] :global(svg) { background: var(--amarillo-copol); color: var(--tinta); }
   .guia__resultados { display: grid; gap: 16px; align-content: start; min-height: 320px; }
-  .guia__vacio { display: flex; gap: 12px; align-items: center; justify-content: center; min-height: 320px; margin: 0; padding: 24px; border-radius: var(--radio-xl); border: 2px dashed var(--borde-fuerte); color: var(--verde-oscuro); font-weight: 700; text-align: center; }
+  /* Panel de espera: en vez de una caja punteada vacía, un bloque verde con un camino directo por WhatsApp. */
+  .guia__vacio {
+    display: grid; gap: 14px; align-content: center; justify-items: start; min-height: 320px; margin: 0;
+    padding: clamp(24px, 3.4vw, 40px); border-radius: var(--radio-xl); background: var(--verde-oscuro); color: var(--sobre-verde);
+  }
+  .guia__vacio[hidden] { display: none; }
+  .guia > * { min-width: 0; }
+  .guia__vacio :global(.btn) { white-space: normal; text-align: center; }
+  .guia__vacio-titulo { font-size: clamp(1.5rem, 2.6vw, 2rem); font-weight: 800; line-height: 1.15; letter-spacing: -0.02em; color: var(--fondo-pagina); max-width: 18ch; }
+  @media (max-width: 899px) { .guia__vacio { min-height: 0; } }
   .resultado {
     position: relative; display: grid; gap: 14px; justify-items: start; padding: clamp(24px, 3.4vw, 40px); border-radius: var(--radio-xl); overflow: hidden;
     background: var(--card); box-shadow: var(--anillo-fuerte), var(--sombra);

@@ -88,8 +88,10 @@
   font-size: clamp(1.625rem, 3.2cqi, 2.75rem); text-wrap: balance;
 }
 .bi__linea { display: block; }
+/* Palabras resaltadas: recuadro recto color papel (el fondo de la página) con letra verde, tomado del rediseño
+   del 28/10/2026. En el recuadro claro (diseño "tarjeta") se invierte: verde con letra papel. */
 .bi__resaltado {
-  background: var(--bi-amarillo); color: var(--bi-tinta); padding: 0 0.14em; border-radius: 0.18em;
+  background: #fefce3; color: var(--bi-verde); padding: 0 0.16em; border-radius: 0;
   -webkit-box-decoration-break: clone; box-decoration-break: clone;
 }
 .bi__bajada { margin: 0; max-width: 46ch; font-size: clamp(0.9375rem, 1.3cqi, 1.0625rem); line-height: 1.55; color: rgb(255 255 255 / 0.84); }
@@ -162,6 +164,7 @@
 /* Recuadro (sobre blanco): colores oscuros. */
 .bi__diapo--tarjeta .bi__antetitulo { color: var(--bi-verde); background: #eaf4ee; box-shadow: none; }
 .bi__diapo--tarjeta .bi__bajada { color: var(--bi-tinta-suave); }
+.bi__diapo--tarjeta .bi__resaltado { background: var(--bi-verde); color: #fefce3; }
 .bi__diapo--tarjeta .bi__boton--principal { background: var(--bi-verde); color: #fff; }
 .bi__diapo--tarjeta .bi__boton--principal:hover { background: #004d26; }
 .bi__diapo--tarjeta .bi__boton--secundario { color: var(--bi-verde); box-shadow: inset 0 0 0 1.5px rgb(0 102 51 / 0.45); }
