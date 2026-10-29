@@ -37,11 +37,12 @@ La vista previa de Vercel usa **las mismas** `TURSO_DATABASE_URL`, `TURSO_AUTH_T
 - `docs/panel-stock.md`: cómo funciona el panel (roles, permisos, registros, planilla, auditoría).
 - `docs/sistema-visual.md`: colores, tipografía, componentes.
 - `docs/produccion.md` y `docs/pendientes.md`: lo que falta y la lista de lanzamiento.
+- `docs/migracion.md`: cómo pasar el proyecto a otro repositorio y otro Vercel (variables, datos, dominio). `README.md` tiene el paso a paso de la primera publicación y `.env.example` la lista completa de variables.
 
 ## Cosas del código que conviene saber
 
 - Sitio: páginas estáticas de Astro con *server islands* (`server:defer`). Datos confirmados en `src/data/confirmado/` (se regeneran con `npm run datos:extraer`; ver `scripts/extract-data.mjs`).
 - Panel: `panel/src/app.ts` (rutas), `vistas.ts` (HTML), `db.ts` (migraciones en `MIGRACIONES`, se agregan al final, nunca se editan las viejas), `seguridad.ts` (roles y permisos), `registros*.ts` (carga de registros y Google Sheets).
 - CSP del panel: `style-src 'self'`, así que **no hay estilos en línea**; los estilos nuevos van como clases en `public/panel-recursos/panel.css`.
-- Variables de entorno (solo nombres, los valores viven en Vercel): `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`, `BLOB_READ_WRITE_TOKEN`, `GOOGLE_HOJA`, `GOOGLE_CREDENCIALES`, `RESPALDO_CLAVE`, `CRON_SECRET`, `RESEND_API_KEY`, `SITIO_DE_PRUEBA`, `PUBLIC_FORM_ENDPOINT`, y opcionales `IA_*`, `EXPO_ACCESS_TOKEN`.
+- Variables de entorno: la lista completa y explicada está en `.env.example` (los valores viven solo en Vercel, nunca en el repo). Las que importan: `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`, `BLOB_READ_WRITE_TOKEN`, `GOOGLE_HOJA`, `GOOGLE_CREDENCIALES`, `RESPALDO_CLAVE`, `CRON_SECRET`, `RESEND_API_KEY`, `PUBLIC_FORM_ENDPOINT`.
 - Los respaldos diarios cifrados y las notificaciones corren como crons de Vercel (`vercel.json`) y solo en producción.
